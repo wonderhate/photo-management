@@ -5,8 +5,10 @@ export interface Photo {
   width:number|null;height:number|null;file_size:number;date_taken:string|null;created_at:string;
   camera_make:string|null;camera_model:string|null;lens_model:string|null;f_number:number|null;
   exposure_time:string|null;exposure_seconds:number|null;iso:number|null;focal_length:number|null;
-  focal_length_35mm:number|null;gps_latitude:number|null;gps_longitude:number|null;orientation:number|null;
-  watermark_draft_count?:number;favorite:boolean;tags:string[];thumbnail_url:string;preview_url:string;thumbnail_path:string|null;
+  focal_length_35mm:number|null;gps_latitude:number|null;gps_longitude:number|null;gps_altitude:number|null;orientation:number|null;
+  watermark_draft_count?:number;favorite:boolean;rating:number|null;color_label:string|null;
+  face_data?:{faces:any[];detected_at:string}|null;
+  tags:string[];thumbnail_url:string;preview_url:string;thumbnail_path:string|null;
   preview_error:string|null;missing?:boolean;raw_exif?:Record<string,string>;files:PhotoFile[];similarity_score?:number;
 }
 export interface Album {id:string;name:string;type:'normal'|'smart';count:number;keywords:string[];match_mode:'all'|'any';threshold:number;max_results:number;ai_model:string|null;cover_id:string|null}
@@ -28,4 +30,33 @@ export interface WatermarkDraft {
   status:'draft'|'ready'|'exported';revision:number;created_at:string;updated_at:string;
   last_exported_at:string|null;export_path:string|null;modified_since_export:boolean;source_missing:boolean;
   source:{file_name:string;file_path:string;camera_model:string|null;lens_model:string|null;date_taken:string|null};
+}
+
+export interface MapPhoto {
+  id:string;latitude:number;longitude:number;altitude:number|null;
+  thumbnail:string;date_taken:string|null;file_name:string;
+}
+
+export interface TimelineYear {
+  months: Record<string, {days: Record<string, number>; total: number}>;
+  total: number;
+}
+
+export interface TimelineData {
+  years: Record<string, TimelineYear>;
+}
+
+export interface FacePerson {
+  id:string;name:string;photo_count:number;
+}
+
+export interface BatchEditPayload {
+  photo_ids:string[];
+  favorite?:boolean;
+  rating?:number;
+  color_label?:string;
+  add_tags?:string[];
+  remove_tags?:string[];
+  clear_rating?:boolean;
+  clear_color_label?:boolean;
 }

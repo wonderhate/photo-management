@@ -7,7 +7,25 @@ class ImportRequest(BaseModel):
 
 class PhotoUpdate(BaseModel):
     favorite: bool | None = None
+    rating: int | None = Field(default=None, ge=0, le=5)
+    color_label: str | None = Field(default=None, pattern='^(red|yellow|green|blue|none)$')
     tags: list[str] | None = Field(default=None, max_length=100)
+
+class BatchEditRequest(BaseModel):
+    photo_ids: list[str] = Field(min_length=1, max_length=10000)
+    favorite: bool | None = None
+    rating: int | None = Field(default=None, ge=0, le=5)
+    color_label: str | None = Field(default=None, pattern='^(red|yellow|green|blue|none)$')
+    add_tags: list[str] | None = None
+    remove_tags: list[str] | None = None
+    clear_rating: bool = False
+    clear_color_label: bool = False
+
+class FacePersonCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+class FacePersonRename(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
 
 class SmartRequest(BaseModel):
     keywords: list[str] = Field(min_length=1, max_length=16)

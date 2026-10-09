@@ -65,13 +65,17 @@ class Photo(Base):
     iso: Mapped[int | None] = mapped_column(index=True)
     focal_length: Mapped[float | None] = mapped_column(index=True)
     focal_length_35mm: Mapped[float | None]
-    gps_latitude: Mapped[float | None]
-    gps_longitude: Mapped[float | None]
+    gps_latitude: Mapped[float | None] = mapped_column(index=True)
+    gps_longitude: Mapped[float | None] = mapped_column(index=True)
+    gps_altitude: Mapped[float | None]
     raw_exif: Mapped[dict] = mapped_column(JSON, default=dict)
     thumbnail_path: Mapped[str | None]
     preview_path: Mapped[str | None]
     preview_error: Mapped[str | None]
-    favorite: Mapped[bool] = mapped_column(default=False)
+    favorite: Mapped[bool] = mapped_column(default=False, index=True)
+    rating: Mapped[int | None] = mapped_column(index=True)
+    color_label: Mapped[str | None] = mapped_column(index=True)
+    face_data: Mapped[dict | None] = mapped_column(JSON, default=dict)
     created_at: Mapped[str] = mapped_column(default=now)
     updated_at: Mapped[str] = mapped_column(default=now, onupdate=now)
 
@@ -110,6 +114,15 @@ class Embedding(Base):
     model: Mapped[str] = mapped_column(primary_key=True)
     embedding_path: Mapped[str]
     created_at: Mapped[str] = mapped_column(default=now)
+
+class FacePerson(Base):
+    __tablename__ = 'face_persons'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    name: Mapped[str] = mapped_column(unique=True)
+    representative_encoding: Mapped[bytes | None]
+    photo_count: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[str] = mapped_column(default=now)
+    updated_at: Mapped[str] = mapped_column(default=now, onupdate=now)
 
 Index('ix_photo_date_lens', Photo.date_taken, Photo.lens_model)
 engine = create_engine(f'sqlite:///{DATA / "library.db"}', connect_args={'check_same_thread': False, 'timeout': 30})

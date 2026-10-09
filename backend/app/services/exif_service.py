@@ -86,6 +86,10 @@ def extract(path: Path) -> dict:
         return result or None
     seconds = number(get('ExposureTime'))
     iso = number(get('ISOSpeedRatings')) or number(get('PhotographicSensitivity'))
+    gps_altitude = number(tags.get('GPS GPSAltitude'))
+    gps_altitude_ref = str(tags.get('GPS GPSAltitudeRef', '0'))
+    if gps_altitude is not None and gps_altitude_ref == '1':
+        gps_altitude = -gps_altitude
     return {
         'width': int(width) if width else None, 'height': int(height) if height else None,
         'orientation': int(orientation) if orientation else 1,
@@ -96,5 +100,6 @@ def extract(path: Path) -> dict:
         'focal_length_35mm': number(get('FocalLengthIn35mmFilm')),
         'gps_latitude': gps(tags.get('GPS GPSLatitude'), str(tags.get('GPS GPSLatitudeRef', 'N'))),
         'gps_longitude': gps(tags.get('GPS GPSLongitude'), str(tags.get('GPS GPSLongitudeRef', 'E'))),
+        'gps_altitude': gps_altitude,
         'raw_exif': raw,
     }

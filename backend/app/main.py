@@ -18,6 +18,9 @@ from .models import initialize, Session, Photo, CaptureGroup, Album, AlbumPhoto,
 from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest
 from .services import jobs, import_service, library_service, stats_service, watermark_service, scan_service, export_registry
 from .services.embedding_service import service as ai
+from .services import timeline_service, face_service
+from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename
+from .models import FacePerson
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -142,10 +145,46 @@ def update_photo(photo_id: str, payload: PhotoUpdate):
     with Session() as session:
         photo = photo_or_404(session, photo_id)
         if payload.favorite is not None: photo.favorite = payload.favorite
+        if payload.rating is not None: photo.rating = payload.rating
+        if payload.color_label is not None:
+            photo.color_label = None if payload.color_label == 'none' else payload.color_label
         if payload.tags is not None: library_service.set_tags(session, photo, payload.tags)
         photo.updated_at = now()
         session.commit()
         return library_service.serialize(session, [photo], True)[0]
+
+@app.post('/api/photos/batch-edit')
+def batch_edit_photos(payload: BatchEditRequest):
+    with Session() as session:
+        photos = session.scalars(select(Photo).where(Photo.id.in_(payload.photo_ids))).all()
+        if not photos: raise HTTPException(404, '未找到照片')
+        for photo in photos:
+            if payload.favorite is not None: photo.favorite = payload.favorite
+            if payload.rating is not None: photo.rating = payload.rating
+            if payload.clear_rating: photo.rating = None
+            if payload.color_label is not None:
+                photo.color_label = None if payload.color_label == 'none' else payload.color_label
+            if payload.clear_color_label: photo.color_label = None
+            if payload.add_tags:
+                existing_tags = {t.name for t in photo.tags} if hasattr(photo, 'tags') else set()
+                for tag_name in payload.add_tags:
+                    if tag_name not in existing_tags:
+                        tag = session.scalars(select(Tag).where(Tag.name == tag_name)).first()
+                        if not tag:
+                            tag = Tag(name=tag_name)
+                            session.add(tag)
+                            session.flush()
+                        session.add(PhotoTag(photo_id=photo.id, tag_id=tag.id))
+            if payload.remove_tags:
+                session.execute(
+                    delete(PhotoTag).where(
+                        PhotoTag.photo_id == photo.id,
+                        PhotoTag.tag_id.in_(select(Tag.id).where(Tag.name.in_(payload.remove_tags)))
+                    )
+                )
+            photo.updated_at = now()
+        session.commit()
+        return {'updated': len(photos)}
 
 @app.delete('/api/photos/{photo_id}')
 def delete_photo(photo_id: str, scope: Literal['capture','file'] = 'capture'):
@@ -324,6 +363,112 @@ def export_file(filename: str):
     if target is None: raise HTTPException(404,'导出文件不存在')
     return FileResponse(target, filename=target.name)
 
+@app.get('/api/map/photos')
+def map_photos():
+    with Session() as session:
+        photos = session.scalars(
+            select(Photo).where(
+                Photo.gps_latitude.isnot(None),
+                Photo.gps_longitude.isnot(None)
+            )
+        ).all()
+        return [{
+            'id': p.id,
+            'latitude': p.gps_latitude,
+            'longitude': p.gps_longitude,
+            'altitude': p.gps_altitude,
+            'thumbnail': f'/api/photos/{p.id}/thumbnail',
+            'date_taken': p.date_taken,
+            'file_name': p.file_name
+        } for p in photos]
+
+@app.get('/api/timeline')
+def timeline():
+    return timeline_service.get_timeline_hierarchy()
+
+@app.get('/api/timeline/{year}')
+def timeline_year(year: str):
+    photo_ids = timeline_service.get_photos_by_date(year)
+    with Session() as session:
+        photos = session.scalars(select(Photo).where(Photo.id.in_(photo_ids))).all()
+        return {'photos': library_service.serialize(session, photos), 'total': len(photos)}
+
+@app.get('/api/timeline/{year}/{month}')
+def timeline_month(year: str, month: str):
+    photo_ids = timeline_service.get_photos_by_date(year, month)
+    with Session() as session:
+        photos = session.scalars(select(Photo).where(Photo.id.in_(photo_ids))).all()
+        return {'photos': library_service.serialize(session, photos), 'total': len(photos)}
+
+@app.get('/api/timeline/{year}/{month}/{day}')
+def timeline_day(year: str, month: str, day: str):
+    photo_ids = timeline_service.get_photos_by_date(year, month, day)
+    with Session() as session:
+        photos = session.scalars(select(Photo).where(Photo.id.in_(photo_ids))).all()
+        return {'photos': library_service.serialize(session, photos), 'total': len(photos)}
+
+@app.get('/api/timeline/heatmap/{year}')
+def timeline_heatmap(year: str):
+    return timeline_service.get_calendar_heatmap(year)
+
+@app.get('/api/compare')
+def compare_photos(ids: str):
+    photo_ids = ids.split(',')
+    if len(photo_ids) < 2 or len(photo_ids) > 4:
+        raise ValueError('对比需要 2-4 张照片')
+    with Session() as session:
+        photos = session.scalars(select(Photo).where(Photo.id.in_(photo_ids))).all()
+        if len(photos) != len(photo_ids):
+            raise HTTPException(404, '部分照片不存在')
+        return {'photos': library_service.serialize(session, photos, True)}
+
+@app.get('/api/faces/status')
+def face_status():
+    return {'available': face_service.is_available()}
+
+@app.post('/api/photos/{photo_id}/detect-faces')
+def detect_faces(photo_id: str):
+    if not face_service.is_available():
+        raise HTTPException(503, '人脸识别功能不可用，请安装 face-recognition 库')
+    with Session() as session:
+        photo = photo_or_404(session, photo_id)
+        faces = face_service.detect_faces(Path(photo.file_path))
+        photo.face_data = {'faces': faces, 'detected_at': now()}
+        session.commit()
+        return {'faces': len(faces), 'face_data': photo.face_data}
+
+@app.get('/api/faces/persons')
+def list_face_persons():
+    with Session() as session:
+        persons = session.scalars(select(FacePerson).order_by(FacePerson.name)).all()
+        return [{'id': p.id, 'name': p.name, 'photo_count': p.photo_count} for p in persons]
+
+@app.post('/api/faces/persons')
+def create_face_person(payload: FacePersonCreate):
+    with Session() as session:
+        person = FacePerson(name=payload.name)
+        session.add(person)
+        session.commit()
+        return {'id': person.id, 'name': person.name}
+
+@app.patch('/api/faces/persons/{person_id}')
+def rename_face_person(person_id: str, payload: FacePersonRename):
+    with Session() as session:
+        person = session.get(FacePerson, person_id)
+        if not person: raise HTTPException(404, '人物不存在')
+        person.name = payload.name
+        session.commit()
+        return {'id': person.id, 'name': person.name}
+
+@app.delete('/api/faces/persons/{person_id}')
+def delete_face_person(person_id: str):
+    with Session() as session:
+        person = session.get(FacePerson, person_id)
+        if not person: raise HTTPException(404, '人物不存在')
+        session.delete(person)
+        session.commit()
+        return {'ok': True}
+
 @app.get('/api/settings')
 def get_settings(): return settings() | {'data_dir':str(DATA),'models_dir':str(MODELS),'exports_dir':str(EXPORTS),'scan_paths':SCAN_PATHS}
 
@@ -343,7 +488,11 @@ if dist.exists():
     @app.get('/watermark')
     @app.get('/watermark/workshop')
     @app.get('/watermark/gallery')
-    def watermark_page():
+    @app.get('/map')
+    @app.get('/timeline')
+    @app.get('/compare')
+    @app.get('/faces')
+    def frontend_page():
         return FileResponse(dist / 'index.html')
 
     app.mount('/', StaticFiles(directory=dist, html=True), name='frontend')
