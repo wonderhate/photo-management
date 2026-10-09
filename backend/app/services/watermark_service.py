@@ -64,6 +64,7 @@ def batch_export(job_id: str, ids: list[str], options: dict) -> None:
     results, errors = [], []
     jobs.update(job_id, total=len(ids))
     for index, photo_id in enumerate(ids, 1):
+        jobs.check(job_id)
         jobs.update(job_id, current=photo_id)
         try:
             results.append(export_one(photo_id, options, index))

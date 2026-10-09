@@ -52,7 +52,7 @@ export function HoverPreview({photo,pos}:{photo:Photo;pos:{x:number;y:number}}) 
     {photo.date_taken&&<div className="hp-exif">{photo.date_taken.slice(0,16).replace('T',' ')}</div>}
   </div>;
 }
-export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite}:{photo:Photo;selected:boolean;onToggle:()=>void;onOpen:()=>void;onFavorite?:(photo:Photo)=>void}) {
+export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite,dragHandle}:{photo:Photo;selected:boolean;onToggle:()=>void;onOpen:()=>void;onFavorite?:(photo:Photo)=>void;dragHandle?:{onStart:()=>void;onDrop:()=>void}}) {
   const [failed,setFailed]=useState(false);
   const [hoverPos,setHoverPos]=useState<{x:number;y:number}|null>(null);
   const hoverTimer=useRef<number|undefined>(undefined);
@@ -61,7 +61,7 @@ export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite}:{photo:Pho
   function move(e:MouseEvent){if(hoverPos)setHoverPos({x:e.clientX,y:e.clientY})}
   function leave(){clearTimeout(hoverTimer.current);setHoverPos(null)}
   const paired=photo.files.some(f=>f.is_raw)&&photo.files.some(f=>!f.is_raw);
-  return <article className={'photo-card '+(selected?'selected':'')} onMouseEnter={enter} onMouseMove={move} onMouseLeave={leave}>
+  return <article className={'photo-card '+(selected?'selected':'')+(dragHandle?' sortable':'')} draggable={!!dragHandle} onDragStart={dragHandle?()=>dragHandle.onStart():undefined} onDragOver={dragHandle?e=>e.preventDefault():undefined} onDrop={dragHandle?e=>{e.preventDefault();e.stopPropagation();dragHandle.onDrop()}:undefined} onMouseEnter={enter} onMouseMove={move} onMouseLeave={leave}>
     <button className="photo-image" onClick={onOpen} aria-label={'查看 '+photo.file_name}>
       {photo.thumbnail_path&&!failed?<img loading="lazy" src={photo.thumbnail_url} alt={photo.file_name} onError={()=>setFailed(true)}/>:<div className="image-fallback"><ImageOff/><span>预览不可用</span></div>}
       {(paired||photo.is_raw)&&<span className="format-badge">{paired?'RAW + JPG':'RAW'}</span>}

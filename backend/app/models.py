@@ -89,6 +89,7 @@ class Album(Base):
     threshold: Mapped[float] = mapped_column(default=0.38)
     ai_model: Mapped[str | None]
     max_results: Mapped[int] = mapped_column(default=100)
+    cover_photo_id: Mapped[str | None]
     created_at: Mapped[str] = mapped_column(default=now)
     updated_at: Mapped[str] = mapped_column(default=now, onupdate=now)
 
@@ -97,6 +98,7 @@ class AlbumPhoto(Base):
     album_id: Mapped[str] = mapped_column(ForeignKey('albums.id', ondelete='CASCADE'), primary_key=True)
     photo_id: Mapped[str] = mapped_column(ForeignKey('photos.id', ondelete='CASCADE'), primary_key=True)
     similarity_score: Mapped[float | None]
+    position: Mapped[int] = mapped_column(default=0)
 
 class Tag(Base):
     __tablename__ = 'tags'
@@ -137,4 +139,11 @@ Session = sessionmaker(engine, expire_on_commit=False)
 
 def initialize() -> None:
     Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        for ddl in ('ALTER TABLE albums ADD COLUMN cover_photo_id VARCHAR',
+                    'ALTER TABLE album_photos ADD COLUMN position INTEGER DEFAULT 0'):
+            try:
+                connection.exec_driver_sql(ddl)
+            except Exception:
+                pass
 

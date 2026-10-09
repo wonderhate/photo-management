@@ -54,6 +54,12 @@ class AlbumRequest(BaseModel):
         if not name.strip(): raise ValueError('影集名称不能为空')
         return name.strip()
 
+class AlbumUpdate(BaseModel):
+    cover_photo_id: str | None = None
+
+class AlbumOrderRequest(BaseModel):
+    photo_ids: list[str] = Field(default_factory=list, max_length=10000)
+
 class WatermarkOptions(BaseModel):
     template: Literal['frame', 'ambient'] = 'frame'
     style: Literal['modern_info_bar', 'classic_frame'] = 'modern_info_bar'

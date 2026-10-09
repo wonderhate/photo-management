@@ -84,6 +84,7 @@ def batch_export(job_id: str, ids: list[str], overrides: dict) -> None:
     results, errors = [], []
     jobs.update(job_id, total=len(ids))
     for index, draft_id in enumerate(ids, 1):
+        jobs.check(job_id)
         jobs.update(job_id, current=draft_id)
         try:
             results.append(export_draft(draft_id, overrides, index))

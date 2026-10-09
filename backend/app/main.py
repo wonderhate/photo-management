@@ -19,7 +19,7 @@ from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, Wat
 from .services import jobs, import_service, library_service, stats_service, watermark_service, scan_service, export_registry
 from .services.embedding_service import service as ai
 from .services import timeline_service, face_service
-from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename
+from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename, AlbumUpdate, AlbumOrderRequest
 from .models import FacePerson
 
 @asynccontextmanager
@@ -114,12 +114,24 @@ def get_job(job_id: str):
     if not result: raise HTTPException(404, '任务不存在或服务已重启；可重新执行，重复导入会跳过')
     return result
 
+@app.post('/api/jobs/{job_id}/cancel')
+def cancel_job(job_id: str):
+    result = jobs.cancel(job_id)
+    if not result: raise HTTPException(404, '任务不存在或服务已重启')
+    return result
+
+def ordered_photos(request: Request, sort: str, direction: str):
+    q = library_service.query_photos(filters(request), 'capture')
+    if sort == 'manual' and request.query_params.get('album_id'):
+        positions = select(Photo.capture_group_id.label('gid'), func.min(AlbumPhoto.position).label('pos')).join(AlbumPhoto, AlbumPhoto.photo_id == Photo.id).where(AlbumPhoto.album_id == request.query_params['album_id']).group_by(Photo.capture_group_id).subquery()
+        return q.join(positions, positions.c.gid == Photo.capture_group_id).order_by(positions.c.pos, Photo.id)
+    column = {'date_taken':Photo.date_taken, 'created_at':Photo.created_at, 'file_name':Photo.file_name}.get(sort, Photo.date_taken)
+    return q.order_by(column.asc() if direction == 'asc' else column.desc(), Photo.id)
+
 @app.get('/api/photos')
 def get_photos(request: Request, page: int = 1, page_size: int = 80, sort: str = 'date_taken', direction: str = 'desc'):
     if page < 1 or not 1 <= page_size <= 200: raise ValueError('分页参数超出范围')
-    q = library_service.query_photos(filters(request), 'capture')
-    column = {'date_taken':Photo.date_taken, 'created_at':Photo.created_at, 'file_name':Photo.file_name}.get(sort, Photo.date_taken)
-    q = q.order_by(column.asc() if direction == 'asc' else column.desc(), Photo.id)
+    q = ordered_photos(request, sort, direction)
     with Session() as session:
         total = session.scalar(select(func.count()).select_from(q.order_by(None).subquery()))
         photos = session.scalars(q.offset((page-1)*page_size).limit(page_size)).all()
@@ -136,8 +148,8 @@ def filter_options():
         return result
 
 @app.get('/api/photos/ids')
-def photo_ids(request: Request):
-    q = library_service.query_photos(filters(request), 'capture').with_only_columns(Photo.id)
+def photo_ids(request: Request, sort: str = 'date_taken', direction: str = 'desc'):
+    q = ordered_photos(request, sort, direction).with_only_columns(Photo.id)
     with Session() as session:
         return {'ids': list(session.scalars(q))}
 
@@ -270,7 +282,7 @@ def lens_year(lens_name: str, request: Request, year: int):
 def album_dict(session, album: Album) -> dict:
     result = {c.name:getattr(album,c.name) for c in Album.__table__.columns}
     result['count'] = session.scalar(select(func.count(func.distinct(Photo.capture_group_id))).join(AlbumPhoto, AlbumPhoto.photo_id == Photo.id).where(AlbumPhoto.album_id == album.id))
-    result['cover_id'] = session.scalar(select(AlbumPhoto.photo_id).where(AlbumPhoto.album_id == album.id).limit(1))
+    result['cover_id'] = album.cover_photo_id or session.scalar(select(AlbumPhoto.photo_id).where(AlbumPhoto.album_id == album.id).order_by(AlbumPhoto.position).limit(1))
     return result
 
 @app.get('/api/albums')
@@ -336,6 +348,37 @@ def replace_album_photos(album_id: str, payload: AlbumRequest):
         session.execute(delete(AlbumPhoto).where(AlbumPhoto.album_id==album_id))
         existing = set(session.scalars(select(Photo.id).where(Photo.id.in_(payload.photo_ids))))
         for photo_id in existing: session.add(AlbumPhoto(album_id=album_id,photo_id=photo_id,similarity_score=payload.scores.get(photo_id)))
+        album.updated_at=now()
+        session.commit()
+        return album_dict(session,album)
+
+@app.patch('/api/albums/{album_id}')
+def update_album(album_id: str, payload: AlbumUpdate):
+    with Session() as session:
+        album = session.get(Album,album_id)
+        if not album: raise HTTPException(404,'影集不存在')
+        if payload.cover_photo_id is not None:
+            if payload.cover_photo_id and not session.get(Photo,payload.cover_photo_id): raise ValueError('封面照片不存在')
+            album.cover_photo_id = payload.cover_photo_id or None
+        album.updated_at=now()
+        session.commit()
+        return album_dict(session,album)
+
+@app.put('/api/albums/{album_id}/order')
+def order_album(album_id: str, payload: AlbumOrderRequest):
+    with Session() as session:
+        album = session.get(Album,album_id)
+        if not album: raise HTTPException(404,'影集不存在')
+        members = {m.photo_id:m for m in session.scalars(select(AlbumPhoto).where(AlbumPhoto.album_id==album_id))}
+        position = 0
+        for photo_id in payload.photo_ids:
+            member = members.pop(photo_id,None)
+            if member:
+                member.position = position
+                position += 1
+        for member in members.values():
+            member.position = position
+            position += 1
         album.updated_at=now()
         session.commit()
         return album_dict(session,album)

@@ -139,6 +139,7 @@ def import_paths(job_id: str, paths: list[str], recursive: bool, exclude_derived
     jobs.update(job_id, total=len(files) + failed, failed=failed, processed=failed, errors=errors[:100])
     counts = dict(success=0, skipped=0, failed=failed)
     for index, path in enumerate(files.values(), 1):
+        jobs.check(job_id)
         jobs.update(job_id, current=str(path))
         try:
             counts[import_one(path)] += 1
