@@ -135,6 +135,12 @@ def filter_options():
         result['tags'] = list(session.scalars(select(Tag.name).order_by(Tag.name)))
         return result
 
+@app.get('/api/photos/ids')
+def photo_ids(request: Request):
+    q = library_service.query_photos(filters(request), 'capture').with_only_columns(Photo.id)
+    with Session() as session:
+        return {'ids': list(session.scalars(q))}
+
 @app.get('/api/photos/{photo_id}')
 def photo_detail(photo_id: str):
     with Session() as session:

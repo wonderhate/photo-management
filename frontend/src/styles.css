@@ -59,6 +59,20 @@
 .batch-edit-section .check{font-size:11px;flex-direction:row;align-items:center}
 .batch-edit-content input[type=text]{width:100%}
 
+/* ── Shortcuts Help ── */
+.shortcuts-list{display:flex;flex-direction:column;gap:0}
+.shortcuts-list>div{display:grid;grid-template-columns:130px 1fr;align-items:center;padding:9px 0;border-bottom:1px solid #2c3630}
+.shortcuts-list>div:last-child{border:0}
+.shortcuts-list dt{margin:0}
+.shortcuts-list dd{margin:0;font-size:11px;color:#9aa89b}
+.shortcuts-list kbd{background:#242a2b;border:1px solid #3b4243;border-radius:4px;padding:3px 8px;font-size:10px;font-family:inherit;color:#c6b08a}
+
+/* ── Hover Preview ── */
+.hover-preview{position:fixed;z-index:60;pointer-events:none;background:#1a211d;border:1px solid #45513e;border-radius:10px;box-shadow:0 16px 60px #000c;padding:10px;width:340px}
+.hover-preview img{width:100%;max-height:280px;object-fit:contain;border-radius:6px;background:#0d120e}
+.hover-preview .hp-name{font-size:10px;color:#b7c0b8;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hover-preview .hp-exif{font-size:9px;color:#7e8b82;margin-top:3px}
+
 /* ── Map Page ── */
 .map-page{display:flex;flex-direction:column;height:calc(100vh - 74px - 46px)}
 .map-toolbar{display:flex;justify-content:space-between;align-items:center;padding:16px 0 14px;border-bottom:1px solid #272f2c}
