@@ -1,8 +1,9 @@
 import {useState} from 'react';
 import type {ReactNode} from 'react';
-import {ImageOff, Heart, Check, X, ChevronLeft, ChevronRight} from 'lucide-react';
+import {ImageOff, Heart, Check, X, ChevronLeft, ChevronRight, Star} from 'lucide-react';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid} from 'recharts';
 import type {Photo,Bin,Summary} from './types';
+import {PhotoBadge} from './RatingColorLabel';
 
 export function Modal({title,onClose,children,wide=false}:{title:string;onClose:()=>void;children:ReactNode;wide?:boolean}) {
   return <div className="scrim" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section role="dialog" aria-modal="true" aria-label={title} className={'modal '+(wide?'wide':'')}><header><h2>{title}</h2><button className="icon" aria-label="关闭" onClick={onClose}><X size={20}/></button></header>{children}</section></div>;
@@ -17,6 +18,7 @@ export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite}:{photo:Pho
       {photo.thumbnail_path&&!failed?<img loading="lazy" src={photo.thumbnail_url} alt={photo.file_name} onError={()=>setFailed(true)}/>:<div className="image-fallback"><ImageOff/><span>预览不可用</span></div>}
       {(paired||photo.is_raw)&&<span className="format-badge">{paired?'RAW + JPG':'RAW'}</span>}
       {photo.similarity_score!==undefined&&<span className="score">{photo.similarity_score.toFixed(3)}</span>}
+      <PhotoBadge rating={photo.rating??null} colorLabel={photo.color_label??null}/>
     </button>
     <button className={'select-box '+(selected?'checked':'')} onClick={onToggle} aria-label={'选择 '+photo.file_name} aria-pressed={selected}>{selected&&<Check size={13}/>}</button>
     {onFavorite&&<button className={'favorite '+(photo.favorite?'on':'')} aria-label={'收藏 '+photo.file_name} onClick={()=>onFavorite(photo)}><Heart size={16} fill={photo.favorite?'currentColor':'none'}/></button>}

@@ -1,215 +1,88 @@
-import { useState, useEffect } from 'react';
-import { getFacePersons, createFacePerson, renameFacePerson, deleteFacePerson, getFaceStatus } from './api';
-import type { FacePerson } from './types';
-import { Users, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import {useState,useEffect} from 'react';
+import {Users,Plus,Edit2,Trash2,ScanFace} from 'lucide-react';
+import {api,message} from './api';
+import {Empty,Modal} from './components';
+import type {FacePerson} from './types';
 
-export default function FacesPage() {
-  const [persons, setPersons] = useState<FacePerson[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [available, setAvailable] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [newName, setNewName] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function FacesPage({notify}:{notify:(msg:string)=>void}){
+  const [persons,setPersons]=useState<FacePerson[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [available,setAvailable]=useState(false);
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [editName,setEditName]=useState('');
+  const [newName,setNewName]=useState('');
+  const [showAdd,setShowAdd]=useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(()=>{loadData()},[]);
 
-  const loadData = async () => {
-    try {
-      const status = await getFaceStatus();
+  async function loadData(){
+    try{
+      const status=await api<{available:boolean}>('/faces/status');
       setAvailable(status.available);
-      if (status.available) {
-        const data = await getFacePersons();
-        setPersons(data);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '加载失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    try {
-      await createFacePerson(newName.trim());
-      setNewName('');
-      setShowAdd(false);
-      await loadData();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '创建失败');
-    }
-  };
-
-  const handleRename = async (id: string) => {
-    if (!editName.trim()) return;
-    try {
-      await renameFacePerson(id, editName.trim());
-      setEditingId(null);
-      setEditName('');
-      await loadData();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '重命名失败');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除此人物吗？')) return;
-    try {
-      await deleteFacePerson(id);
-      await loadData();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '删除失败');
-    }
-  };
-
-  if (loading) {
-    return <div className="p-8 text-center">加载中...</div>;
+      if(status.available){const data=await api<FacePerson[]>('/faces/persons');setPersons(data)}
+    }catch(e){notify(message(e))}finally{setLoading(false)}
   }
 
-  if (!available) {
-    return (
-      <div className="p-8">
-        <div className="max-w-2xl mx-auto text-center">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-          <h2 className="text-2xl font-bold mb-2">人脸识别功能不可用</h2>
-          <p className="text-gray-600 mb-4">
-            需要安装 face-recognition 库才能使用人脸识别功能
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 text-left">
-            <p className="font-medium mb-2">安装方法：</p>
-            <code className="block bg-gray-900 text-green-400 p-3 rounded text-sm">
-              .\.venv\Scripts\pip.exe install face-recognition
-            </code>
-            <p className="text-sm text-gray-600 mt-2">
-              注意：face-recognition 需要 CMake 和 Visual Studio Build Tools
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+  async function handleAdd(){
+    if(!newName.trim())return;
+    try{await api('/faces/persons','POST',{name:newName.trim()});setNewName('');setShowAdd(false);await loadData();notify('人物已创建')}
+    catch(e){notify(message(e))}
   }
 
-  return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6" />
-            人物相册
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">{persons.length} 个人物</p>
-        </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          添加人物
-        </button>
-      </div>
+  async function handleRename(id:string){
+    if(!editName.trim())return;
+    try{await api('/faces/persons/'+id,'PATCH',{name:editName.trim()});setEditingId(null);setEditName('');await loadData();notify('已重命名')}
+    catch(e){notify(message(e))}
+  }
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-          {error}
-        </div>
-      )}
+  async function handleDelete(person:FacePerson){
+    if(!confirm(`删除人物「${person.name}」？照片不会被删除。`))return;
+    try{await api('/faces/persons/'+person.id,'DELETE');await loadData();notify('已删除')}
+    catch(e){notify(message(e))}
+  }
 
-      {showAdd && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
-          <input
-            type="text"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            placeholder="输入人物名称"
-            className="w-full px-3 py-2 border rounded mb-2"
-            autoFocus
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleAdd}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              创建
-            </button>
-            <button
-              onClick={() => { setShowAdd(false); setNewName(''); }}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      )}
+  if(loading)return <p className="loading">加载中…</p>;
 
-      {persons.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p>还没有人物</p>
-          <p className="text-sm">点击"添加人物"开始创建人物相册</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {persons.map(person => (
-            <div key={person.id} className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-              <div className="aspect-square bg-gray-100 flex items-center justify-center">
-                <Users className="w-16 h-16 text-gray-300" />
-              </div>
-              <div className="p-3">
-                {editingId === person.id ? (
-                  <div>
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      className="w-full px-2 py-1 border rounded text-sm mb-2"
-                      autoFocus
-                    />
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleRename(person.id)}
-                        className="flex-1 px-2 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                      >
-                        保存
-                      </button>
-                      <button
-                        onClick={() => { setEditingId(null); setEditName(''); }}
-                        className="flex-1 px-2 py-1 text-gray-700 hover:bg-gray-100 rounded text-sm"
-                      >
-                        取消
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="font-medium truncate">{person.name}</h3>
-                    <p className="text-sm text-gray-500">{person.photo_count} 张照片</p>
-                    <div className="flex gap-1 mt-2">
-                      <button
-                        onClick={() => { setEditingId(person.id); setEditName(person.name); }}
-                        className="flex-1 px-2 py-1 text-sm hover:bg-gray-100 rounded flex items-center justify-center gap-1"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                        重命名
-                      </button>
-                      <button
-                        onClick={() => handleDelete(person.id)}
-                        className="flex-1 px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded flex items-center justify-center gap-1"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        删除
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+  if(!available)return <div className="face-setup-notice">
+    <ScanFace size={48} style={{color:'#c6ae86',marginBottom:16}}/>
+    <h2>人脸识别功能不可用</h2>
+    <p className="muted">需要安装 face-recognition 库才能使用人脸识别功能</p>
+    <div className="error-box">
+      <p style={{marginBottom:8}}><b>安装方法：</b></p>
+      <code>.\.venv\Scripts\pip.exe install face-recognition</code>
+      <p className="muted" style={{marginTop:10}}>注意：face-recognition 需要 CMake 和 Visual Studio Build Tools</p>
     </div>
-  );
+  </div>;
+
+  return <div className="faces-page">
+    <div className="section-intro">
+      <div><span className="eyebrow">FACES YOU KNOW</span><h2>人物相册</h2><p>{persons.length} 个人物 · 自动识别照片中的人脸</p></div>
+      <button className="primary" onClick={()=>setShowAdd(true)}><Plus size={16}/>添加人物</button>
+    </div>
+
+    {!persons.length?<Empty title="还没有人物">点击「添加人物」开始创建人物相册。</Empty>:
+    <div className="faces-grid">{persons.map(person=><article className="face-card" key={person.id}>
+      <div className="face-card-avatar"><Users size={40}/></div>
+      <div className="face-card-info">
+        {editingId===person.id?<div className="face-inline-edit">
+          <input value={editName} onChange={e=>setEditName(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&handleRename(person.id)}/>
+          <div className="row"><button className="primary" onClick={()=>handleRename(person.id)}>保存</button><button onClick={()=>{setEditingId(null);setEditName('')}}>取消</button></div>
+        </div>:<>
+          <h3 title={person.name}>{person.name}</h3>
+          <p>{person.photo_count} 张照片</p>
+          <div className="face-card-actions">
+            <button onClick={()=>{setEditingId(person.id);setEditName(person.name)}}><Edit2 size={12}/>重命名</button>
+            <button className="danger" onClick={()=>handleDelete(person)}><Trash2 size={12}/>删除</button>
+          </div>
+        </>}
+      </div>
+    </article>)}</div>}
+
+    {showAdd&&<Modal title="添加人物" onClose={()=>{setShowAdd(false);setNewName('')}}>
+      <div className="batch-edit-content">
+        <div className="batch-edit-section"><span>人物名称</span><input type="text" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="输入人物名称" autoFocus onKeyDown={e=>e.key==='Enter'&&handleAdd()}/></div>
+        <footer className="modal-footer"><button onClick={()=>{setShowAdd(false);setNewName('')}}>取消</button><button className="primary" onClick={handleAdd}>创建</button></footer>
+      </div>
+    </Modal>}
+  </div>;
 }

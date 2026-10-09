@@ -13,6 +13,10 @@ def query_photos(filters: dict, count_mode: str = 'capture'):
         q = q.where(Photo.file_name.contains(filters['search'], autoescape=True))
     if filters.get('favorite') in (True, 'true', '1'):
         q = q.where(Photo.favorite.is_(True))
+    if filters.get('rating'):
+        q = q.where(Photo.rating == int(filters['rating']))
+    if filters.get('color_label'):
+        q = q.where(Photo.color_label == filters['color_label'])
     if filters.get('date_from'):
         q = q.where(Photo.date_taken >= filters['date_from'])
     if filters.get('date_to'):
