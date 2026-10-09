@@ -1,0 +1,226 @@
+# 光影集 · 本地摄影照片管理
+
+面向 Windows 的可运行摄影图库。React / TypeScript / Vite / Tailwind / Recharts 前端，Python 3.12+ / FastAPI / SQLAlchemy / SQLite 后端，Pillow / pillow-heif / rawpy 图像处理，以及本地 Chinese-CLIP 中文视觉语义搜索。
+
+默认服务只监听 `127.0.0.1:8000`。原图路径登记、缩略图缓存、EXIF、统计、AI 与水印都在本机处理。AI 首次下载公开模型后可离线使用。
+
+## 此电脑当前目录设置
+
+本机配置保存在项目根目录 `library-config.json`：
+
+- 照片库／数据库：`G:\修后图`，SQLite 文件为 `G:\修后图\library.db`。
+- 自动识别目录：`G:\修后图`，包含所有子文件夹中的支持格式图片。
+- 水印导出：`C:\Users\wonder\Downloads`，单张与批量导出使用同一目录，同名自动编号。
+- 模型缓存仍在项目 `models/`；原项目 `data/` 保留为迁移前备份。
+
+程序启动或打开网页时自动扫描。扫描在后台进行，网页显示导入进度并每 3 秒更新图库；重复内容按 SHA-256 跳过。可点击图库「同步目录」或设置页「立即同步目录」手动触发。缩略图、预览、向量、程序导出及模型缓存目录不参与自动扫描，视频和 ZIP 文件不会作为照片导入。
+
+这里只建立原图索引，不移动或覆盖目录中的照片。Downloads 中只有通过本程序生成并登记的水印文件可以通过导出链接下载，其他已有文件不会被网页列出或开放。
+
+后文的 `data/` 代表配置的照片库目录；当前机器即 `G:\修后图`。数据库备份仍位于该目录的 `exports/` 子目录，与水印的 Downloads 输出区分。
+
+## 最简单的启动方式
+
+本工作区已安装依赖、构建前端并下载模型。当前库位置与自动导入行为见上方目录设置。双击 `start.cmd`，或在 PowerShell 中运行：
+
+```powershell
+.\start.ps1
+```
+
+打开 **http://127.0.0.1:8000**。后台服务启动后可以关闭启动窗口。停止程序：
+
+```powershell
+.\stop.ps1
+```
+
+如果 PowerShell 禁止脚本运行，可以双击 `start.cmd`，或仅为这次启动执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+### 在另一台电脑首次安装
+
+先安装 Python 3.12+ 与 Node.js 22.12+（本机验证版本：Python 3.12.10 / Node.js 24.19）。确保 `python`、`npm` 可在命令行找到。
+
+```powershell
+# 安装基础依赖、构建界面并启动
+.\start.ps1 -Install
+
+# 同时安装本地 AI 所需的 PyTorch / Transformers
+.\start.ps1 -Install -AI
+```
+
+脚本优先用已安装的 `uv`，没有 uv 时使用虚拟环境中的 pip。模型权重不会放进 Python 包中，首次在「设置 → 下载 / 加载模型并建立索引」下载。下载状态、缓存大小、加载阶段和索引进度均可查看。当前模型约 750 MB，另外需要 PyTorch 的磁盘空间。
+
+## 使用流程
+
+1. **建立照片库**：首次启动自动创建 `data/library.db` 和派生文件目录。修改位置见后文。
+2. **导入照片**：点击「导入照片」，用 Windows 文件选择器选单张、多张或整个目录；也可粘贴每行一个绝对路径，勾选递归扫描。程序计算 SHA-256 去重、提取一次 EXIF、生成缩略图与预览。后台任务显示总数、当前文件、成功／跳过／失败及具体错误。
+3. **浏览整理**：网格大小可调，按拍摄／导入时间或文件名排序。筛选支持相机、镜头、焦距、光圈、ISO、快门、日期、方向、收藏、标签、文件类型和影集。每页最多 80 次拍摄，避免一次挂载整个图库。点击照片查看大图、完整原始 EXIF、拍摄参数、同组文件和原文件位置。收藏、标签和影集保存在 SQLite。
+4. **统计与报告**：「统计」切换分组／原始数值，点击柱状图或数值直接筛选图库。「摄影报告」按年／月／镜头分析，包含拍摄数、文件数、使用天数、镜头排行、每期镜头趋势、焦段趋势、光圈／ISO／快门、镜头生命周期，以及 24–70mm 常见变焦区间。点击镜头或月份查看对应照片。
+5. **智能影集**：加载模型后选择「新建智能影集」。输入关键词，以逗号分隔，选择 AND（全部关键词）或 OR（任意关键词），调整阈值和上限。先预览候选，取消不合适的照片，或从全图库手动补选后保存。已有智能影集可重新匹配，审阅后才替换成员。
+6. **水印**：在图库多选或照片详情点击「制作水印」。选择「摄影相框」或「沉浸光感」，调整边框／环境光、EXIF 勾选、署名、字号等。两种水印已依据指定参考图分析实现，详见 `docs/watermark-reference-analysis.md`。
+7. **导出**：选择 JPG / PNG、JPG 质量、原图尺寸／4096／2560／2048／自定义长边。模板支持 `{original}`、`{date}`、`{camera}`、`{index}`。单张导出立即生成，批量导出在后台执行，并逐项提供下载链接。文件位于配置的导出目录（当前为 `C:\Users\wonder\Downloads`），同名自动加编号。
+
+### 原图和拖拽导入
+
+- **文件选择器／路径／目录导入只登记路径，不复制整个照片库。** 删除操作叫「移出图库」，仅删数据库记录及关系，从不删除磁盘原图。旧版 Node 删除接口也已改为只删记录。
+- 普通浏览器不会提供拖拽文件的绝对路径。因此拖拽时会明确确认：仅将本次主动拖入的文件保存到 `data/imports/<批次>/`。不希望复制时，取消后使用文件选择器。该副本同样视为原始文件，移出记录也不会删除。
+- 原文件移动／删除后，已有缩略图仍可浏览，详情显示缺失；重新导入新位置会按 hash 关联缺失记录。原路径内容被替换时会提示先移出旧记录。
+- 本版不提供磁盘原图删除按钮、RAW 调色、云同步、地图服务或完整 Lightroom 编辑功能。
+
+## RAW + JPG 与统计口径
+
+支持识别 ARW、CR2、CR3、NEF、RAF、DNG、ORF、RW2、PEF。默认采用 **同目录 + 同名主体 + RAW／非 RAW 互补**，并检查已有相机型号和拍摄时间是否冲突。一个组只接受明确的一对，避免同名导出或连拍误配。不同文件名不会仅凭时间自动合并。
+
+图库默认显示一个卡片，角标为 RAW+JPG，优先显示 JPG／HEIF。EXIF 优先 RAW，缺失字段从另一份文件补齐；原始 EXIF 原样保存在各文件记录里。详情可分别打开、下载 RAW 与 JPG，显示文件位置。设置可切换优先 RAW 预览。
+
+默认所有“拍了多少”的统计按 `capture_groups` 去重；设置可切换按 `photos` 文件数统计。报告同时列出拍摄次数和文件数量。例如 2 对 RAW+JPG：2 次拍摄、4 个文件。
+
+RAW 解码依赖 rawpy / LibRaw 对具体机型的支持。优先使用内嵌预览，没有内嵌预览时尝试基础解码；无法解码仍登记 RAW 和可取得的 EXIF，明确标记预览不可用，有 JPG 配对时仍可浏览。导出 RAW 使用其预览或基础解码结果，不等同专业 RAW 显影。
+
+## 本地 AI 如何工作
+
+默认模型为 [OFA-Sys/Chinese-CLIP ViT-B/16](https://huggingface.co/OFA-Sys/chinese-clip-vit-base-patch16)，采用中文文本与图像的共同向量空间。实现参考 [Chinese-CLIP 官方项目](https://github.com/OFA-Sys/Chinese-CLIP)。
+
+```text
+缓存预览 → image embedding → .npy 文件
+中文关键词 → text embedding
+归一化向量内积 → cosine similarity → 排序／阈值过滤
+```
+
+AND 取各关键词相似度的最小值，OR 取最大值，再应用阈值。相似度不是概率，也不保证关键词对象确实存在；先看候选再保存。阈值越高越严格，建议从 0.38 附近调整。无相应主题的图库也可能得到相近画面的匹配。
+
+向量按照片 ID 与模型标识缓存，搜索时分批读取，**不会每次重新分析照片**。模型加载后新导入照片会后台建立向量。启动时有模型缓存则离线自动加载，没有缓存不会自动联网。模型不可用时，导入／EXIF／报告／水印仍可正常运行，智能影集明确报错，不会退化为文件名搜索冒充语义识别。
+
+自动检测 CUDA；无 GPU 时使用 CPU。本机真实验证使用 CPU。Transformers 4.57 的 Chinese-CLIP 文本辅助接口存在 pooler 兼容问题，服务直接投影最后一层 CLS 状态，避免依赖该错误辅助接口。运行 `python -m backend.verify_ai` 可重复验证模型、查询结果与缓存未重写。
+
+## 数据位置与备份
+
+```text
+backend/                  Python API、数据库模型、服务、渲染器、测试
+frontend/                 React TypeScript 界面与浏览器测试
+data/
+  library.db              SQLite 主库（WAL 模式）
+  settings.json           用户偏好
+  thumbnails/             小尺寸缩略图
+  previews/               最长边 2560px 的预览
+  embeddings/             按照片／模型缓存的 .npy
+  exports/                水印导出、数据库备份
+  imports/                仅浏览器拖拽导入的显式副本
+models/                   Hugging Face 本地模型缓存
+.runtime/                 后台进程 ID 和服务日志
+verification/             本机验证截图与结果（不入版本库）
+```
+
+原图通常仍在用户原始目录；旧版照片仍位于已有 `uploads/`。旧 Node 代码、JSON 和签名文件保留，可查看历史数据。旧水印设置／图片签名不自动转换为新版参数。
+
+**推荐备份**：「设置 → 备份数据库」使用 SQLite backup API 生成一致性备份，可在程序运行时执行。备份完整照片库时，应另外备份原图目录、`data/settings.json`、需要的导出与 `imports/`。缩略图、向量和模型属于可重建派生数据。直接复制 SQLite 时先执行 `stop.ps1`，或同时考虑 WAL 文件，避免只复制正在写入的 `library.db`。
+
+切换库或模型缓存位置前关闭服务：
+
+```powershell
+$env:PHOTO_DATA_DIR = 'D:\PhotoLibrary'
+$env:PHOTO_MODELS_DIR = 'D:\PhotoModels'
+.\start.ps1
+```
+
+环境变量只影响当前终端及其启动进程；脚本会拒绝连接另一个已占用端口的照片库。
+
+## 开发运行与测试
+
+分别启动后端和前端：
+
+```powershell
+# 终端 1
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+
+# 终端 2
+npm run dev --prefix frontend
+```
+
+开发界面在 `http://127.0.0.1:5173`，Vite 代理 `/api`。生产构建 `npm run build --prefix frontend` 后由 FastAPI 直接提供单一站点。交互式 API 文档在 `http://127.0.0.1:8000/docs`。
+
+```powershell
+# 核心回归测试：始终使用临时数据库，不触及正式照片库
+.\.venv\Scripts\python.exe -m pytest backend/tests -q
+
+# 实际浏览器验证：先启动服务，要求图库有照片且模型就绪
+# 使用本机 Chrome；建立临时测试影集后删除，生成一份真实水印导出
+node frontend/tests/smoke.mjs
+
+# 本地真实模型检查；不改变原图，复用现有向量
+.\.venv\Scripts\python.exe -m backend.verify_ai
+
+# 5 万条合成数据库记录的性能检查，结果在 verification/performance.json
+.\.venv\Scripts\python.exe -m backend.benchmark
+
+# 需要从旧 Node 原型重新迁移时，可重复运行，hash 去重
+.\.venv\Scripts\python.exe -m backend.migrate_legacy
+```
+
+## 当前验证与边界
+
+- 已用合成的 100 张 JPG 验证不同日期、镜头、焦段的导入、分页、EXIF、统计和报告联动；另用当前工作区 12 张真实照片验证界面、中文语义模型和导出。
+- 已验证无 EXIF、损坏 JPG、重名导出、重复导入、原图移动、删除记录保留原文件、HEIC 与 EXIF 方向处理。
+- 17 项后端测试通过；无界面 Chrome 跑通 13 项主要流程（包括真实中文候选搜索、手动取消候选、智能影集保存和移动端布局），没有捕获到 JavaScript 异常或服务端 5xx。
+- RAW 配对自动测试使用不可解码的 RAW 占位文件，覆盖失败回退与统计去重；尚未对每一种真实相机 RAW 样片做解码验收。
+- 数据库为日期、镜头、相机、焦距、拍摄组、hash、配对文件名／目录建立索引。5 万条合成文件 / 2.5 万拍摄组，本机年度报告约 0.77 秒、月度约 0.12 秒、统计约 0.35 秒、筛选分页约 0.004 秒；这不是 5 万张真实照片导入／AI 耗时基准。
+- 导入和批量导出采用进程内后台队列。任务进行时请保持服务运行；重启不会自动恢复队列，可重新导入，已有 hash 会跳过。已完成数据库记录和派生文件持久保存。
+- 数据库移出记录后不主动清理原图及派生缓存，避免误删；大规模缓存清理留待后续版本。
+- 本版以单用户本地使用为目标，不应将服务直接暴露到公网。
+
+
+## 水印图库：保存设计，再集中导出
+
+- **水印工坊**：`http://127.0.0.1:8000/watermark/workshop`。
+- **水印图库**：`http://127.0.0.1:8000/watermark/gallery`，左侧导航中位于水印工坊下方。
+- 在照片详情点击「制作水印」，调整相框或沉浸光感参数，填写作品名称，然后点击「保存到水印图库」。首次保存后，参数修改会在约 1.5 秒后自动保存；页面显示保存状态，失败时可点击「保存」重试。
+- 保存只写入 `watermark_drafts` 数据表并生成长边不超过 1200px 的 WebP 预览，不会提前生成正式 JPG/PNG。仅预览照片不会自动创建草稿。
+- 点击「标记为待导出」，即可在水印图库的「待导出」筛选中集中检查作品。图库支持搜索名称、原始文件名、相机、镜头与署名，以及类型筛选、六种排序和每页 40 个作品。
+- 点击作品继续编辑，或直接使用 `/watermark/workshop?draft=<作品ID>`。关闭浏览器和重启服务后，完整参数仍保存在数据库中。当前会话支持最近 50 步撤销／重做；历史栈不跨会话保存。
+- 每张原图可以有多个作品；「更多 → 复制作品」创建独立版本。RAW/JPG 共用拍摄组，默认从图库首选预览进入，也可以在编辑器切换本次拍摄的来源并另存作品。照片详情显示关联作品数量。
+- 图库卡片直接导出，或多选批量导出。每个作品使用自己的水印设计；导出面板只统一文件格式、尺寸、质量和文件名模板，支持选择其他输出目录。默认仍为本机配置的 `C:\Users\wonder\Downloads`，不会覆盖任何同名文件。
+- 成功导出记录时间与版本；导出后修改的作品返回「编辑中」，显示「导出后有修改」，再次导出后提示清除。重命名或状态变更不会重渲染预览；只调整输出质量、尺寸、格式或文件名也复用预览。
+- 删除作品只删除草稿与专属预览，保留原图、RAW/JPG、正式导出文件。原图移动或从普通图库移出后，作品仍保留；点击「原始照片不可用 · 重新定位」，选择内容一致的新路径，系统通过 SHA-256 验证后恢复关联。
+- 未保存的编辑在离开工坊时提供保存／放弃／继续编辑。已有草稿离开页面时会先完成待保存请求；浏览器关闭时若仍有未保存内容，会触发浏览器原生提醒。请等到「已保存」再强制退出程序。
+- 多窗口编辑同一作品使用版本校验，防止旧窗口覆盖新修改；遇到版本冲突时保留当前编辑并提示重新打开。
+
+本机新增缓存目录为 `G:\修后图\watermark_previews`。自动扫描不会导入该目录。数据库备份包含完整水印参数；预览可重建，备份整个库时可以一并保留。现有数据库启动时自动创建新表，不改动原图记录。
+
+新增 API：`/api/watermark/drafts` 的创建、分页查询、详情、更新、删除，以及 `/{id}/duplicate`、`/{id}/status`、`/{id}/preview`、`/{id}/export`、`/{id}/relocate`、`/batch-export`。具体请求结构见 `/docs`。
+
+水印草稿验收：
+
+```powershell
+# 后端隔离回归测试（包含持久化、预览缓存、安全删除、独立批量渲染及原图恢复）
+.\.venv\Scripts\python.exe -m pytest backend/tests -q
+
+# 在独立终端启动专用浏览器测试库；不要指向正式照片库
+$env:PHOTO_DATA_DIR = Join-Path $PWD '.test-artifacts\drafts-browser-library'
+$env:PHOTO_AUTOLOAD_AI = '0'
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8011
+
+# 另一个终端：先构建，再运行 Chrome 验收
+npm run build --prefix frontend
+node frontend/tests/watermark-drafts.cjs
+```
+
+浏览器脚本仅允许项目 `.test-artifacts` 下的测试数据库，会清理其中的测试草稿并生成测试导出；拒绝连接正式库。验证保存、退出提醒、自动保存、新浏览器上下文恢复、待导出筛选、复制、批量导出、离开页面即时保存以及署名搜索，截图写入 `.test-artifacts/watermark-gallery.png`。
+
+
+## 第一种水印更新：现代信息条相框
+
+第一种水印现在默认是上方满宽照片、下方纯白三分区信息条：品牌／机型、品牌 logo、EXIF／时间。工坊提供品牌、机型、logo、焦距、光圈、快门、ISO、时间开关，以及信息栏高度与字号缩放。照片保持比例，导出不会覆盖原图。
+
+旧水印草稿可以直接继续编辑，新配置自动兼容原有信息选择；缩略图首次访问时更新一次。`classic_frame` 仅保留为内部旧版样式。Logo 资源集中在 `backend/app/assets/brand_logos`，官方 SVG 和预制 PNG 均保存在本地；运行时仅依赖已有 Pillow。资源来源与制备方法见 `docs/watermark-reference-analysis.md`。
+
+验证新样式（使用 `.test-artifacts` 下的测试库，端口 8011，启动方式同上）：
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest backend/tests/test_modern_info_bar.py -q
+node frontend/tests/modern-info-bar.cjs
+```
+
+浏览器脚本用正式库的一张 Nikon 照片建立项目内测试副本并写入验收 EXIF；不修改原图。测试截图与预览位于 `.test-artifacts/modern-info-workshop.png`、`.test-artifacts/modern-info-preview.jpg`。

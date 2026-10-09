@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>光影收藏夹</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><i data-icon="aperture"></i></div>
+        <div>
+          <h1>光影收藏夹</h1>
+          <p>专业照片管理</p>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>照片</h2>
+          <button class="icon-button" id="uploadButton" type="button" title="上传照片" aria-label="上传照片"><i data-icon="upload"></i></button>
+        </div>
+        <label class="dropzone" id="dropzone" for="fileInput">
+          <i data-icon="image-plus"></i>
+          <span>拖入照片，或点击上传</span>
+          <small>支持 JPEG / PNG / TIFF / HEIC / AVIF</small>
+        </label>
+        <input id="fileInput" type="file" accept="image/*,.heic,.heif,.avif" multiple hidden>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>签名管理</h2>
+          <button class="icon-button" id="signatureUploadButton" type="button" title="添加图片签名" aria-label="添加图片签名"><i data-icon="image-plus"></i></button>
+        </div>
+        <div class="signature-form">
+          <input id="signatureInput" class="text-input" placeholder="输入文字签名">
+          <button class="primary-button" id="signatureTextButton" type="button"><i data-icon="plus"></i>添加</button>
+        </div>
+        <nav class="signature-list" id="signatureList"></nav>
+        <input id="signatureFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/avif" hidden>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>收藏夹</h2>
+          <button class="icon-button" id="newCollectionButton" type="button" title="新建收藏夹" aria-label="新建收藏夹"><i data-icon="folder-plus"></i></button>
+        </div>
+        <nav class="collection-list" id="collectionList"></nav>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>自动分类</h2>
+          <button class="icon-button" id="rulesButton" type="button" title="展开分类规则" aria-label="展开分类规则"><i data-icon="chevron-down"></i></button>
+        </div>
+        <form id="rulesForm" class="rules-form hidden">
+          <div class="segmented" id="timeSegment">
+            <button type="button" data-granularity="year">按年</button>
+            <button type="button" class="active" data-granularity="month">按月</button>
+            <button type="button" data-granularity="day">按日</button>
+          </div>
+          <label class="check-row"><input type="checkbox" name="time" checked> 拍摄时间段</label>
+          <label class="check-row"><input type="checkbox" name="camera"> 拍摄相机</label>
+          <label class="check-row"><input type="checkbox" name="focalLength"> 焦段范围</label>
+          <label class="check-row"><input type="checkbox" name="subject"> 拍摄题材</label>
+          <input id="subjectInput" type="text" placeholder="输入题材关键词，用英文逗号分隔" class="text-input">
+          <button class="primary-button" type="submit"><i data-icon="sparkles"></i>生成收藏夹</button>
+          <p class="hint">可自由组合标准，系统会基于已上传照片自动生成。</p>
+        </form>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="main-header">
+        <div>
+          <h2 id="collectionTitle">全部照片</h2>
+          <p id="collectionMeta">0 张照片</p>
+        </div>
+        <div class="header-actions">
+          <button class="icon-button" id="multiSelectButton" type="button" title="多选照片" aria-label="多选照片"><i data-icon="list-checks"></i></button>
+        </div>
+      </header>
+      <div class="bulk-bar hidden" id="bulkBar">
+        <div class="bulk-info">
+          <span>已选 <b id="selectedCount">0</b> 张</span>
+          <button class="text-action" id="selectAllButton" type="button">全选</button>
+          <button class="text-action" id="clearSelectionButton" type="button">清除</button>
+        </div>
+        <div class="bulk-actions">
+          <button class="text-action danger" id="bulkDeleteButton" type="button"><i data-icon="trash-2"></i>批量删除</button>
+          <button class="text-action" id="bulkExportButton" type="button"><i data-icon="download"></i>批量导出</button>
+        </div>
+      </div>
+      <div class="empty-state" id="emptyState">
+        <i data-icon="images"></i>
+        <h3>还没有照片</h3>
+        <p>上传专业相机照片后，这里会自动展示缩略图。</p>
+      </div>
+      <section class="gallery" id="gallery"></section>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="exportModal">
+    <div class="modal-shell export-shell">
+      <div class="export-panel">
+        <div class="panel-title-row">
+          <h3>批量导出</h3>
+          <button class="icon-button" id="exportCloseButton" type="button" title="关闭" aria-label="关闭"><i data-icon="x"></i></button>
+        </div>
+        <p class="hint" id="exportHint">选择导出方式。若所选照片中有未添加水印的照片，会先提醒确认。</p>
+        <div class="export-options">
+          <button class="export-option" id="exportPhotosButton" type="button">
+            <i data-icon="file-image"></i>
+            <div>
+              <strong>导出为照片</strong>
+              <span>逐张保存原图</span>
+            </div>
+          </button>
+          <button class="export-option" id="exportZipButton" type="button">
+            <i data-icon="file-archive"></i>
+            <div>
+              <strong>导出为 ZIP</strong>
+              <span>打包成压缩包</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="photoModal">
+    <div class="modal-shell">
+      <div class="modal-media">
+        <div class="image-stage" id="imageStage">
+          <div class="image-frame">
+            <img id="previewImage" alt="照片预览">
+            <div class="watermark-layer" id="watermarkLayer"></div>
+          </div>
+        </div>
+        <div class="media-overlay">
+          <div id="photoBadge" class="photo-badge"></div>
+          <div class="media-actions">
+            <button class="icon-button dark" id="originalButton" type="button" title="查看原图" aria-label="查看原图"><i data-icon="maximize-2"></i></button>
+            <button class="icon-button dark" id="parametersButton" type="button" title="拍摄参数" aria-label="拍摄参数"><i data-icon="sliders-horizontal"></i></button>
+            <button class="icon-button dark" id="watermarkButton" type="button" title="水印编辑" aria-label="水印编辑"><i data-icon="stamp"></i></button>
+            <button class="icon-button dark" id="fullscreenButton" type="button" title="全屏观看" aria-label="全屏观看"><i data-icon="expand"></i></button>
+            <button class="icon-button dark" id="deleteButton" type="button" title="删除照片" aria-label="删除照片"><i data-icon="trash-2"></i></button>
+          </div>
+        </div>
+        <button class="fullscreen-nav prev hidden" id="prevPhotoButton" type="button" aria-label="上一张"><i data-icon="chevron-left"></i></button>
+        <button class="fullscreen-nav next hidden" id="nextPhotoButton" type="button" aria-label="下一张"><i data-icon="chevron-right"></i></button>
+      </div>
+      <div class="modal-info hidden" id="parametersPanel"></div>
+      <div class="modal-info hidden" id="watermarkPanel">
+        <div class="panel-title-row">
+          <h3>水印编辑</h3>
+          <button class="text-action" id="downloadWatermarkButton" type="button">
+            <i data-icon="download"></i>保存
+          </button>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">水印样式</div>
+          <div class="template-picker">
+            <button class="template-option active" data-template="classic" type="button">经典水印</button>
+            <button class="template-option" data-template="glass" type="button">沉浸光感水印</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">艺术字效果</div>
+          <div class="effect-picker">
+            <button class="effect-option active" data-effect="standard" type="button">标准</button>
+            <button class="effect-option" data-effect="script" type="button">手写</button>
+            <button class="effect-option" data-effect="shadow" type="button">阴影</button>
+            <button class="effect-option" data-effect="outline" type="button">描边</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">水印内容</div>
+          <label class="switch-row"><input type="checkbox" data-field="model" checked> 机型</label>
+          <label class="switch-row"><input type="checkbox" data-field="focalLength" checked> 焦距</label>
+          <label class="switch-row"><input type="checkbox" data-field="aperture" checked> 光圈</label>
+          <label class="switch-row"><input type="checkbox" data-field="shutter" checked> 快门</label>
+          <label class="switch-row"><input type="checkbox" data-field="iso" checked> ISO</label>
+          <label class="switch-row"><input type="checkbox" data-field="shootTime"> 拍摄时间</label>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">文字大小</div>
+          <input id="watermarkSize" type="range" min="70" max="150" value="100">
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">文字颜色</div>
+          <div class="color-row">
+            <button class="color-option active" data-color="#54b7f5" type="button" title="自动" aria-label="自动"></button>
+            <button class="color-option" data-color="#ffffff" type="button" title="白色" aria-label="白色"></button>
+            <button class="color-option" data-color="#111416" type="button" title="深色" aria-label="深色"></button>
+            <input id="watermarkColor" type="color" value="#54b7f5">
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-label">作者签名</div>
+          <label class="switch-row"><input type="checkbox" data-field="signature"> 启用签名</label>
+          <select id="signatureSelect" class="text-input"></select>
+        </div>
+
+        <p class="hint">预览基于缩略图，保存时使用原图生成。</p>
+        <div class="setting-group">
+          <div class="setting-label">应用到</div>
+          <div class="apply-row">
+            <button type="button" data-scope="all">全部照片</button>
+            <button type="button" data-scope="collection">对应收藏夹</button>
+            <button type="button" data-scope="album">对应影集</button>
+          </div>
+        </div>
+      </div>
+      <button class="modal-close" id="modalClose" type="button" aria-label="关闭"><i data-icon="x"></i></button>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

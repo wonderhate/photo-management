@@ -1,0 +1,56 @@
+import {useEffect,useState,useRef} from 'react';
+import {Download,Frame,Sun,SlidersHorizontal} from 'lucide-react';
+import {api,message} from './api';
+import {useWatermarkDraft} from './useWatermarkDraft';
+import type {LeaveGuard} from './useWatermarkDraft';
+import {Empty,Parameters} from './components';
+import type {Photo,WatermarkOptions,Job,Settings,ExportResult} from './types';
+
+const initial:WatermarkOptions={template:'frame',style:'modern_info_bar',show_brand_logo:true,info_bar_ratio:.14,font_scale:1,fields:['camera_make','camera_model','focal_length','f_number','exposure_time','iso','date_taken'],signature:'',theme:'white',border:.035,info_height:.16,font_size:1,align:'center',radius:.008,blur:.08,intensity:.85,brightness:.7,saturation:1.25,photo_scale:.88,shadow:true,format:'jpg',quality:95,long_edge:4096,filename_template:'{original}_watermark'};
+const fields:Record<string,string>={camera_make:'相机品牌',camera_model:'相机型号',lens_model:'镜头型号',focal_length:'焦距',f_number:'光圈',exposure_time:'快门',iso:'ISO',date_taken:'拍摄时间',signature:'自定义署名'};
+export default function WatermarkPage({ids,onChoose,onJob,notify,draftId,onSaved,guard}:{ids:string[];onChoose:()=>void;onJob:(job:Job)=>void;notify:(text:string)=>void;draftId:string;onSaved:(id:string)=>void;guard:LeaveGuard}) {
+  const [photo,setPhoto]=useState<Photo|null>(null);
+  const [active,setActive]=useState(ids[0]||'');
+  const [options,setOptions]=useState<WatermarkOptions>(initial);
+  const [preview,setPreview]=useState('');
+  const [error,setError]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [exporting,setExporting]=useState(false);
+  const [result,setResult]=useState<ExportResult|null>(null);
+  const [exportDirectory,setExportDirectory]=useState('');
+  const history=useRef<WatermarkOptions[]>([]),future=useRef<WatermarkOptions[]>([]);
+  const editor=useWatermarkDraft({active,options,setOptions,draftId,onSaved,guard,notify});
+  useEffect(()=>{if(editor.draft){setActive(editor.draft.photo_id||'');history.current=[];future.current=[]}},[editor.draft?.id]);
+  useEffect(()=>{api<Settings>('/settings').then(s=>{setExportDirectory(s.exports_dir);editor.defaults({format:s.export_format,quality:s.export_quality,long_edge:s.export_long_edge})}).catch(e=>notify(message(e)))},[]);
+  useEffect(()=>{if(!draftId&&!ids.includes(active))setActive(ids[0]||'')},[ids.join('|')]);
+  useEffect(()=>{let alive=true;setPreview('');if(active)api<Photo>('/photos/'+active).then(p=>{if(alive)setPhoto(p)}).catch(e=>{if(alive)setError(message(e))});else{setPhoto(null);setPreview(editor.draft?.preview_url||'')}return()=>{alive=false}},[active]);
+  useEffect(()=>{
+    if(!active||editor.loading)return;
+    const controller=new AbortController(); let url='';
+    setBusy(true);setError('');
+    const timer=setTimeout(async()=>{
+      try {
+        const response=await fetch('/api/watermark/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({photo_id:active,options}),signal:controller.signal});
+        if(!response.ok){const body=await response.json();throw new Error(String(body.detail||'预览失败'))}
+        const blob=await response.blob(); if(controller.signal.aborted)return;
+        url=URL.createObjectURL(blob);setPreview(url);
+      }catch(e){if(!controller.signal.aborted)setError(message(e))}finally{if(!controller.signal.aborted)setBusy(false)}
+    },350);
+    return ()=>{clearTimeout(timer);controller.abort();if(url)URL.revokeObjectURL(url)};
+  },[active,options,editor.loading]);
+  function change<K extends keyof WatermarkOptions>(key:K,value:WatermarkOptions[K]){history.current=[...history.current.slice(-49),options];future.current=[];setOptions(o=>({...o,[key]:value}))}
+  function undo(){const value=history.current.pop();if(value){future.current.push(options);setOptions(value)}}
+  function redo(){const value=future.current.pop();if(value){history.current.push(options);setOptions(value)}}
+  async function switchPhoto(id:string){if(id===active)return;if(await editor.requestLeave()){editor.reset();onSaved('');setActive(id);history.current=[];future.current=[];setResult(null)}}
+  async function exportPhotos(batch:boolean){setExporting(true);try{if(batch)onJob(await api<Job>('/watermark/batch-export','POST',{photo_ids:ids,options}));else{const d=editor.draft?await editor.save():null;const r=await api<ExportResult>(d?'/watermark/drafts/'+d.id+'/export':'/watermark/export','POST',d?{}:{photo_id:active,options});setResult(r);notify('已保存到本地导出目录')}}catch(e){notify(message(e))}finally{setExporting(false)}}
+  const slider=(key:keyof WatermarkOptions,label:string,min:number,max:number,step:number)=> <label className="range-label" key={key}><span>{label}<small>{Number(options[key]).toFixed(step<.1?2:1)}</small></span><input type="range" min={min} max={max} step={step} value={Number(options[key])} onChange={e=>change(key,Number(e.target.value))}/></label>;
+  if(editor.loading)return <p className="loading">正在恢复水印作品…</p>;
+  if(draftId&&!editor.draft)return <Empty title="无法打开水印作品" action={<button onClick={onChoose}>返回照片库</button>}>{editor.state}</Empty>;
+  if(!ids.length&&!draftId&&!active)return <Empty title="为照片留下一枚署名" action={<button className="primary" onClick={onChoose}>去图库选择照片</button>}>选择一张或多张照片，制作相框与沉浸光感水印。</Empty>;
+  return <><div className="draft-editor-bar"><div><input aria-label="水印作品名称" placeholder={photo?.file_name.replace(/\.[^.]+$/,'')||'作品名称'} value={editor.name} maxLength={180} onChange={e=>editor.setName(e.target.value)}/><small role="status">{editor.state||'尚未保存为草稿'}</small></div><div className="button-row"><button disabled={!history.current.length} onClick={undo}>撤销</button><button disabled={!future.current.length} onClick={redo}>重做</button><button disabled={!active||editor.state==='正在保存…'} onClick={()=>editor.save().catch(e=>notify(message(e)))}>{editor.draft?'保存':'保存到水印图库'}</button><button className="primary" disabled={!active} onClick={()=>editor.ready().catch(e=>notify(message(e)))}>标记为待导出</button></div></div>{editor.draft?.source_missing&&<p className="error-box">原始照片不可用。请在水印图库选择「重新定位」，编辑记录仍然保留。</p>}<div className="watermark-layout"><div className="watermark-stage"><div className="stage-toolbar"><span><span className="live-dot"/>实时预览</span><button onClick={onChoose}>重新选择 · 已选 {ids.length} 张</button></div><div className="render-stage">{preview?<img src={preview} alt="水印实时预览"/>:<SlidersHorizontal size={40}/>}<span className="render-status">{busy?'正在渲染…':error||'预览图 · 导出使用原图'}</span></div>{photo&&<div className="watermark-caption"><h3>{photo.file_name}</h3><Parameters photo={photo}/></div>}{photo&&photo.files.length>1&&<label>本次拍摄的水印来源<select value={active} onChange={e=>switchPhoto(e.target.value)}>{photo.files.map(f=><option key={f.id} value={f.id}>{f.file_format} · {f.file_name}</option>)}</select><small className="muted">切换来源后可另存为独立水印作品。</small></label>}<div className="filmstrip">{ids.map(id=><button key={id} className={active===id?'active':''} onClick={()=>switchPhoto(id)} aria-label="切换预览照片"><img src={'/api/photos/'+id+'/thumbnail'} alt="待导出照片"/></button>)}</div>{result&&<a className="download-result" href={result.url} download><Download size={16}/>{result.file_name} · {result.width} × {result.height}</a>}</div>
+  <aside className="editor-panel"><div className="template-tabs"><button className={options.template==='frame'?'active':''} onClick={()=>change('template','frame')}><Frame size={20}/>现代信息条相框</button><button className={options.template==='ambient'?'active':''} onClick={()=>change('template','ambient')}><Sun size={20}/>沉浸光感</button></div>
+  <section><h3>{options.template==='frame'?'现代信息条相框':'画面与光线'}</h3>{options.template==='frame'?<><p className="muted">满宽主图 · 白色信息条 · 品牌 / Logo / 拍摄参数</p>{slider('info_bar_ratio','信息栏高度',.06,.25,.005)}{slider('font_scale','字号缩放',.5,2,.05)}<label className="check"><input type="checkbox" checked={options.show_brand_logo} onChange={e=>change('show_brand_logo',e.target.checked)}/>显示品牌 logo</label></>:<>{slider('blur','背景模糊',.005,.25,.005)}{slider('intensity','环境光强度',0,1,.01)}{slider('brightness','背景亮度',.1,2,.05)}{slider('saturation','背景饱和度',0,3,.05)}{slider('photo_scale','主图占比',.5,.99,.01)}<label className="check"><input type="checkbox" checked={options.shadow} onChange={e=>change('shadow',e.target.checked)}/>主图阴影</label>{slider('radius','图片圆角',0,.15,.005)}{slider('font_size','文字大小',.5,2,.05)}</>}</section>
+  <section><h3>保留哪些拍摄信息</h3><div className="field-checks">{Object.entries(fields).filter(([key])=>options.template!=='frame'||!['lens_model','signature'].includes(key)).map(([key,label])=><label key={key} className="check"><input type="checkbox" checked={options.fields.includes(key)} onChange={e=>change('fields',e.target.checked?[...options.fields,key]:options.fields.filter(f=>f!==key))}/>{label}</label>)}</div>{options.template==='ambient'&&options.fields.includes('signature')&&<input placeholder="你的摄影署名" value={options.signature} maxLength={120} onChange={e=>change('signature',e.target.value)}/>}<p className="muted">缺失的 EXIF 字段会自动隐藏。</p>{options.template==='frame'&&options.fields.some(f=>['lens_model','signature'].includes(f))&&<details><summary>已有草稿的附加信息</summary>{['lens_model','signature'].map(key=><label key={key} className="check"><input type="checkbox" checked={options.fields.includes(key)} onChange={e=>change('fields',e.target.checked?[...options.fields,key]:options.fields.filter(f=>f!==key))}/>{fields[key]}</label>)}{options.fields.includes('signature')&&<input placeholder="你的摄影署名" value={options.signature} maxLength={120} onChange={e=>change('signature',e.target.value)}/>}</details>}</section>
+  <section><h3>导出设置</h3><div className="two-columns"><label>文件格式<select value={options.format} onChange={e=>change('format',e.target.value as 'jpg'|'png')}><option value="jpg">JPG</option><option value="png">PNG</option></select></label><label>JPG 质量<input type="number" min={1} max={100} value={options.quality} onChange={e=>change('quality',Math.max(1,Math.min(100,Number(e.target.value))))}/></label></div><label>导出长边<select value={[0,4096,2560,2048].includes(options.long_edge)?options.long_edge:'custom'} onChange={e=>change('long_edge',e.target.value==='custom'?3000:Number(e.target.value))}><option value={0}>原图尺寸 + 相框</option><option value={4096}>4096 px</option><option value={2560}>2560 px</option><option value={2048}>2048 px</option><option value="custom">自定义</option></select></label>{![0,4096,2560,2048].includes(options.long_edge)&&<input aria-label="自定义长边" type="number" min={1} max={16000} value={options.long_edge} onChange={e=>change('long_edge',Math.max(1,Math.min(16000,Number(e.target.value))))}/>}<label>文件名模板<input value={options.filename_template} onChange={e=>change('filename_template',e.target.value)}/></label><small className="muted">{'{original} · {date} · {camera} · {index}'}</small></section>
+  <div className="export-actions"><button className="primary" disabled={exporting||!!error} onClick={()=>exportPhotos(false)}><Download size={16}/>导出当前照片</button>{!editor.draft&&ids.length>1&&<button disabled={exporting} onClick={()=>exportPhotos(true)}>批量导出 {ids.length} 张</button>}<small style={{overflowWrap:'anywhere'}}>保存至 {exportDirectory||'正在读取…'} · 同名文件自动编号</small></div></aside></div>{editor.dialog}</>;
+}
