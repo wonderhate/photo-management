@@ -126,6 +126,12 @@ class FacePerson(Base):
     created_at: Mapped[str] = mapped_column(default=now)
     updated_at: Mapped[str] = mapped_column(default=now, onupdate=now)
 
+class JobRecord(Base):
+    __tablename__ = 'jobs'
+    id: Mapped[str] = mapped_column(primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON)
+    updated_at: Mapped[str] = mapped_column(default=now,index=True)
+
 Index('ix_photo_date_lens', Photo.date_taken, Photo.lens_model)
 engine = create_engine(f'sqlite:///{DATA / "library.db"}', connect_args={'check_same_thread': False, 'timeout': 30})
 
