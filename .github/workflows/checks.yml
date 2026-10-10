@@ -24,3 +24,18 @@ jobs:
       - run: node --experimental-strip-types --test frontend/tests/*.test.*
       - run: npm run build --prefix frontend
       - run: python -m pytest backend/tests -q
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle
+            android/gradle/wrapper/gradle-wrapper.properties
+      - run: chmod +x android/gradlew
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' < <(yes) > /dev/null
+      - run: ./android/gradlew -p android testDebugUnitTest lintDebug assembleDebug --console plain
