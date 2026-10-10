@@ -138,12 +138,7 @@ def sqlite_options(connection, _record) -> None:
 Session = sessionmaker(engine, expire_on_commit=False)
 
 def initialize() -> None:
+    from .migrations import migrate_database
+    migrate_database(DATA / 'library.db')
     Base.metadata.create_all(engine)
-    with engine.begin() as connection:
-        for ddl in ('ALTER TABLE albums ADD COLUMN cover_photo_id VARCHAR',
-                    'ALTER TABLE album_photos ADD COLUMN position INTEGER DEFAULT 0'):
-            try:
-                connection.exec_driver_sql(ddl)
-            except Exception:
-                pass
 
