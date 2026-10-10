@@ -22,7 +22,7 @@ Copy-Item -Path docs/apps-verification.md, docs/verification.md -Destination (Jo
 $publicFiles = Get-ChildItem -LiteralPath $package | Where-Object { $_.Name -ne 'library-config.json' } | Select-Object -ExpandProperty FullName
 Compress-Archive -Path $publicFiles -DestinationPath releases/PhotoCollection-Windows.zip -Force
 if ($UseCurrentLibrary -and (Test-Path library-config.json)) {
-    $config = Get-Content library-config.json -Raw | ConvertFrom-Json
+    $config = Get-Content -LiteralPath library-config.json -Raw -Encoding UTF8 | ConvertFrom-Json
     $config | Add-Member -NotePropertyName models_dir -NotePropertyValue (Join-Path $PSScriptRoot 'models') -Force
     $config | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 (Join-Path $package 'library-config.json')
 }
