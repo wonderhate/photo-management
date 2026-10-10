@@ -71,8 +71,8 @@ class EmbeddingService:
                 allow_patterns=['config.json', 'preprocessor_config.json', 'tokenizer_config.json', 'special_tokens_map.json',
                                 'vocab.txt', 'tokenizer.json', 'model.safetensors', 'pytorch_model.bin'])
             self.update(stage='加载 Chinese-CLIP')
-            self.processor = ChineseCLIPProcessor.from_pretrained(location, local_files_only=True, use_fast=False)
-            self.model = ChineseCLIPModel.from_pretrained(location, local_files_only=True).to(self.device).eval()
+            self.processor = ChineseCLIPProcessor.from_pretrained(location, local_files_only=True, backend='pil', trust_remote_code=False)
+            self.model = ChineseCLIPModel.from_pretrained(location, local_files_only=True, trust_remote_code=False).to(self.device).eval()
             self.index()
         except Exception as error:
             self.update(status='error', stage='AI 暂不可用；照片管理和水印仍可使用', error=str(error))
@@ -116,7 +116,7 @@ class EmbeddingService:
                 image = open_image(Path(photo.preview_path))
                 with self.lock, torch.inference_mode():
                     inputs = self.processor(images=image, return_tensors='pt').to(self.device)
-                    features = self.model.get_image_features(**inputs)
+                    features = self.model.get_image_features(**inputs).pooler_output
                     vector = features[0].float().cpu().numpy()
                 vector /= max(float(np.linalg.norm(vector)), 1e-8)
                 version = hashlib.sha256(self.model_name.encode()).hexdigest()[:12]
@@ -140,10 +140,7 @@ class EmbeddingService:
         import torch
         with self.lock, torch.inference_mode():
             inputs = self.processor(text=keywords, padding=True, truncation=True, max_length=52, return_tensors='pt').to(self.device)
-            # Chinese-CLIP projects the final CLS state directly. Transformers 4.57's
-            # get_text_features incorrectly reads a disabled BERT pooler (None).
-            text_output = self.model.text_model(**inputs, return_dict=True)
-            features = self.model.text_projection(text_output.last_hidden_state[:, 0, :]).float().cpu().numpy()
+            features = self.model.get_text_features(**inputs).pooler_output.float().cpu().numpy()
         with Session() as session:
             entries = session.scalars(select(Embedding).join(CaptureGroup, CaptureGroup.preferred_photo_id == Embedding.photo_id).where(Embedding.model == self.model_name)).all()
         faiss = self.faiss_module()

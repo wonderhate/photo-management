@@ -2,6 +2,20 @@ from test_library import import_paths
 from pathlib import Path
 
 
+def test_local_browser_security_headers(client):
+    for path in ('/', '/watermark/gallery', '/api/health', '/api/missing'):
+        response = client.get(path)
+        assert response.headers['X-Content-Type-Options'] == 'nosniff'
+        assert response.headers['X-Frame-Options'] == 'DENY'
+        assert response.headers['Referrer-Policy'] == 'no-referrer'
+    policy = client.get('/').headers['Content-Security-Policy']
+    assert "script-src 'self'" in policy and "frame-ancestors 'none'" in policy
+    assert 'Content-Security-Policy' not in client.get('/docs').headers
+    blocked = client.post('/api/library/scan', headers={'Origin': 'https://untrusted.example'})
+    assert blocked.status_code == 403 and blocked.headers['X-Frame-Options'] == 'DENY'
+    assert client.get('/api/health', headers={'Host': 'untrusted.example'}).status_code == 400
+
+
 def test_windows_powershell_scripts_use_bom_for_non_ascii():
     for script in Path(__file__).resolve().parents[2].glob('*.ps1'):
         content=script.read_bytes()

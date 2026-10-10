@@ -8,7 +8,9 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 
 ### Windows 独立应用
 
-[下载 Windows 2.1.1 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.1.1)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件为此前验证的 2.1.0 独立版，本次更新针对 Windows / 网页。
+[下载 Windows 2.1.1 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.1.1)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件的实际版本为 **1.0.0**，与桌面版本分别编号。
+
+**下载安全提示**：Windows 当前没有受信任的代码签名，SmartScreen / 未知发布者提示仍可能出现；Android APK 已使用原发布密钥签名，侧载许可和 Play Protect 扫描提示仍可能出现。防病毒扫描与发布者信誉是不同的检查，不建议关闭防护。检查结果、文件校验方法及仍需的账号/证书见 [下载与安全检查](docs/apps-security.md)。iOS 保持暂停。
 
 解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带；缺少时从 Microsoft 安装 WebView2 Evergreen Runtime。
 
@@ -245,7 +247,7 @@ npx playwright install chromium
 npx playwright test
 ```
 
-本次实测通过：38 项后端、3 项前端逻辑、4 组 Chromium 主题回归；新 EXE 的 16 项 HTTP 流程、721 个合成源文件哈希保护、WebView2 窗口与离线 Chinese-CLIP。详见 [2.1.1 应用验证](docs/apps-verification.md#windows-211-与跨电脑反馈)。
+最终实测通过：39 项后端、3 项前端逻辑、5 项 Chromium 回归（含 11 个主要页面及真实水印保存/恢复/导出流程）；新 EXE 的 16 项 HTTP 流程、721 个合成源文件哈希保护、WebView2 窗口与升级后的离线 Chinese-CLIP。Android 正式 APK 覆盖安装和完整设备测试通过。详见 [2.1.1 应用验证](docs/apps-verification.md#最终安全修订与发布包)与 [安全检查](docs/apps-security.md)。
 
 如果模型下载遇到代理 502 或证书错误，先检查代理和 Windows 信任的证书链，保留 TLS 校验。已有模型时可在设置中指定本地模型目录并离线加载。另一台电脑使用了 `HF_ENDPOINT` 镜像与 `pip-system-certs`；这是该机器的网络配置，不是应用必需依赖，也不会写入分发包。使用镜像前自行确认来源，环境变量只在启动应用前设置才生效。
 

@@ -13,6 +13,17 @@ from PIL import Image, TiffImagePlugin
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     exe = Path(sys.argv[1]) if len(sys.argv)>1 else root/'releases/windows/PhotoCollection/PhotoCollection.exe'
+    from ctypes import windll, create_string_buffer, c_void_p, c_uint, cast, POINTER, byref
+    sys.path.insert(0, str(root))
+    from backend.version import VERSION
+    info = create_string_buffer(windll.version.GetFileVersionInfoSizeW(str(exe), None))
+    assert info._length_ > 0, 'Executable must have Windows version metadata'
+    assert windll.version.GetFileVersionInfoW(str(exe), 0, len(info), info)
+    pointer, length = c_void_p(), c_uint()
+    assert windll.version.VerQueryValueW(info, '\\', byref(pointer), byref(length))
+    fixed = cast(pointer, POINTER(c_uint))
+    actual = '.'.join(map(str, (fixed[2] >> 16, fixed[2] & 65535, fixed[3] >> 16)))
+    assert actual == VERSION, (actual, VERSION)
     test_root = root/'.test-artifacts'
     test_root.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='windows-package-', dir=test_root) as folder:
@@ -45,7 +56,10 @@ def main() -> None:
                 raise TimeoutError('Frozen background job timed out')
             assert Path(health['data_dir'])==work/'data'
             assert len(health['build_id'])==16
-            with opener.open(url) as response: assert b'<html' in response.read()
+            with opener.open(url) as response:
+                assert b'<html' in response.read()
+                assert response.headers['X-Content-Type-Options'] == 'nosniff'
+                assert "frame-ancestors 'none'" in response.headers['Content-Security-Policy']
             assert job(api('/api/photos/import',{'paths':[str(original)]}))['success']==1
             assert job(api('/api/photos/import',{'paths':[str(original)]}))['skipped']==1
             photo=api('/api/photos')['photos'][0]
@@ -63,8 +77,12 @@ def main() -> None:
                     time.sleep(.1)
                 assert state['status']=='ready',state
                 assert state['indexed']==1,state
+                embeddings=list((work/'data'/'embeddings').glob('*.npy'))
+                assert len(embeddings)==1
+                stamps={p:p.stat().st_mtime_ns for p in embeddings}
                 candidates=api('/api/albums/smart/preview',{'keywords':['日落'],'threshold':-1,'max_results':10})
                 assert len(candidates['candidates'])==1,candidates
+                assert all(p.stat().st_mtime_ns==stamp for p,stamp in stamps.items()), 'Search must reuse embeddings'
                 print('Frozen EXE: cached Chinese-CLIP CPU model and actual embedding PASS')
             api('/api/watermark/drafts/'+draft['id'],method='DELETE')
             api('/api/photos/'+photo['id'],method='DELETE')
