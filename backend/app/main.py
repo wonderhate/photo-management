@@ -18,7 +18,7 @@ from .models import initialize, Session, Photo, CaptureGroup, Album, AlbumPhoto,
 from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest
 from .services import jobs, import_service, library_service, stats_service, watermark_service, scan_service, export_registry
 from .services.embedding_service import service as ai
-from .services import timeline_service, face_service
+from .services import timeline_service, face_service, nl_search
 from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename, AlbumUpdate, AlbumOrderRequest
 from .models import FacePerson
 
@@ -152,6 +152,11 @@ def photo_ids(request: Request, sort: str = 'date_taken', direction: str = 'desc
     q = ordered_photos(request, sort, direction).with_only_columns(Photo.id)
     with Session() as session:
         return {'ids': list(session.scalars(q))}
+
+@app.get('/api/search/parse')
+def search_parse(q: str):
+    with Session() as session:
+        return nl_search.parse(q, session)
 
 @app.get('/api/photos/{photo_id}')
 def photo_detail(photo_id: str):

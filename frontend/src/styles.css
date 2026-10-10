@@ -174,3 +174,79 @@
 .photo-card.sortable{cursor:grab}
 .photo-card.sortable:active{cursor:grabbing}
 
+/* ── Light Theme ── */
+:root[data-theme=light]{color:#33352f;background:#f4f2ec;color-scheme:light;--muted:#8a8d84;--line:#ddd8cc;--accent:#a5875a;--panel:#faf8f2}
+:root[data-theme=light] body{background:#f4f2ec}
+:root[data-theme=light] button{background:#ffffff;border-color:#d8d2c4;color:#3c3e38}
+:root[data-theme=light] button:hover{background:#f1ede2;border-color:#c4bca4}
+:root[data-theme=light] button.primary{background:#a5875a;border-color:#a5875a;color:#fff}
+:root[data-theme=light] button.primary:hover{background:#93774c}
+:root[data-theme=light] button.quiet,Lbutton.icon{background:transparent}
+:root[data-theme=light] button.quiet{color:#7c8074}
+:root[data-theme=light] button.active{background:#eae3d0;color:#7a6234;border-color:#cbbd97}
+:root[data-theme=light] input,Lselect,Ltextarea{background:#fff;border-color:#d8d2c4;color:#33352f}
+:root[data-theme=light] input::placeholder,Ltextarea::placeholder{color:#a9ab9e}
+:root[data-theme=light] label{color:#6d7064}
+:root[data-theme=light] progress::-webkit-progress-bar{background:#e4dfd2}
+:root[data-theme=light] a{color:#8a6d3b}
+:root[data-theme=light] .sidebar{background:#efece4;border-color:#ddd8cc}
+:root[data-theme=light] .brand small,L.nav-caption{color:#98978a}
+:root[data-theme=light] .brand-icon{border-color:#c2b795;color:#8a6d3b}
+:root[data-theme=light] .sidebar nav button,L.favorite-nav,L.sidebar-bottom>button{color:#6f7264}
+:root[data-theme=light] .sidebar nav button.active{background:#e3ddc9;color:#6b5a33}
+:root[data-theme=light] .sidebar nav button:hover,L.favorite-nav:hover,L.sidebar-bottom>button:hover{background:#e7e2d3;color:#33352f}
+:root[data-theme=light] .mini-label{border-color:#c4cbb8;color:#7b8a6c}
+:root[data-theme=light] .sidebar-divider{background:#ddd8cc}
+:root[data-theme=light] .sidebar-note{color:#9aa091}
+:root[data-theme=light] .tiny-aperture{color:#b5bcaa}
+:root[data-theme=light] .local-status{color:#7d8577;border-color:#ddd8cc}
+:root[data-theme=light] .local-status small{color:#9aa091}
+:root[data-theme=light] .topbar{border-color:#ddd8cc;background:#f9f7f0}
+:root[data-theme=light] .breadcrumb{color:#98978a}
+:root[data-theme=light] .breadcrumb b{color:#4a4d44}
+:root[data-theme=light] .local-pill{color:#8b957f}
+:root[data-theme=light] .local-pill span{background:#7d9a6e}
+:root[data-theme=light] .app-footer{border-color:#ddd8cc;color:#9aa091}
+:root[data-theme=light] .app-footer i{color:#c6c2b2}
+:root[data-theme=light] .footer-dot{background:#7d9a6e}
+:root[data-theme=light] .gallery-heading h1 span{color:#8a8d84;border-color:#d8d2c4}
+:root[data-theme=light] .gallery-heading p{color:#98978a}
+:root[data-theme=light] .search{background:#fff;border-color:#d8d2c4;color:#8a8d84}
+:root[data-theme=light] .library-toolbar{border-color:#e0dbcd}
+:root[data-theme=light] .selection-count{color:#8a6d3b}
+:root[data-theme=light] .grid-range{color:#98978a}
+:root[data-theme=light] .photo-image{background:#e9e6dc;border-color:#d8d2c4}
+:root[data-theme=light] .photo-caption{color:#5c5f55}
+:root[data-theme=light] .photo-caption small{color:#98978a}
+:root[data-theme=light] .image-fallback{color:#98978a}
+:root[data-theme=light] .filter-panel{background:#faf8f2;border-color:#ddd8cc}
+:root[data-theme=light] .filter-chips button{background:#f1ede2;border-color:#d5cdb6;color:#7a6a45}
+:root[data-theme=light] .pager{color:#98978a}
+:root[data-theme=light] .empty-icon{background:#f1ede2;border-color:#ddd8cc;color:#8b957f}
+:root[data-theme=light] .empty h2{color:#4a4d44}
+:root[data-theme=light] .empty p{color:#8a8d84}
+:root[data-theme=light] .modal{background:#fdfcf8;border-color:#d8d2c4;box-shadow:0 20px 100px #3a35254d}
+:root[data-theme=light] .modal>header{border-color:#e5e0d2;background:#fdfcf8f5}
+:root[data-theme=light] .chart-panel{background:#faf8f2;border-color:#ddd8cc}
+:root[data-theme=light] .album-card{background:#fff;border-color:#ddd8cc}
+:root[data-theme=light] .settings-card{background:#faf8f2;border-color:#ddd8cc}
+:root[data-theme=light] .hover-preview,L.autocomplete-panel,L.display-panel,L.recent-panel{background:#fdfcf8;border-color:#d8d2c4;box-shadow:0 12px 40px #3a352526}
+:root[data-theme=light] .autocomplete-panel button{color:#5c5f55}
+:root[data-theme=light] .autocomplete-panel button.active,L.autocomplete-panel button:hover{background:#efece4;color:#33352f}
+:root[data-theme=light] .display-panel label{color:#6d7064}
+:root[data-theme=light] .display-panel label.check{color:#5c5f55}
+:root[data-theme=light] .recent-panel header b{color:#4a4d44}
+:root[data-theme=light] .recent-item{color:#6f7264}
+:root[data-theme=light] .recent-item:hover{background:#efece4;color:#33352f}
+:root[data-theme=light] .recent-item small{color:#98978a}
+:root[data-theme=light] .detail-heading small{color:#98978a}
+:root[data-theme=light] .muted{color:#8a8d84}
+:root[data-theme=light] .error-box{background:#f7e8e2;border-color:#d9a795;color:#a35643}
+:root[data-theme=light] mark{background:#ead9a8;color:#5c4a1e;border-radius:2px;padding:0 1px}
+mark{background:#6b5a2e;color:#f0e3bb;border-radius:2px;padding:0 1px}
+:root[data-theme=light] mark{background:#ead9a8;color:#5c4a1e}
+/* ── Shortcuts Editor ── */
+.shortcuts-edit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;margin-bottom:14px}
+.shortcuts-edit label{font-size:11px}
+.shortcuts-edit input{cursor:pointer;text-align:center}
+

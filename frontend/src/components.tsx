@@ -9,7 +9,13 @@ export function Modal({title,onClose,children,wide=false}:{title:string;onClose:
   return <div className="scrim" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section role="dialog" aria-modal="true" aria-label={title} className={'modal '+(wide?'wide':'')}><header><h2>{title}</h2><button className="icon" aria-label="关闭" onClick={onClose}><X size={20}/></button></header>{children}</section></div>;
 }
 type Suggestion={kind:'camera_model'|'lens_model'|'tag'|'search';value:string;label:string};
-export function SearchBox({value,options,onFilter}:{value:string;options:Record<string,(string|number)[]>;onFilter:(key:string,value:string)=>void}){
+export function Marked({text,term}:{text:string;term?:string}) {
+  if(!term)return <>{text}</>;
+  const index=text.toLowerCase().indexOf(term.toLowerCase());
+  if(index<0)return <>{text}</>;
+  return <>{text.slice(0,index)}<mark>{text.slice(index,index+term.length)}</mark>{text.slice(index+term.length)}</>;
+}
+export function SearchBox({value,options,onFilter,onSemantic}:{value:string;options:Record<string,(string|number)[]>;onFilter:(key:string,value:string)=>void;onSemantic?:(text:string)=>void}){
   const [draft,setDraft]=useState(value);
   const [open,setOpen]=useState(false);
   const [active,setActive]=useState(-1);
@@ -29,13 +35,13 @@ export function SearchBox({value,options,onFilter}:{value:string;options:Record<
   function key(e:KeyboardEvent<HTMLInputElement>){
     if(e.key==='ArrowDown'){e.preventDefault();setActive(a=>Math.min(a+1,shown.length-1))}
     else if(e.key==='ArrowUp'){e.preventDefault();setActive(a=>Math.max(a-1,-1))}
-    else if(e.key==='Enter'){if(active>=0&&shown[active])pick(shown[active]);else{onFilter('search',draft.trim());setOpen(false)}}
+    else if(e.key==='Enter'){if(active>=0&&shown[active])pick(shown[active]);else if(onSemantic&&draft.trim()){onSemantic(draft.trim());setOpen(false)}else{onFilter('search',draft.trim());setOpen(false)}}
     else if(e.key==='Escape')setOpen(false);
   }
   const icons={camera_model:<Camera size={13}/>,lens_model:<Focus size={13}/>,tag:<TagIcon size={13}/>,search:<FileText size={13}/>};
   const kindNames={camera_model:'相机',lens_model:'镜头',tag:'标签',search:'文件名'};
   return <label className="search search-autocomplete" ref={boxRef}><Search size={16}/>
-    <input placeholder="搜索相机、镜头、标签、文件名" value={draft} onChange={e=>{setDraft(e.target.value);setOpen(true);setActive(-1);if(!e.target.value)onFilter('search','')}} onFocus={()=>setOpen(true)} onKeyDown={key}/>
+    <input placeholder="试试：上个月用 50mm 拍的照片" value={draft} onChange={e=>{setDraft(e.target.value);setOpen(true);setActive(-1);if(!e.target.value)onFilter('search','')}} onFocus={()=>setOpen(true)} onKeyDown={key}/>
     {open&&shown.length>0&&<div className="autocomplete-panel">{shown.map((item,i)=><button key={item.kind+item.value} className={i===active?'active':''} onMouseDown={e=>{e.preventDefault();pick(item)}} onMouseEnter={()=>setActive(i)}>{icons[item.kind]}<span className="ac-label">{item.label}</span><small>{kindNames[item.kind]}</small></button>)}</div>}
   </label>;
 }
@@ -52,7 +58,7 @@ export function HoverPreview({photo,pos}:{photo:Photo;pos:{x:number;y:number}}) 
     {photo.date_taken&&<div className="hp-exif">{photo.date_taken.slice(0,16).replace('T',' ')}</div>}
   </div>;
 }
-export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite,dragHandle}:{photo:Photo;selected:boolean;onToggle:()=>void;onOpen:()=>void;onFavorite?:(photo:Photo)=>void;dragHandle?:{onStart:()=>void;onDrop:()=>void}}) {
+export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite,dragHandle,highlight}:{photo:Photo;selected:boolean;onToggle:()=>void;onOpen:()=>void;onFavorite?:(photo:Photo)=>void;dragHandle?:{onStart:()=>void;onDrop:()=>void};highlight?:string}) {
   const [failed,setFailed]=useState(false);
   const [hoverPos,setHoverPos]=useState<{x:number;y:number}|null>(null);
   const hoverTimer=useRef<number|undefined>(undefined);
@@ -70,7 +76,7 @@ export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite,dragHandle}
     </button>
     <button className={'select-box '+(selected?'checked':'')} onClick={onToggle} aria-label={'选择 '+photo.file_name} aria-pressed={selected}>{selected&&<Check size={13}/>}</button>
     {onFavorite&&<button className={'favorite '+(photo.favorite?'on':'')} aria-label={'收藏 '+photo.file_name} onClick={()=>onFavorite(photo)}><Heart size={16} fill={photo.favorite?'currentColor':'none'}/></button>}
-    <div className="photo-caption"><span title={photo.file_name}>{photo.file_name}</span><small>{photo.camera_model||photo.file_format}</small></div>
+    <div className="photo-caption"><span title={photo.file_name}><Marked text={photo.file_name} term={highlight}/></span><small>{photo.camera_model||photo.file_format}</small></div>
     {hoverPos&&<HoverPreview photo={photo} pos={hoverPos}/>}
   </article>;
 }
