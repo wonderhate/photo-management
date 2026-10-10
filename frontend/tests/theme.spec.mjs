@@ -1,4 +1,8 @@
 import {test,expect} from '@playwright/test';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
 
 // Render the production UI with synthetic API data; never connect to a photo library.
 for(const theme of ['light','dark'])for(const width of [1440,390]){
@@ -56,3 +60,43 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     expect(errors).toEqual([]);
   });
 }
+
+test('all pages and watermark workflow under production CSP',async({page,request})=>{
+  test.setTimeout(90000);
+  const errors=[];
+  page.on('pageerror',error=>errors.push(String(error)));
+  page.on('console',entry=>{if(entry.type()==='error')errors.push(entry.text())});
+  page.on('response',response=>{if(response.status()>=500)errors.push(`${response.status()} ${response.url()}`)});
+  const health=await(await request.get('/api/health')).json();
+  expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');
+  const source=join(health.data_dir,'security-browser-source.jpg');
+  execFileSync(process.env.PHOTO_TEST_PYTHON||'python',['-c',"from PIL import Image; import sys; exif=Image.Exif(); exif[272]='Test Camera'; exif[36867]='2026:09:29 18:24:00'; Image.new('RGB',(640,480),'orange').save(sys.argv[1],exif=exif)",source]);
+  const digest=()=>createHash('sha256').update(readFileSync(source)).digest('hex');
+  const before=digest();
+  const job=await(await request.post('/api/photos/import',{data:{paths:[source]}})).json();
+  await expect.poll(async()=> (await(await request.get('/api/jobs/'+job.id)).json()).status).toBe('completed');
+  const photo=(await(await request.get('/api/photos')).json()).photos[0];
+  await page.addInitScript(()=>{localStorage.setItem('onboarded','1')});
+  for(const path of ['/?page=photos','/?page=albums','/?page=smart','/timeline','/faces','/?page=stats','/?page=reports','/watermark/gallery','/?page=settings','/compare']){
+    const response=await page.goto(path);
+    expect(response.status()).toBe(200);
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('main')).toBeVisible();
+  }
+  await page.goto('/watermark/workshop?photo='+photo.id);
+  const preview=page.getByAltText('水印实时预览');
+  await expect(preview).toBeVisible();
+  await expect.poll(()=>preview.evaluate(img=>img.naturalWidth)).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'保存到水印图库',exact:true}).click();
+  await expect(page).toHaveURL(/draft=/);
+  const draftURL=page.url();
+  await page.reload();
+  await expect(preview).toBeVisible();
+  await page.getByRole('button',{name:'标记为待导出',exact:true}).click();
+  await page.getByRole('button',{name:'导出当前照片',exact:true}).click();
+  await expect(page.locator('.download-result')).toBeVisible();
+  const draftId=new URL(draftURL).searchParams.get('draft');
+  expect((await(await request.get('/api/watermark/drafts/'+draftId)).json()).status).toBe('exported');
+  expect(digest()).toBe(before);
+  expect(errors).toEqual([]);
+});
