@@ -50,7 +50,7 @@ def merge_libraries(target: Path, source: Path, stage: Path, old: Path, new: Pat
         target_photos = records(destination, 'photos')
         source_photos = records(incoming, 'photos')
         by_hash = {p['file_hash']: p for p in target_photos}
-        preserved_analysis = {p['id'] for p in target_photos if json.loads(p.get('face_data') or '{}').get('model')}
+        preserved_analysis = {p['id'] for p in target_photos if (json.loads(p.get('face_data') or '{}') or {}).get('model')}
         occupied = {p['id'] for p in target_photos}
         photo_ids = {p['id']: by_hash[p['file_hash']]['id'] if p['file_hash'] in by_hash else (str(uuid4()) if p['id'] in occupied else p['id']) for p in source_photos}
         group_ids = {}

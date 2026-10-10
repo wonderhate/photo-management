@@ -27,6 +27,8 @@ def test_library_merge_preserves_records_draft_and_originals(client, image_facto
     second = image_factory('second.jpg', color=(10,20,30))
     import_paths(client,[first])
     target = backup_database(DATA/'library.db', tmp_path/'target.db')
+    with sqlite3.connect(target) as db:
+        db.execute("UPDATE photos SET face_data='null'")
     import_paths(client,[second])
     photo = client.get('/api/photos').json()['photos'][0]
     draft = client.post('/api/watermark/drafts',json={'photo_id':photo['id'],'name':'保留草稿','settings_json':{}})
