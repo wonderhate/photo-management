@@ -99,9 +99,11 @@ def parse(query: str, session) -> dict:
         if camera:
             filters['camera_model'] = camera
             interpreted.append(f'相机 {camera}')
+            leftover = re.sub(re.escape(camera),' ',leftover,flags=re.I).strip()
         elif lens:
             filters['lens_model'] = lens
             interpreted.append(f'镜头 {lens}')
-        elif not interpreted:
-            filters['search'] = leftover
-    return {'filters': filters, 'interpreted': interpreted}
+            leftover = re.sub(re.escape(lens),' ',leftover,flags=re.I).strip()
+        if leftover:
+            filters['semantic'] = leftover
+    return {'filters': filters, 'interpreted': interpreted, 'remaining_query': leftover, 'original_query':query}

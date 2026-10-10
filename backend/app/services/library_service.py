@@ -11,6 +11,11 @@ def query_photos(filters: dict, count_mode: str = 'capture'):
             q = q.where(getattr(Photo, key) == filters[key])
     if filters.get('search'):
         q = q.where(Photo.file_name.contains(filters['search'], autoescape=True))
+    if filters.get('semantic'):
+        from .embedding_service import service
+        matches = service.search([filters['semantic']], 'any', float(filters.get('semantic_threshold', .25)), 50000)
+        matched_groups = select(Photo.capture_group_id).where(Photo.id.in_([row['photo_id'] for row in matches]))
+        q = q.where(Photo.capture_group_id.in_(matched_groups))
     if filters.get('favorite') in (True, 'true', '1'):
         q = q.where(Photo.favorite.is_(True))
     if filters.get('rating'):
