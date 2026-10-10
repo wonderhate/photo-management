@@ -25,6 +25,7 @@ from .models import FacePerson
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     initialize()
+    jobs.recover()
     if AUTOLOAD_AI and any(MODELS.glob('models--OFA-Sys--chinese-clip-vit-base-patch16/snapshots/*')):
         ai.start(False)
     scan_service.start()
@@ -107,6 +108,10 @@ def upload_photos(files: list[UploadFile] = File(...)):
         paths.append(str(target))
     if not paths: raise ValueError('没有支持的照片文件')
     return jobs.submit('import', import_service.import_paths, paths, False)
+
+@app.get('/api/jobs')
+def recent_jobs():
+    return jobs.recent()
 
 @app.get('/api/jobs/{job_id}')
 def get_job(job_id: str):
