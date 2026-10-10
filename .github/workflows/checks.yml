@@ -23,7 +23,31 @@ jobs:
       - run: npm ci --prefix frontend
       - run: node --experimental-strip-types --test frontend/tests/*.test.*
       - run: npm run build --prefix frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npx playwright test
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: theme-regression-results
+          path: verification/theme
+          retention-days: 7
       - run: python -m pytest backend/tests -q
+  windows-scripts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          Get-ChildItem -LiteralPath . -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { throw ($errors | Out-String) }
+            Write-Host "$($_.Name): parsed"
+          }
   android:
     runs-on: ubuntu-latest
     steps:

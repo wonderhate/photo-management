@@ -1,4 +1,4 @@
-param([switch]$SkipDependencies, [switch]$UseCurrentLibrary)
+﻿param([switch]$SkipDependencies, [switch]$UseCurrentLibrary)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 $python = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
