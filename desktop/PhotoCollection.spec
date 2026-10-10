@@ -1,5 +1,7 @@
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
+from PyInstaller.utils.win32.versioninfo import VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct, VarFileInfo, VarStruct
+from backend.version import VERSION
 
 root = Path(SPECPATH).parent
 datas = [(str(root/'frontend'/'dist'), 'frontend/dist'),
@@ -13,5 +15,13 @@ a = Analysis([str(root/'desktop'/'launcher.py')], pathex=[str(root)], datas=data
              excludes=['PyQt5','PyQt6','PySide2','PySide6','IPython','matplotlib','tensorflow','torchaudio','torchvision'],
              noarchive=False)
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='PhotoCollection', console=False)
-coll = COLLECT(exe, a.binaries, a.datas, name='PhotoCollection')
+version = VSVersionInfo(
+    ffi=FixedFileInfo(filevers=tuple(map(int, VERSION.split('.'))) + (0,),
+                      prodvers=tuple(map(int, VERSION.split('.'))) + (0,), fileType=1),
+    kids=[StringFileInfo([StringTable('040904B0', [StringStruct(key, value) for key, value in {
+        'FileDescription': 'Photo Collection - Local Photo Management',
+        'ProductName': 'Photo Collection', 'FileVersion': VERSION, 'ProductVersion': VERSION,
+        'OriginalFilename': 'PhotoCollection.exe',
+    }.items()])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])])
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='PhotoCollection', console=False, version=version, upx=False)
+coll = COLLECT(exe, a.binaries, a.datas, name='PhotoCollection', upx=False)

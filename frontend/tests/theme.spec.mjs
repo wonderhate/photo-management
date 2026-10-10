@@ -37,7 +37,10 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
       await page.screenshot({path:testInfo.outputPath(`${selector.slice(1)}.png`),fullPage:true});
     }
-    await page.goto('/?page=albums');await checkCard('.album-card');
+    const response=await page.goto('/?page=albums');
+    expect(response.headers()['x-content-type-options']).toBe('nosniff');
+    expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
+    await checkCard('.album-card');
     if(width===390)await expect(page.locator('.sidebar nav .nav-child')).toHaveCSS('font-size','0px');
     await page.goto('/faces');await checkCard('.face-card');
     await expect(page.locator('.face-card button')).toHaveCount(4);

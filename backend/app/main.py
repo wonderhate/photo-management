@@ -47,8 +47,15 @@ async def protect_local_requests(request: Request, call_next):
     origin = request.headers.get('origin')
     allowed = {'http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'}
     if request.method not in ('GET','HEAD','OPTIONS') and origin and origin not in allowed and origin != str(request.base_url).rstrip('/'):
-        return JSONResponse({'detail':'禁止来自其他网站的本地操作'}, status_code=403)
-    return await call_next(request)
+        response = JSONResponse({'detail':'禁止来自其他网站的本地操作'}, status_code=403)
+    else:
+        response = await call_next(request)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    if response.headers.get('content-type', '').startswith('text/html') and request.url.path not in ('/docs', '/redoc', '/docs/oauth2-redirect'):
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    return response
 
 @app.exception_handler(ValueError)
 async def value_error(_request: Request, error: ValueError):
