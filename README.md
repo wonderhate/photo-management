@@ -1,6 +1,6 @@
 # 光影集 · 本地摄影照片管理
 
-Windows 本地优先照片管理系统，当前版本 **2.1.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
+Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
 
 **原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。默认仅监听 `127.0.0.1:8000`。
 
@@ -8,11 +8,17 @@ Windows 本地优先照片管理系统，当前版本 **2.1.0**。React / TypeSc
 
 ### Windows 独立应用
 
+[下载 Windows 2.1.1 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.1.1)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件为此前验证的 2.1.0 独立版，本次更新针对 Windows / 网页。
+
 解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带；缺少时从 Microsoft 安装 WebView2 Evergreen Runtime。
 
 独立应用使用自己启动的随机本地端口，只监听 `127.0.0.1`，关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
+
+升级时先关闭旧版，将新 ZIP 解压到新目录；有本机 `library-config.json` 时复制该配置到新 EXE 同目录。不要用公开包中的示例覆盖已有配置、数据库或模型缓存。默认库仍使用 `%LOCALAPPDATA%\PhotoCollection\data`。
+
+中文 PowerShell 打包脚本使用 UTF-8 带 BOM，兼容 Windows PowerShell 5.1。若旧版脚本出现中文乱码或解析错误，更新仓库；无需手工创建另一个 `build-windows.utf8.ps1`。
 
 测试记录见 [应用验证说明](docs/apps-verification.md)。Windows 原生窗口启动、Android 模拟器实际编辑/恢复/导出与原图保护已检查；不同实体手机的相册权限和格式兼容性仍需安装后确认。
 
@@ -228,7 +234,20 @@ npm run test:http
 
 [GitHub 云端验证](https://github.com/wonderhate/photo-management/actions/runs/38041517234)已通过基础回归和生产构建；六节分支与 main 均已发布，具体结果见 `docs/verification.md`。
 
-**真实浏览器交互验收尚未完成**：Codex Browser 无法验证保存的访问权限而拒绝访问本地页；没有绕过安全检查。`frontend/tests/` 保留可重复的网页流程脚本，权限恢复后仍需验收视觉布局、滑块、自动保存时序、导航提醒、快捷键、拖拽与原生选择器。不能将 API 通过等同于所有页面交互稳定。
+**网页验收范围**：另一台 Windows 电脑提供了 2.1.0 的安装与测试报告，报告称真实 Playwright 检查了 11 个页面及 390×844 布局，并发现浅色主题的影集标题和人物卡片问题；其原始截图与日志尚未传入本工作区。这些报告结果与本机实测分开记录。本机 Codex Browser 此前因访问权限无法验证而拒绝访问，没有绕过该限制。
+
+2.1.1 修复上述卡片及浅色主题逗号选择器，并新增 GitHub Actions 中的独立 Chromium 回归：只加载生产前端和合成 API 数据，检查明暗主题、1440 / 390px、文字对比度、人物操作按钮是否在卡片内以及弹出面板样式，不访问真实照片库。它不替代原生文件选择器、拖拽和全部水印交互的人工验收。重复运行：
+
+```powershell
+npm run build --prefix frontend
+cd frontend
+npx playwright install chromium
+npx playwright test
+```
+
+本次实测通过：38 项后端、3 项前端逻辑、4 组 Chromium 主题回归；新 EXE 的 16 项 HTTP 流程、721 个合成源文件哈希保护、WebView2 窗口与离线 Chinese-CLIP。详见 [2.1.1 应用验证](docs/apps-verification.md#windows-211-与跨电脑反馈)。
+
+如果模型下载遇到代理 502 或证书错误，先检查代理和 Windows 信任的证书链，保留 TLS 校验。已有模型时可在设置中指定本地模型目录并离线加载。另一台电脑使用了 `HF_ENDPOINT` 镜像与 `pip-system-certs`；这是该机器的网络配置，不是应用必需依赖，也不会写入分发包。使用镜像前自行确认来源，环境变量只在启动应用前设置才生效。
 
 ## 11. 项目结构与 Git 工作流
 
