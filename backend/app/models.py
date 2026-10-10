@@ -132,6 +132,16 @@ class JobRecord(Base):
     payload: Mapped[dict] = mapped_column(JSON)
     updated_at: Mapped[str] = mapped_column(default=now,index=True)
 
+class DetectedFace(Base):
+    __tablename__ = 'detected_faces'
+    id: Mapped[str] = mapped_column(primary_key=True,default=uid)
+    photo_id: Mapped[str] = mapped_column(ForeignKey('photos.id',ondelete='CASCADE'),index=True)
+    person_id: Mapped[str | None] = mapped_column(ForeignKey('face_persons.id',ondelete='SET NULL'),index=True)
+    face_index: Mapped[int]
+    encoding: Mapped[bytes]
+    location: Mapped[dict] = mapped_column(JSON)
+    confirmed: Mapped[bool] = mapped_column(default=False,index=True)
+
 Index('ix_photo_date_lens', Photo.date_taken, Photo.lens_model)
 engine = create_engine(f'sqlite:///{DATA / "library.db"}', connect_args={'check_same_thread': False, 'timeout': 30})
 
