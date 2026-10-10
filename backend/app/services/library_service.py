@@ -42,6 +42,10 @@ def query_photos(filters: dict, count_mode: str = 'capture'):
         q = q.where(Photo.capture_group_id.in_(member_groups))
     if filters.get('tag'):
         q = q.where(Photo.id.in_(select(PhotoTag.photo_id).join(Tag).where(Tag.name == filters['tag'])))
+    if filters.get('person_id'):
+        from ..models import DetectedFace
+        groups = select(Photo.capture_group_id).join(DetectedFace,DetectedFace.photo_id==Photo.id).where(DetectedFace.person_id==filters['person_id'])
+        q=q.where(Photo.capture_group_id.in_(groups))
     kind = filters.get('file_type')
     if kind:
         raw_groups = select(Photo.capture_group_id).where(Photo.is_raw.is_(True))

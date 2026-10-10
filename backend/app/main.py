@@ -34,6 +34,8 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title='光影集 · 本地摄影照片管理', version='2.0.0', lifespan=lifespan)
 from .watermark_drafts import router as draft_router
 app.include_router(draft_router)
+from .face_routes import router as face_router
+app.include_router(face_router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost','127.0.0.1','testserver','[::1]'])
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'], allow_methods=['GET','POST','PATCH','DELETE','PUT'], allow_headers=['Content-Type'])
 
@@ -458,28 +460,22 @@ def compare_photos(ids: str):
 
 @app.get('/api/faces/status')
 def face_status():
-    return {'available': face_service.is_available()}
+    return face_service.status()
 
 @app.post('/api/photos/{photo_id}/detect-faces')
 def detect_faces(photo_id: str):
     if not face_service.is_available():
-        raise HTTPException(503, '人脸识别功能不可用，请安装 face-recognition 库')
-    with Session() as session:
-        photo = photo_or_404(session, photo_id)
-        faces = face_service.detect_faces(Path(photo.file_path))
-        photo.face_data = {'faces': faces, 'detected_at': now()}
-        session.commit()
-        return {'faces': len(faces), 'face_data': photo.face_data}
+        raise HTTPException(503, '请安装可选 OpenCV 依赖并下载人脸模型')
+    return face_service.detect_photo(photo_id)
 
 @app.get('/api/faces/persons')
 def list_face_persons():
-    with Session() as session:
-        persons = session.scalars(select(FacePerson).order_by(FacePerson.name)).all()
-        return [{'id': p.id, 'name': p.name, 'photo_count': p.photo_count} for p in persons]
+    return face_service.persons()
 
 @app.post('/api/faces/persons')
 def create_face_person(payload: FacePersonCreate):
     with Session() as session:
+        if session.scalar(select(FacePerson.id).where(FacePerson.name==payload.name)):raise HTTPException(409,'人物名称已存在')
         person = FacePerson(name=payload.name)
         session.add(person)
         session.commit()
@@ -490,6 +486,7 @@ def rename_face_person(person_id: str, payload: FacePersonRename):
     with Session() as session:
         person = session.get(FacePerson, person_id)
         if not person: raise HTTPException(404, '人物不存在')
+        if session.scalar(select(FacePerson.id).where(FacePerson.name==payload.name,FacePerson.id!=person_id)):raise HTTPException(409,'人物名称已存在')
         person.name = payload.name
         session.commit()
         return {'id': person.id, 'name': person.name}
@@ -499,6 +496,9 @@ def delete_face_person(person_id: str):
     with Session() as session:
         person = session.get(FacePerson, person_id)
         if not person: raise HTTPException(404, '人物不存在')
+        from .models import DetectedFace
+        for face in session.scalars(select(DetectedFace).where(DetectedFace.person_id==person_id)):
+            face.person_id=None;face.confirmed=False
         session.delete(person)
         session.commit()
         return {'ok': True}

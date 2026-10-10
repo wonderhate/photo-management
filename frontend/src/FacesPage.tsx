@@ -1,88 +1,28 @@
-import {useState,useEffect} from 'react';
-import {Users,Plus,Edit2,Trash2,ScanFace} from 'lucide-react';
+import {useState,useEffect,useRef} from 'react';
 import {api,message} from './api';
-import {Empty,Modal} from './components';
-import type {FacePerson} from './types';
-
-export default function FacesPage({notify}:{notify:(msg:string)=>void}){
-  const [persons,setPersons]=useState<FacePerson[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [available,setAvailable]=useState(false);
-  const [editingId,setEditingId]=useState<string|null>(null);
-  const [editName,setEditName]=useState('');
-  const [newName,setNewName]=useState('');
-  const [showAdd,setShowAdd]=useState(false);
-
-  useEffect(()=>{loadData()},[]);
-
-  async function loadData(){
-    try{
-      const status=await api<{available:boolean}>('/faces/status');
-      setAvailable(status.available);
-      if(status.available){const data=await api<FacePerson[]>('/faces/persons');setPersons(data)}
-    }catch(e){notify(message(e))}finally{setLoading(false)}
-  }
-
-  async function handleAdd(){
-    if(!newName.trim())return;
-    try{await api('/faces/persons','POST',{name:newName.trim()});setNewName('');setShowAdd(false);await loadData();notify('人物已创建')}
-    catch(e){notify(message(e))}
-  }
-
-  async function handleRename(id:string){
-    if(!editName.trim())return;
-    try{await api('/faces/persons/'+id,'PATCH',{name:editName.trim()});setEditingId(null);setEditName('');await loadData();notify('已重命名')}
-    catch(e){notify(message(e))}
-  }
-
-  async function handleDelete(person:FacePerson){
-    if(!confirm(`删除人物「${person.name}」？照片不会被删除。`))return;
-    try{await api('/faces/persons/'+person.id,'DELETE');await loadData();notify('已删除')}
-    catch(e){notify(message(e))}
-  }
-
-  if(loading)return <p className="loading">加载中…</p>;
-
-  if(!available)return <div className="face-setup-notice">
-    <ScanFace size={48} style={{color:'#c6ae86',marginBottom:16}}/>
-    <h2>人脸识别功能不可用</h2>
-    <p className="muted">需要安装 face-recognition 库才能使用人脸识别功能</p>
-    <div className="error-box">
-      <p style={{marginBottom:8}}><b>安装方法：</b></p>
-      <code>.\.venv\Scripts\pip.exe install face-recognition</code>
-      <p className="muted" style={{marginTop:10}}>注意：face-recognition 需要 CMake 和 Visual Studio Build Tools</p>
-    </div>
-  </div>;
-
-  return <div className="faces-page">
-    <div className="section-intro">
-      <div><span className="eyebrow">FACES YOU KNOW</span><h2>人物相册</h2><p>{persons.length} 个人物 · 自动识别照片中的人脸</p></div>
-      <button className="primary" onClick={()=>setShowAdd(true)}><Plus size={16}/>添加人物</button>
-    </div>
-
-    {!persons.length?<Empty title="还没有人物">点击「添加人物」开始创建人物相册。</Empty>:
-    <div className="faces-grid">{persons.map(person=><article className="face-card" key={person.id}>
-      <div className="face-card-avatar"><Users size={40}/></div>
-      <div className="face-card-info">
-        {editingId===person.id?<div className="face-inline-edit">
-          <input value={editName} onChange={e=>setEditName(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&handleRename(person.id)}/>
-          <div className="row"><button className="primary" onClick={()=>handleRename(person.id)}>保存</button><button onClick={()=>{setEditingId(null);setEditName('')}}>取消</button></div>
-        </div>:<>
-          <h3 title={person.name}>{person.name}</h3>
-          <p>{person.photo_count} 张照片</p>
-          <div className="face-card-actions">
-            <button onClick={()=>{setEditingId(person.id);setEditName(person.name)}}><Edit2 size={12}/>重命名</button>
-            <button className="danger" onClick={()=>handleDelete(person)}><Trash2 size={12}/>删除</button>
-          </div>
-        </>}
-      </div>
-    </article>)}</div>}
-
-    {showAdd&&<Modal title="添加人物" onClose={()=>{setShowAdd(false);setNewName('')}}>
-      <div className="batch-edit-content">
-        <div className="batch-edit-section"><span>人物名称</span><input type="text" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="输入人物名称" autoFocus onKeyDown={e=>e.key==='Enter'&&handleAdd()}/></div>
-        <footer className="modal-footer"><button onClick={()=>{setShowAdd(false);setNewName('')}}>取消</button><button className="primary" onClick={handleAdd}>创建</button></footer>
-      </div>
-    </Modal>}
+import {Empty,PhotoCard,Pager} from './components';
+import type {Photo,Job} from './types';
+interface Person {id:string;name:string;photo_count:number;pending:number}
+interface Face {id:string;photo_id:string;person_id:string|null;confirmed:boolean;thumbnail_url:string}
+interface Status {available:boolean;dependency:boolean;cached:boolean}
+export default function FacesPage({notify,onOpenPhoto}:{notify:(msg:string)=>void;onOpenPhoto?:(photo:Photo)=>void}){
+  const [people,setPeople]=useState<Person[]>([]),[status,setStatus]=useState<Status|null>(null),[selected,setSelected]=useState('');
+  const [faces,setFaces]=useState<Face[]>([]),[photos,setPhotos]=useState<Photo[]>([]),[page,setPage]=useState(1),[total,setTotal]=useState(0),[faceTotal,setFaceTotal]=useState(0),[reviewPage,setReviewPage]=useState(1);
+  const [job,setJob]=useState<Job|null>(null),[threshold,setThreshold]=useState(.45),[name,setName]=useState('');const generation=useRef(0);
+  async function refresh(){try{const [s,p]=await Promise.all([api<Status>('/faces/status'),api<Person[]>('/faces/persons')]);setStatus(s);setPeople(p)}catch(e){notify(message(e))}}
+  useEffect(()=>{void refresh();api<Job[]>('/jobs').then(items=>setJob(items.find(j=>['faces','face-models'].includes(j.kind)&&['running','queued'].includes(j.status))||null)).catch(()=>{})},[]);
+  useEffect(()=>{if(!job||!['running','queued'].includes(job.status))return;const timer=setInterval(()=>{api<Job>('/jobs/'+job.id).then(next=>{setJob(next);if(!['running','queued'].includes(next.status)){void refresh();notify(next.error||`人物任务完成：${next.success} 成功，${next.skipped} 跳过，${next.failed} 失败`)}}).catch(e=>notify(message(e)))},1000);return()=>clearInterval(timer)},[job?.id,job?.status]);
+  useEffect(()=>{const token=++generation.current;setFaces([]);setPhotos([]);if(!selected)return;const filter=selected==='pending'?'':`person_id=${encodeURIComponent(selected)}&`;api<{faces:Face[];total:number}>(`/faces/review?${filter}page=${reviewPage}`).then(r=>{if(token===generation.current){setFaces(r.faces);setFaceTotal(r.total)}}).catch(e=>notify(message(e)));if(selected!=='pending')api<{photos:Photo[];total:number}>(`/faces/persons/${selected}/photos?page=${page}`).then(r=>{if(token===generation.current){setPhotos(r.photos);setTotal(r.total)}}).catch(e=>notify(message(e)));return()=>{generation.current++}},[selected,page,reviewPage,people]);
+  async function run(path:string){try{setJob(await api<Job>(path,'POST',path.endsWith('analyze')?{threshold}:{}))}catch(e){notify(message(e))}}
+  async function create(){if(!name.trim())return;try{await api('/faces/persons','POST',{name});setName('');await refresh()}catch(e){notify(message(e))}}
+  async function rename(person:Person){const next=prompt('人物名称',person.name);if(!next)return;try{await api('/faces/persons/'+person.id,'PATCH',{name:next});await refresh()}catch(e){notify(message(e))}}
+  async function remove(person:Person){if(!confirm(`删除人物“${person.name}”？保留原始照片，人脸回到待确认列表。`))return;try{await api('/faces/persons/'+person.id,'DELETE');setSelected('pending');await refresh()}catch(e){notify(message(e))}}
+  return <div className="faces-page"><h2>人物相册</h2><p className="muted">本机 YuNet / SFace 分析。自动分组是建议，请检查后确认；不会上传照片。</p>
+    {!status?<p>加载中…</p>:!status.dependency?<div className="error-box">安装可选依赖并重启：<code>.\.venv\Scripts\python.exe -m pip install -r backend/requirements-faces.txt</code></div>:!status.cached?<button onClick={()=>void run('/faces/models')} disabled={!!job&&['queued','running'].includes(job.status)}>下载本地人脸模型</button>:<div className="row"><label>分组相似度<input aria-label="人脸分组相似度" type="number" min={.3} max={.95} step={.01} value={threshold} onChange={e=>setThreshold(Number(e.target.value))}/></label><button className="primary" disabled={!!job&&['queued','running'].includes(job.status)} onClick={()=>void run('/faces/analyze')}>分析照片库（跳过已分析）</button></div>}
+    {job&&<div className="settings-card"><p>{job.status} · {job.current} · {job.processed}/{job.total}</p><progress max={job.total||1} value={job.processed}/>{job.error&&<p className="error-box">{job.error}</p>}{job.errors?.length>0&&<p className="error-box">{job.errors[0]}</p>}{['queued','running'].includes(job.status)&&<button onClick={()=>void api('/jobs/'+job.id+'/cancel','POST')}>取消任务</button>}</div>}
+    <div className="row"><input placeholder="新人物名称" value={name} onChange={e=>setName(e.target.value)}/><button onClick={()=>void create()}>添加人物</button><button onClick={()=>{setSelected('pending');setReviewPage(1);setPage(1)}}>查看待确认人脸</button></div>
+    <div className="faces-grid">{people.map(person=><article className="face-card" key={person.id}><h3>{person.name}</h3><p>{person.photo_count} 次拍摄 · {person.pending} 待确认</p><div className="row"><button onClick={()=>{setSelected(person.id);setPage(1);setReviewPage(1)}}>查看照片</button><button onClick={()=>void rename(person)}>命名</button><button onClick={()=>void remove(person)}>删除人物</button><button disabled={!person.pending} onClick={async()=>{try{await api('/faces/persons/'+person.id+'/confirm','POST');await refresh()}catch(e){notify(message(e))}}}>确认分组</button></div></article>)}</div>
+    {selected&&<section className="settings-card"><h3>人脸分组检查</h3>{faces.length?<div className="faces-grid">{faces.map(face=><article key={face.id}><img src={face.thumbnail_url} alt="待确认人脸" width={120} height={120} style={{objectFit:'contain'}} loading="lazy"/><select aria-label="关联人物" value={face.person_id||''} onChange={async e=>{try{await api('/faces/detections/'+face.id,'PATCH',{person_id:e.target.value||null});await refresh()}catch(error){notify(message(error))}}}><option value="">未关联</option>{people.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><small>{face.confirmed?'已确认':'待确认'}</small></article>)}</div>:<Empty title="没有待显示的人脸"/>}<Pager page={reviewPage} total={faceTotal} size={40} onChange={setReviewPage}/></section>}
+    {selected&&selected!=='pending'&&<section><h3>人物照片</h3><div className="gallery compact">{photos.map(photo=><PhotoCard key={photo.id} photo={photo} selected={false} onToggle={()=>{}} onOpen={()=>onOpenPhoto?.(photo)}/>)}</div><Pager page={page} total={total} onChange={setPage}/></section>}
   </div>;
 }

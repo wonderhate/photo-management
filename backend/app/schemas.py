@@ -23,9 +23,21 @@ class BatchEditRequest(BaseModel):
 
 class FacePersonCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    @field_validator('name')
+    @classmethod
+    def nonblank(cls,value: str) -> str:
+        if not value.strip():raise ValueError('人物名称不能为空')
+        return value.strip()
 
-class FacePersonRename(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
+class FacePersonRename(FacePersonCreate):
+    pass
+
+class FaceAnalysisRequest(BaseModel):
+    photo_ids: list[str] = Field(default_factory=list,max_length=10000)
+    threshold: float = Field(default=.45,ge=.3,le=.95)
+
+class FaceAssignRequest(BaseModel):
+    person_id: str | None = None
 
 class SmartRequest(BaseModel):
     keywords: list[str] = Field(min_length=1, max_length=16)
