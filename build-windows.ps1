@@ -17,7 +17,8 @@ if ($LASTEXITCODE) { throw 'Windows 打包失败' }
 $package = Join-Path $PSScriptRoot 'releases\windows\PhotoCollection'
 Copy-Item README.md -Destination $package
 # Private library configuration is opt-in and is never included in the distributable ZIP.
-Compress-Archive -Path "$package\*" -DestinationPath releases/PhotoCollection-Windows.zip -Force
+$publicFiles = Get-ChildItem -LiteralPath $package | Where-Object { $_.Name -ne 'library-config.json' } | Select-Object -ExpandProperty FullName
+Compress-Archive -Path $publicFiles -DestinationPath releases/PhotoCollection-Windows.zip -Force
 if ($UseCurrentLibrary -and (Test-Path library-config.json)) {
     $config = Get-Content library-config.json -Raw | ConvertFrom-Json
     $config | Add-Member -NotePropertyName models_dir -NotePropertyValue (Join-Path $PSScriptRoot 'models') -Force

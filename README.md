@@ -14,6 +14,8 @@ Windows 本地优先照片管理系统，当前版本 **2.1.0**。React / TypeSc
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
 
+测试记录见 [应用验证说明](docs/apps-verification.md)。Windows 原生窗口启动、Android 模拟器实际编辑/恢复/导出与原图保护已检查；不同实体手机的相册权限和格式兼容性仍需安装后确认。
+
 ### Android 独立应用
 
 将 `releases/PhotoCollection-Android.apk` 传到手机，在文件管理器中打开并允许该文件管理器安装应用。支持 Android 10+；需要正常可用、较新的 Android System WebView。手机库完全独立，**不用电脑、不用局域网、不用账户**。
