@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from sqlalchemy import select
-from ..config import DATA, EXPORTS, MODELS, EXTENSIONS, RAW_EXTENSIONS
+from ..config import DATA, EXPORTS, MODELS, EXTENSIONS, RAW_EXTENSIONS, SCAN_PATHS
 from ..models import Session, Photo, CaptureGroup, uid
 from . import jobs, exif_service, thumbnail_service
 
@@ -100,6 +100,9 @@ def import_paths(job_id: str, paths: list[str], recursive: bool, exclude_derived
     failed = 0
     excluded = [(DATA / name).resolve() for name in ('thumbnails', 'watermark_previews', 'previews', 'embeddings', 'exports', 'export-records')]
     excluded.extend([EXPORTS.resolve(), MODELS.resolve()])
+    # A source directory may contain caches from a previous library location.
+    for root in SCAN_PATHS:
+        excluded.extend((Path(root) / name).resolve() for name in ('thumbnails','watermark_previews','previews','embeddings','exports','export-records','imports','backups'))
     from .export_registry import registered_files
     generated = registered_files() if exclude_derived else set()
     def derived(path: Path) -> bool:
