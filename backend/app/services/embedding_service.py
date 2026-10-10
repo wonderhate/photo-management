@@ -24,6 +24,19 @@ class EmbeddingService:
         self.model_name = settings()['ai_model']
         self.state = dict(status='not_loaded', stage='未加载本地模型', error=None, processed=0, total=0, indexed=0, failed=0)
         self.device = 'cpu'
+        self._faiss = None
+        self._index = None
+        self._index_ids: list[str] = []
+        self._index_model = ''
+
+    def faiss_module(self):
+        if self._faiss is None:
+            try:
+                import faiss
+                self._faiss = faiss
+            except ImportError:
+                self._faiss = False
+        return self._faiss or None
 
     def status(self) -> dict:
         with self.lock:
@@ -95,6 +108,7 @@ class EmbeddingService:
                 failed += 1
                 self.update(error=str(error))
             self.update(processed=i+1, indexed=indexed, failed=failed)
+        self._index = None
         self.update(status='ready', stage='本地语义索引已就绪')
 
     def search(self, keywords: list[str], mode: str, threshold: float, maximum: int) -> list[dict]:
@@ -109,6 +123,9 @@ class EmbeddingService:
             features = self.model.text_projection(text_output.last_hidden_state[:, 0, :]).float().cpu().numpy()
         with Session() as session:
             entries = session.scalars(select(Embedding).join(CaptureGroup, CaptureGroup.preferred_photo_id == Embedding.photo_id).where(Embedding.model == self.model_name)).all()
+        faiss = self.faiss_module()
+        if faiss is not None:
+            return self._search_faiss(faiss, entries, features, mode, threshold, maximum)
         ranked = []
         # Bound memory for large libraries; never re-encode images during search.
         for offset in range(0, len(entries), 512):
@@ -122,6 +139,35 @@ class EmbeddingService:
             if vectors:
                 scores = similarity_scores(np.stack(vectors), features, mode)
                 ranked.extend(dict(photo_id=item.photo_id, similarity_score=float(score)) for item, score in zip(valid, scores) if score >= threshold)
+        return sorted(ranked, key=lambda item: -item['similarity_score'])[:maximum]
+
+    def _search_faiss(self, faiss, entries, features: np.ndarray, mode: str, threshold: float, maximum: int) -> list[dict]:
+        if self._index is None or self._index_model != self.model_name or len(self._index_ids) != len(entries):
+            ids, vectors = [], []
+            for item in entries:
+                try:
+                    vectors.append(np.load(item.embedding_path, allow_pickle=False))
+                    ids.append(item.photo_id)
+                except (OSError, ValueError):
+                    pass
+            if not vectors:
+                return []
+            matrix = np.stack(vectors).astype('float32')
+            self._index = faiss.IndexFlatIP(matrix.shape[1])
+            self._index.add(matrix)
+            self._index_ids, self._index_model = ids, self.model_name
+        queries = features / np.maximum(np.linalg.norm(features, axis=1, keepdims=True), 1e-8)
+        k = min(len(self._index_ids), max(maximum * 10, 500))
+        scores, positions = self._index.search(queries.astype('float32'), k)
+        per_photo: dict[str, list[float]] = {}
+        for row in range(len(queries)):
+            for score, position in zip(scores[row], positions[row]):
+                if position < 0 or score < threshold:
+                    continue
+                per_photo.setdefault(self._index_ids[position], []).append(float(score))
+        needed = len(queries) if mode == 'all' else 1
+        ranked = [dict(photo_id=photo_id, similarity_score=min(values) if mode == 'all' else max(values))
+                  for photo_id, values in per_photo.items() if len(values) >= needed]
         return sorted(ranked, key=lambda item: -item['similarity_score'])[:maximum]
 
 service = EmbeddingService()

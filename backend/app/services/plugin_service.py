@@ -1,0 +1,77 @@
+import importlib.util
+from pathlib import Path
+from sqlalchemy import select
+from ..models import Session, Photo, Tag, PhotoTag, now
+
+PLUGINS = Path(__file__).resolve().parents[3] / 'plugins'
+
+class PluginContext:
+    def __init__(self, params: dict) -> None:
+        self.params = params
+        self.log: list[str] = []
+
+    def message(self, text) -> None:
+        self.log.append(str(text))
+
+    def photos(self, limit: int = 500, **filters) -> list[dict]:
+        from . import library_service
+        q = library_service.query_photos({k: v for k, v in filters.items() if v not in (None, '')}, 'capture')
+        with Session() as session:
+            photos = session.scalars(q.limit(max(1, min(int(limit), 2000)))).all()
+            return [dict(id=p.id, file_name=p.file_name, file_path=p.file_path, camera_model=p.camera_model,
+                         lens_model=p.lens_model, focal_length=p.focal_length, f_number=p.f_number, iso=p.iso,
+                         date_taken=p.date_taken, favorite=p.favorite, rating=p.rating, color_label=p.color_label,
+                         is_raw=p.is_raw) for p in photos]
+
+    def update(self, photo_id: str, favorite=None, rating=None, color_label=None, add_tags=None) -> None:
+        with Session() as session:
+            photo = session.get(Photo, photo_id)
+            if not photo:
+                raise ValueError(f'照片不存在：{photo_id}')
+            if favorite is not None:
+                photo.favorite = bool(favorite)
+            if rating is not None:
+                photo.rating = int(rating)
+            if color_label is not None:
+                photo.color_label = color_label or None
+            for name in add_tags or []:
+                tag = session.scalar(select(Tag).where(Tag.name == name))
+                if not tag:
+                    tag = Tag(name=name)
+                    session.add(tag)
+                    session.flush()
+                if not session.get(PhotoTag, {'photo_id': photo.id, 'tag_id': tag.id}):
+                    session.add(PhotoTag(photo_id=photo.id, tag_id=tag.id))
+            photo.updated_at = now()
+            session.commit()
+
+def _load(path: Path):
+    spec = importlib.util.spec_from_file_location('photo_plugin_' + path.stem, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+def discover() -> list[dict]:
+    PLUGINS.mkdir(exist_ok=True)
+    result = []
+    for path in sorted(PLUGINS.glob('*.py')):
+        if path.name.startswith('_'):
+            continue
+        try:
+            module = _load(path)
+        except Exception as error:
+            result.append(dict(name=path.stem, description=f'加载失败：{error}', error=True))
+            continue
+        if not callable(getattr(module, 'run', None)):
+            continue
+        doc = (module.__doc__ or '').strip().splitlines()
+        result.append(dict(name=path.stem, description=doc[0] if doc else path.stem))
+    return result
+
+def run(name: str, params: dict) -> dict:
+    if name not in {p['name'] for p in discover()}:
+        raise ValueError('插件不存在')
+    module = _load(PLUGINS / f'{name}.py')
+    context = PluginContext(params or {})
+    result = module.run(context, **(params or {}))
+    return {'ok': True, 'result': '' if result is None else str(result), 'log': context.log}

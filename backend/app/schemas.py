@@ -60,6 +60,12 @@ class AlbumUpdate(BaseModel):
 class AlbumOrderRequest(BaseModel):
     photo_ids: list[str] = Field(default_factory=list, max_length=10000)
 
+class PluginRunRequest(BaseModel):
+    params: dict = Field(default_factory=dict)
+
+class IdsRequest(BaseModel):
+    ids: list[str] = Field(default_factory=list, max_length=1000)
+
 class WatermarkOptions(BaseModel):
     template: Literal['frame', 'ambient'] = 'frame'
     style: Literal['modern_info_bar', 'classic_frame'] = 'modern_info_bar'

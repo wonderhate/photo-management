@@ -249,4 +249,16 @@ mark{background:#6b5a2e;color:#f0e3bb;border-radius:2px;padding:0 1px}
 .shortcuts-edit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;margin-bottom:14px}
 .shortcuts-edit label{font-size:11px}
 .shortcuts-edit input{cursor:pointer;text-align:center}
+/* ── Plugins ── */
+.plugin-list{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+.plugin-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border:1px solid var(--line);border-radius:7px;padding:12px 14px}
+.plugin-row b{font-size:12px;font-weight:500}
+.plugin-row button{flex-shrink:0;font-size:10px;padding:6px 10px}
+.plugin-output{background:#0d120e;color:#9bba80;border-radius:6px;font-size:11px;padding:10px 12px;margin-top:8px;white-space:pre-wrap;max-height:160px;overflow:auto}
+:root[data-theme=light] .plugin-output{background:#2b3328;color:#c9e3b0}
+/* ── Virtual Gallery ── */
+.virtual-gallery,.gallery-virtual{height:calc(100vh - 330px);min-height:420px}
+.gallery-virtual.dense .photo-caption{display:none}
+.vg-placeholder{height:215px;background:var(--panel);border:1px solid var(--line);border-radius:var(--card-radius,6px)}
+.vg-total{font-size:10px;color:var(--muted);text-align:right;padding:12px 0 3px}
 

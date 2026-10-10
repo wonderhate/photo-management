@@ -18,8 +18,8 @@ from .models import initialize, Session, Photo, CaptureGroup, Album, AlbumPhoto,
 from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest
 from .services import jobs, import_service, library_service, stats_service, watermark_service, scan_service, export_registry
 from .services.embedding_service import service as ai
-from .services import timeline_service, face_service, nl_search
-from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename, AlbumUpdate, AlbumOrderRequest
+from .services import timeline_service, face_service, nl_search, plugin_service
+from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename, AlbumUpdate, AlbumOrderRequest, PluginRunRequest, IdsRequest
 from .models import FacePerson
 
 @asynccontextmanager
@@ -157,6 +157,21 @@ def photo_ids(request: Request, sort: str = 'date_taken', direction: str = 'desc
 def search_parse(q: str):
     with Session() as session:
         return nl_search.parse(q, session)
+
+@app.post('/api/photos/by-ids')
+def photos_by_ids(payload: IdsRequest):
+    with Session() as session:
+        photos = session.scalars(select(Photo).where(Photo.id.in_(payload.ids))).all()
+        order = {photo.id: photo for photo in photos}
+        return {'photos': library_service.serialize(session, [order[i] for i in payload.ids if i in order])}
+
+@app.get('/api/plugins')
+def plugins_list():
+    return plugin_service.discover()
+
+@app.post('/api/plugins/{name}/run')
+def plugin_run(name: str, payload: PluginRunRequest):
+    return plugin_service.run(name, payload.params)
 
 @app.get('/api/photos/{photo_id}')
 def photo_detail(photo_id: str):

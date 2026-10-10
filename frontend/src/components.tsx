@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
-import type {ReactNode,MouseEvent,KeyboardEvent} from 'react';
+import type {ReactNode,MouseEvent,KeyboardEvent,CSSProperties} from 'react';
+import {FixedSizeGrid} from 'react-window';
 import {ImageOff, Heart, Check, X, ChevronLeft, ChevronRight, Star, Search, Camera, Focus, Tag as TagIcon, FileText} from 'lucide-react';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid} from 'recharts';
 import type {Photo,Bin,Summary} from './types';
@@ -81,6 +82,22 @@ export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite,dragHandle,
   </article>;
 }
 export function Pager({page,total,size=80,onChange}:{page:number;total:number;size?:number;onChange:(value:number)=>void}) {const pages=Math.max(1,Math.ceil(total/size));return <div className="pager"><span>共 {total.toLocaleString()} 次拍摄</span><button disabled={page<=1} onClick={()=>onChange(page-1)}><ChevronLeft size={16}/>上一页</button><span>{page} / {pages}</span><button disabled={page>=pages} onClick={()=>onChange(page+1)}>下一页<ChevronRight size={16}/></button></div>}
+export function VirtualGallery({ids,cache,grid,gap,dense,onNeed,onRange,renderCard}:{ids:string[];cache:Record<string,Photo>;grid:number;gap:number;dense?:boolean;onNeed:(start:number,end:number)=>void;onRange?:(start:number,end:number)=>void;renderCard:(photo:Photo|undefined,id:string)=>ReactNode}) {
+  const wrapRef=useRef<HTMLDivElement|null>(null);
+  const [size,setSize]=useState({width:0,height:600});
+  useEffect(()=>{const el=wrapRef.current;if(!el)return;const measure=()=>setSize({width:el.clientWidth,height:el.clientHeight});measure();const observer=new ResizeObserver(measure);observer.observe(el);return()=>observer.disconnect()},[]);
+  const cols=Math.max(1,Math.floor((size.width+gap)/(grid+gap)));
+  const colWidth=size.width/cols;
+  const rows=Math.ceil(ids.length/cols);
+  const rowHeight=215+(dense?6:34)+gap;
+  function Cell({columnIndex,rowIndex,style}:{columnIndex:number;rowIndex:number;style:CSSProperties}) {
+    const index=rowIndex*cols+columnIndex;
+    if(index>=ids.length)return null;
+    const id=ids[index];
+    return <div style={{...style,padding:`0 ${gap/2}px ${gap}px`}}>{renderCard(cache[id],id)}</div>;
+  }
+  return <div className="virtual-gallery" ref={wrapRef}>{size.width>0&&<FixedSizeGrid columnCount={cols} columnWidth={colWidth} height={size.height} rowCount={rows} rowHeight={rowHeight} width={size.width} overscanRowCount={2} onItemsRendered={({overscanRowStartIndex,overscanRowStopIndex,visibleRowStartIndex,visibleRowStopIndex})=>{onNeed(overscanRowStartIndex*cols,(overscanRowStopIndex+1)*cols-1);onRange?.(visibleRowStartIndex*cols,(visibleRowStopIndex+1)*cols-1)}}>{Cell}</FixedSizeGrid>}</div>;
+}
 export function Histogram({title,items,onSelect}:{title:string;items:Bin[];onSelect:(bin:Bin)=>void}) {
   return <section className="chart-panel"><header><h3>{title}</h3><small>点击筛选照片</small></header><div className="chart"><ResponsiveContainer width="100%" height={210}><BarChart data={items} margin={{left:-20,right:8,top:15,bottom:10}}><CartesianGrid vertical={false} stroke="#2c3032"/><XAxis dataKey="label" tick={{fill:'#929999',fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:'#929999',fontSize:10}} axisLine={false} tickLine={false} allowDecimals={false}/><Tooltip cursor={{fill:'#ffffff08'}} contentStyle={{background:'#25292b',border:'1px solid #3b4143',borderRadius:8}}/><Bar isAnimationActive={false} dataKey="count" name="拍摄数量" fill="#c6b08a" radius={[4,4,0,0]} onClick={(_data,index)=>{if(items[index])onSelect(items[index])}} style={{cursor:'pointer'}}/></BarChart></ResponsiveContainer></div><div className="chart-legend">{items.filter(i=>i.count>0).slice(0,20).map(item=><button key={item.label} onClick={()=>onSelect(item)}>{item.label}<b>{item.count}</b>{item.percent!==undefined&&<small>{item.percent}%</small>}</button>)}</div></section>
 }
