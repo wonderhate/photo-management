@@ -50,6 +50,7 @@ def merge_libraries(target: Path, source: Path, stage: Path, old: Path, new: Pat
         target_photos = records(destination, 'photos')
         source_photos = records(incoming, 'photos')
         by_hash = {p['file_hash']: p for p in target_photos}
+        preserved_analysis = {p['id'] for p in target_photos if json.loads(p.get('face_data') or '{}').get('model')}
         occupied = {p['id'] for p in target_photos}
         photo_ids = {p['id']: by_hash[p['file_hash']]['id'] if p['file_hash'] in by_hash else (str(uuid4()) if p['id'] in occupied else p['id']) for p in source_photos}
         group_ids = {}
@@ -69,7 +70,8 @@ def merge_libraries(target: Path, source: Path, stage: Path, old: Path, new: Pat
                     destination.execute('UPDATE photos SET favorite=1 WHERE id=?', (current['id'],))
                 # Preserve destination edits while filling missing metadata.
                 for key, value in photo.items():
-                    if key not in ('id','capture_group_id') and current.get(key) is None and value is not None:
+                    missing = current.get(key) is None or (key == 'face_data' and current['id'] not in preserved_analysis)
+                    if key not in ('id','capture_group_id') and missing and value is not None:
                         destination.execute(f'UPDATE photos SET {key}=? WHERE id=?', (value, current['id']))
                 continue
             insert(destination, 'photos', photo | {'id': photo_ids[photo['id']], 'capture_group_id': group_ids[photo['capture_group_id']]})
@@ -110,6 +112,8 @@ def merge_libraries(target: Path, source: Path, stage: Path, old: Path, new: Pat
         face_keys = {(row['photo_id'], row['face_index']) for row in existing_faces}
         for row in records(incoming, 'detected_faces'):
             photo_id = photo_ids[row['photo_id']]
+            if photo_id in preserved_analysis:
+                continue
             key = (photo_id, row['face_index'])
             if key in face_keys:
                 continue  # Keep the destination's identity confirmation for shared photos.

@@ -31,11 +31,13 @@ def test_library_merge_preserves_records_draft_and_originals(client, image_facto
     photo = client.get('/api/photos').json()['photos'][0]
     draft = client.post('/api/watermark/drafts',json={'photo_id':photo['id'],'name':'保留草稿','settings_json':{}})
     assert draft.status_code == 201, draft.text
-    from backend.app.models import Session, FacePerson, DetectedFace
+    from backend.app.models import Session, Photo, FacePerson, DetectedFace
+    first_id = next(p['id'] for p in client.get('/api/photos').json()['photos'] if p['file_name'] == first.name)
     with Session() as session:
         person = FacePerson(name='保留人物')
         session.add(person); session.flush()
-        session.add(DetectedFace(photo_id=photo['id'], person_id=person.id, face_index=0,
+        session.get(Photo, first_id).face_data = {'model':'test-face-model','count':1}
+        session.add(DetectedFace(photo_id=first_id, person_id=person.id, face_index=0,
             encoding=b'feature', location={'left':0,'top':0,'right':1,'bottom':1}, confirmed=True))
         session.commit()
     source = backup_database(DATA/'library.db', tmp_path/'source.db')
@@ -49,4 +51,12 @@ def test_library_merge_preserves_records_draft_and_originals(client, image_facto
     with sqlite3.connect(stage) as db:
         assert db.execute('SELECT name FROM watermark_drafts').fetchone()[0] == '保留草稿'
         assert db.execute('SELECT name, confirmed FROM detected_faces JOIN face_persons ON person_id=face_persons.id').fetchone() == ('保留人物', 1)
+        import json
+        assert json.loads(db.execute('SELECT face_data FROM photos WHERE id=?', (first_id,)).fetchone()[0])['count'] == 1
+    with sqlite3.connect(target) as db:
+        db.execute('UPDATE photos SET face_data=? WHERE id=?', ('{"model":"test-face-model","count":0}', first_id))
+    preserved_stage = tmp_path/'preserved-stage.db'
+    merge_libraries(target,source,preserved_stage,tmp_path/'unrelated',tmp_path/'relocated')
+    with sqlite3.connect(preserved_stage) as db:
+        assert db.execute('SELECT count(*) FROM detected_faces').fetchone()[0] == 0
     assert all(p.read_bytes() == value for p,value in before.items())
