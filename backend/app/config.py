@@ -1,17 +1,21 @@
 import json
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT.parent
-LOCAL_CONFIG_FILE = PROJECT / 'library-config.json'
+FROZEN = getattr(sys, 'frozen', False)
+USER_ROOT = Path(os.environ.get('LOCALAPPDATA', Path.home())) / 'PhotoCollection' if FROZEN else PROJECT
+LOCAL_CONFIG_FILE = (Path(sys.executable).parent if FROZEN else PROJECT) / 'library-config.json'
 LOCAL_CONFIG = json.loads(LOCAL_CONFIG_FILE.read_text('utf-8-sig')) if LOCAL_CONFIG_FILE.exists() else {}
 # Explicit environment libraries (including tests) are isolated from machine defaults.
 USE_LOCAL_CONFIG = 'PHOTO_DATA_DIR' not in os.environ
-DATA = Path(os.environ.get('PHOTO_DATA_DIR', LOCAL_CONFIG.get('data_dir', PROJECT / 'data'))).resolve()
-EXPORTS = Path(os.environ.get('PHOTO_EXPORT_DIR', LOCAL_CONFIG.get('exports_dir', DATA / 'exports') if USE_LOCAL_CONFIG else DATA / 'exports')).resolve()
+DATA = Path(os.environ.get('PHOTO_DATA_DIR', LOCAL_CONFIG.get('data_dir', USER_ROOT / 'data'))).resolve()
+DEFAULT_EXPORTS = Path.home() / 'Downloads' if FROZEN else DATA / 'exports'
+EXPORTS = Path(os.environ.get('PHOTO_EXPORT_DIR', LOCAL_CONFIG.get('exports_dir', DEFAULT_EXPORTS) if USE_LOCAL_CONFIG else DATA / 'exports')).resolve()
 SCAN_PATHS = [str(Path(value).resolve()) for value in LOCAL_CONFIG.get('scan_paths', [])] if USE_LOCAL_CONFIG else []
-MODELS = Path(os.environ.get('PHOTO_MODELS_DIR', PROJECT / 'models')).resolve()
+MODELS = Path(os.environ.get('PHOTO_MODELS_DIR', LOCAL_CONFIG.get('models_dir', USER_ROOT / 'models') if USE_LOCAL_CONFIG else USER_ROOT / 'models')).resolve()
 AUTOLOAD_AI = os.environ.get('PHOTO_AUTOLOAD_AI', '1') == '1'
 for folder in ('thumbnails', 'watermark_previews', 'previews', 'embeddings', 'exports', 'imports'):
     (DATA / folder).mkdir(parents=True, exist_ok=True)
