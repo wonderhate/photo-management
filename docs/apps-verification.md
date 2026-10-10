@@ -11,8 +11,9 @@ Windows 独立程序：PyInstaller 6.22.3 / Python 3.12.10 / pywebview 6.2.1。A
 - `--ai` 读取已有模型缓存，实际加载 Chinese-CLIP CPU、生成 embedding、关键词检索。
 - 测试原图前后 SHA-256 一致。
 - 37 项原有后端测试通过；前端生产构建通过。
+- `--window-check` 在隔离库上实际创建冻结 EXE 的 WebView2 原生窗口，收到页面加载事件后自动关闭，状态文件确认 `window_loaded=true`。
 
-Windows 原生窗口交互及文件选择器还需要人工验收。Codex 内置浏览器目前无法连接真实浏览器会话；上述程序及 API 检查不等于桌面界面验收，未绕过此前浏览器权限限制。
+Windows 原生窗口内部的完整交互及文件选择器还需要人工验收。Codex 内置浏览器目前无法连接真实浏览器会话；窗口启动、程序及 API 检查不等于完整桌面交互验收，未绕过此前浏览器权限限制。
 
 ## Android
 

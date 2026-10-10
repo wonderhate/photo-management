@@ -22,7 +22,8 @@ def main() -> None:
         Image.new('RGB',(640,480),'orange').save(original,exif=exif)
         digest=hashlib.sha256(original.read_bytes()).digest()
         status=work/'status.json'
-        env=os.environ | {'PHOTO_DATA_DIR':str(work/'data'), 'PHOTO_EXPORT_DIR':str(work/'exports'), 'PHOTO_MODELS_DIR':str(work/'models'), 'PHOTO_AUTOLOAD_AI':'0'}
+        check_ai='--ai' in sys.argv
+        env=os.environ | {'PHOTO_DATA_DIR':str(work/'data'), 'PHOTO_EXPORT_DIR':str(work/'exports'), 'PHOTO_MODELS_DIR':str(root/'models' if check_ai else work/'models'), 'PHOTO_AUTOLOAD_AI':'0'}
         process=subprocess.Popen([str(exe),'--serve','--status-file',str(status)], env=env, creationflags=subprocess.CREATE_NO_WINDOW)
         try:
             for _ in range(300):
@@ -54,6 +55,17 @@ def main() -> None:
             exported=api('/api/watermark/drafts/'+draft['id']+'/export',{})
             assert exported,exported
             assert list((work/'exports').glob('*.jpg'))
+            if check_ai:
+                api('/api/ai/load?download=false',{})
+                for _ in range(1200):
+                    state=api('/api/ai/status')
+                    if state['status'] in ('ready','error'): break
+                    time.sleep(.1)
+                assert state['status']=='ready',state
+                assert state['indexed']==1,state
+                candidates=api('/api/albums/smart/preview',{'keywords':['日落'],'threshold':-1,'max_results':10})
+                assert len(candidates['candidates'])==1,candidates
+                print('Frozen EXE: cached Chinese-CLIP CPU model and actual embedding PASS')
             api('/api/watermark/drafts/'+draft['id'],method='DELETE')
             api('/api/photos/'+photo['id'],method='DELETE')
             assert original.exists() and hashlib.sha256(original.read_bytes()).digest()==digest

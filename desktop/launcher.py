@@ -18,6 +18,7 @@ def main() -> None:
     parser.add_argument('--port', type=int, default=0)
     parser.add_argument('--duration', type=float, default=0)
     parser.add_argument('--status-file', type=Path)
+    parser.add_argument('--window-check', action='store_true', help='Verify native WebView startup, then close')
     parser.add_argument('--dialog', choices=['files', 'directory'])
     parser.add_argument('--result', type=Path)
     args = parser.parse_args()
@@ -59,7 +60,12 @@ def main() -> None:
         else:
             import webview
             webview.settings['ALLOW_DOWNLOADS'] = True
-            webview.create_window('光影集 · 摄影管理', url, width=1440, height=960, min_size=(900, 650), background_color='#151719')
+            window=webview.create_window('光影集 · 摄影管理', url, width=1440, height=960, min_size=(900, 650), background_color='#151719')
+            if args.window_check:
+                def loaded() -> None:
+                    if args.status_file: args.status_file.write_text(json.dumps({'url':url, **health, 'window_loaded':True}), 'utf-8')
+                    threading.Timer(2,window.destroy).start()
+                window.events.loaded += loaded
             webview.start(gui='edgechromium', private_mode=False, storage_path=str(log_dir.parent / 'webview'))
     finally:
         server.should_exit = True
