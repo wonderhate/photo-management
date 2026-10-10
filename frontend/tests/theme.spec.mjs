@@ -38,6 +38,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
       await page.screenshot({path:testInfo.outputPath(`${selector.slice(1)}.png`),fullPage:true});
     }
     await page.goto('/?page=albums');await checkCard('.album-card');
+    if(width===390)await expect(page.locator('.sidebar nav .nav-child')).toHaveCSS('font-size','0px');
     await page.goto('/faces');await checkCard('.face-card');
     await expect(page.locator('.face-card button')).toHaveCount(4);
     expect(await page.locator('.face-card').evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft))).toBeGreaterThanOrEqual(14);
