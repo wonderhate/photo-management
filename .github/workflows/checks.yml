@@ -42,4 +42,8 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
           log-accepted-android-sdk-licenses: false
       - run: chmod +x android/gradlew
-      - run: ./android/gradlew -p android testDebugUnitTest lintDebug assembleDebug --console plain
+      - run: |
+          if ! ./android/gradlew -p android testDebugUnitTest lintDebug assembleDebug --console plain; then
+            cat android/app/build/reports/lint-current.txt || true
+            exit 1
+          fi
