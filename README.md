@@ -247,7 +247,7 @@ npx playwright install chromium
 npx playwright test
 ```
 
-本次实测通过：38 项后端、3 项前端逻辑、4 组 Chromium 主题回归；新 EXE 的 16 项 HTTP 流程、721 个合成源文件哈希保护、WebView2 窗口与离线 Chinese-CLIP。详见 [2.1.1 应用验证](docs/apps-verification.md#windows-211-与跨电脑反馈)。
+最终实测通过：39 项后端、3 项前端逻辑、5 项 Chromium 回归（含 11 个主要页面及真实水印保存/恢复/导出流程）；新 EXE 的 16 项 HTTP 流程、721 个合成源文件哈希保护、WebView2 窗口与升级后的离线 Chinese-CLIP。Android 正式 APK 覆盖安装和完整设备测试通过。详见 [2.1.1 应用验证](docs/apps-verification.md#最终安全修订与发布包)与 [安全检查](docs/apps-security.md)。
 
 如果模型下载遇到代理 502 或证书错误，先检查代理和 Windows 信任的证书链，保留 TLS 校验。已有模型时可在设置中指定本地模型目录并离线加载。另一台电脑使用了 `HF_ENDPOINT` 镜像与 `pip-system-certs`；这是该机器的网络配置，不是应用必需依赖，也不会写入分发包。使用镜像前自行确认来源，环境变量只在启动应用前设置才生效。
 
