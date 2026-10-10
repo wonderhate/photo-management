@@ -183,7 +183,7 @@ def update_photo(photo_id: str, payload: PhotoUpdate):
     with Session() as session:
         photo = photo_or_404(session, photo_id)
         if payload.favorite is not None: photo.favorite = payload.favorite
-        if payload.rating is not None: photo.rating = payload.rating
+        if 'rating' in payload.model_fields_set: photo.rating = payload.rating
         if payload.color_label is not None:
             photo.color_label = None if payload.color_label == 'none' else payload.color_label
         if payload.tags is not None: library_service.set_tags(session, photo, payload.tags)
@@ -203,23 +203,11 @@ def batch_edit_photos(payload: BatchEditRequest):
             if payload.color_label is not None:
                 photo.color_label = None if payload.color_label == 'none' else payload.color_label
             if payload.clear_color_label: photo.color_label = None
-            if payload.add_tags:
-                existing_tags = {t.name for t in photo.tags} if hasattr(photo, 'tags') else set()
-                for tag_name in payload.add_tags:
-                    if tag_name not in existing_tags:
-                        tag = session.scalars(select(Tag).where(Tag.name == tag_name)).first()
-                        if not tag:
-                            tag = Tag(name=tag_name)
-                            session.add(tag)
-                            session.flush()
-                        session.add(PhotoTag(photo_id=photo.id, tag_id=tag.id))
-            if payload.remove_tags:
-                session.execute(
-                    delete(PhotoTag).where(
-                        PhotoTag.photo_id == photo.id,
-                        PhotoTag.tag_id.in_(select(Tag.id).where(Tag.name.in_(payload.remove_tags)))
-                    )
-                )
+            if payload.add_tags or payload.remove_tags:
+                existing = set(session.scalars(select(Tag.name).join(PhotoTag).where(PhotoTag.photo_id == photo.id)))
+                additions = {name.strip()[:100] for name in payload.add_tags or [] if name.strip()}
+                removals = {name.strip()[:100] for name in payload.remove_tags or [] if name.strip()}
+                library_service.set_tags(session, photo, sorted((existing | additions) - removals))
             photo.updated_at = now()
         session.commit()
         return {'updated': len(photos)}
@@ -433,33 +421,24 @@ def export_file(filename: str):
     return FileResponse(target, filename=target.name)
 
 @app.get('/api/timeline')
-def timeline():
-    return timeline_service.get_timeline_hierarchy()
-
-@app.get('/api/timeline/{year}')
-def timeline_year(year: str):
-    photo_ids = timeline_service.get_photos_by_date(year)
-    with Session() as session:
-        photos = session.scalars(select(Photo).where(Photo.id.in_(photo_ids))).all()
-        return {'photos': library_service.serialize(session, photos), 'total': len(photos)}
-
-@app.get('/api/timeline/{year}/{month}')
-def timeline_month(year: str, month: str):
-    photo_ids = timeline_service.get_photos_by_date(year, month)
-    with Session() as session:
-        photos = session.scalars(select(Photo).where(Photo.id.in_(photo_ids))).all()
-        return {'photos': library_service.serialize(session, photos), 'total': len(photos)}
-
-@app.get('/api/timeline/{year}/{month}/{day}')
-def timeline_day(year: str, month: str, day: str):
-    photo_ids = timeline_service.get_photos_by_date(year, month, day)
-    with Session() as session:
-        photos = session.scalars(select(Photo).where(Photo.id.in_(photo_ids))).all()
-        return {'photos': library_service.serialize(session, photos), 'total': len(photos)}
+def timeline(request: Request):
+    return timeline_service.get_timeline_hierarchy(count_mode(request))
 
 @app.get('/api/timeline/heatmap/{year}')
-def timeline_heatmap(year: str):
-    return timeline_service.get_calendar_heatmap(year)
+def timeline_heatmap(year: int, request: Request):
+    return timeline_service.get_calendar_heatmap(year, count_mode(request))
+
+@app.get('/api/timeline/{year}')
+def timeline_year(year: int, request: Request, page: int = 1, page_size: int = 80):
+    return timeline_service.date_photos(year, page=page, page_size=page_size, count_mode=count_mode(request))
+
+@app.get('/api/timeline/{year}/{month}')
+def timeline_month(year: int, month: int, request: Request, page: int = 1, page_size: int = 80):
+    return timeline_service.date_photos(year, month, page=page, page_size=page_size, count_mode=count_mode(request))
+
+@app.get('/api/timeline/{year}/{month}/{day}')
+def timeline_day(year: int, month: int, day: int, request: Request, page: int = 1, page_size: int = 80):
+    return timeline_service.date_photos(year, month, day, page=page, page_size=page_size, count_mode=count_mode(request))
 
 @app.get('/api/compare')
 def compare_photos(ids: str):
