@@ -34,6 +34,8 @@ Android 15 / API 35 / x86_64 AOSP 模拟器（WHPX）实际安装并运行 `Inde
 
 发布 Lint 设置为 warningsAsErrors，最终报告为 `No issues found`。导出按 JVM 可用内存预留空间并收紧尺寸，低空间时拒绝新增导出；相册引用与派生缓存分离。旧 Android 的代码使用基础集合及字符串 API，不依赖 Android 13 的 `String.isBlank`。
 
+构建依赖和 target SDK 固定为本次验证的版本；Lint 的版本升级建议 `OldTargetApi` / `GradleDependency` 单独关闭，避免因构建机安装其他 SDK 或上游发布新版而使同一版本构建失效。其余 API 兼容性、权限与安全检查继续启用。后续发布到 Google Play 前应另行升级并验证其要求的 target SDK。
+
 未测试实体手机、全部厂商的相册提供器、所有 Android 版本及所有 RAW/HEIC 编码组合；不能用模拟器结果代替这些兼容性检查。Android 独立库不共享桌面数据库，功能差异见 README。
 
 ## 重复验证
