@@ -36,6 +36,10 @@ jobs:
           cache-dependency-path: |
             android/**/*.gradle
             android/gradle/wrapper/gradle-wrapper.properties
+      - uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '15859902'
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
       - run: chmod +x android/gradlew
-      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' < <(yes) > /dev/null
       - run: ./android/gradlew -p android testDebugUnitTest lintDebug assembleDebug --console plain
