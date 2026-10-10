@@ -1,23 +1,14 @@
 {
-  "name": "photo_collection",
-  "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
+  "name": "photo-management",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Local-first Windows photo management",
   "scripts": {
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File start.ps1",
     "build": "npm run build --prefix frontend",
     "test": ".venv\\Scripts\\python.exe -m pytest backend/tests -q",
-    "test:legacy": "node --test test/server.test.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "exifr": "^7.1.3",
-    "express": "^5.2.1",
-    "lucide-static": "^1.46.0",
-    "multer": "^2.4.0",
-    "sharp": "^0.35.4"
+    "test:frontend": "node --experimental-strip-types --test frontend/tests/*.test.*",
+    "test:legacy": "node --test legacy/test/server.test.js",
+    "test:http": ".venv\\Scripts\\python.exe -m backend.verify_live"
   }
 }

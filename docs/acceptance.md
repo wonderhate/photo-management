@@ -1,5 +1,7 @@
 # MVP 验收记录
 
+> 历史 MVP 验收记录，不能作为当前 2.1.0 的完整网页验收结论。2026-10-10 本轮结果与仍待完成的浏览器交互检查见 [稳定性验收记录](verification.md)。
+
 验证环境：Windows、Python 3.12.10、Node.js 24.19.0、Chrome headless、本地 CPU Chinese-CLIP。
 
 | 流程 | 验证结果 |

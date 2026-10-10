@@ -30,10 +30,11 @@ def is_available() -> bool:
 def download_models(job_id: str) -> None:
     folder=MODELS/'faces';folder.mkdir(parents=True,exist_ok=True)
     jobs.update(job_id,total=len(FILES))
+    success=skipped=0
     for index,(name,(subdirectory,expected)) in enumerate(FILES.items(),1):
         jobs.check(job_id);target=folder/name
         if target.is_file() and hashlib.sha256(target.read_bytes()).hexdigest()==expected:
-            jobs.update(job_id,processed=index,skipped=index)
+            skipped+=1;jobs.update(job_id,processed=index,skipped=skipped,success=success)
             continue
         temporary=target.with_suffix('.download')
         url=f'https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/{subdirectory}/{name}'
@@ -49,7 +50,7 @@ def download_models(job_id: str) -> None:
             temporary.replace(target)
         finally:
             temporary.unlink(missing_ok=True)
-        jobs.update(job_id,processed=index,success=index)
+        success+=1;jobs.update(job_id,processed=index,success=success,skipped=skipped)
 
 def detect_faces(image_path: Path) -> list[dict]:
     global _engines

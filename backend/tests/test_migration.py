@@ -31,6 +31,13 @@ def test_library_merge_preserves_records_draft_and_originals(client, image_facto
     photo = client.get('/api/photos').json()['photos'][0]
     draft = client.post('/api/watermark/drafts',json={'photo_id':photo['id'],'name':'保留草稿','settings_json':{}})
     assert draft.status_code == 201, draft.text
+    from backend.app.models import Session, FacePerson, DetectedFace
+    with Session() as session:
+        person = FacePerson(name='保留人物')
+        session.add(person); session.flush()
+        session.add(DetectedFace(photo_id=photo['id'], person_id=person.id, face_index=0,
+            encoding=b'feature', location={'left':0,'top':0,'right':1,'bottom':1}, confirmed=True))
+        session.commit()
     source = backup_database(DATA/'library.db', tmp_path/'source.db')
     before = {p: p.read_bytes() for p in (first,second)}
     stage = tmp_path/'stage.db'
@@ -41,4 +48,5 @@ def test_library_merge_preserves_records_draft_and_originals(client, image_facto
         assert db.execute('SELECT count(*) FROM photos').fetchone()[0] == 1
     with sqlite3.connect(stage) as db:
         assert db.execute('SELECT name FROM watermark_drafts').fetchone()[0] == '保留草稿'
+        assert db.execute('SELECT name, confirmed FROM detected_faces JOIN face_persons ON person_id=face_persons.id').fetchone() == ('保留人物', 1)
     assert all(p.read_bytes() == value for p,value in before.items())
