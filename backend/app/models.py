@@ -157,4 +157,7 @@ def initialize() -> None:
     from .migrations import migrate_database
     migrate_database(DATA / 'library.db')
     Base.metadata.create_all(engine)
+    for table in Base.metadata.tables.values():
+        for index in table.indexes:
+            index.create(engine,checkfirst=True)
 

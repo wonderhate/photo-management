@@ -97,14 +97,28 @@ def merge_libraries(target: Path, source: Path, stage: Path, old: Path, new: Pat
                 if table == 'albums':
                     value['cover_photo_id'] = photo_ids.get(value.get('cover_photo_id'), value.get('cover_photo_id'))
                 insert(destination, table, value)
-            if table in ('tags','albums'):
-                mappings['tag_id' if table == 'tags' else 'album_id'] = table_ids
+            if table in ('tags','albums','face_persons'):
+                mappings[{'tags':'tag_id','albums':'album_id','face_persons':'person_id'}[table]] = table_ids
         for table in ('album_photos','photo_tags','embeddings'):
             for row in records(incoming, table):
                 value = {key: mappings.get(key, {}).get(item, item) for key, item in row.items()}
                 keys = ('album_id','photo_id') if table == 'album_photos' else ('photo_id','tag_id') if table == 'photo_tags' else ('photo_id','model')
                 if not destination.execute(f'SELECT 1 FROM {table} WHERE '+ ' AND '.join(f'{key}=?' for key in keys), [value[key] for key in keys]).fetchone():
                     insert(destination, table, value)
+        existing_faces = records(destination, 'detected_faces')
+        occupied_faces = {row['id'] for row in existing_faces}
+        face_keys = {(row['photo_id'], row['face_index']) for row in existing_faces}
+        for row in records(incoming, 'detected_faces'):
+            photo_id = photo_ids[row['photo_id']]
+            key = (photo_id, row['face_index'])
+            if key in face_keys:
+                continue  # Keep the destination's identity confirmation for shared photos.
+            insert(destination, 'detected_faces', row | {
+                'id': str(uuid4()) if row['id'] in occupied_faces else row['id'],
+                'photo_id': photo_id,
+                'person_id': mappings.get('person_id', {}).get(row['person_id'], row['person_id']),
+            })
+            face_keys.add(key)
         for photo in records(destination, 'photos'):
             original = relocate(photo['file_path'], old, new)
             destination.execute('UPDATE photos SET file_path=?, source_directory=?, thumbnail_path=?, preview_path=? WHERE id=?',

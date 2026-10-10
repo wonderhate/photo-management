@@ -31,7 +31,9 @@ async def lifespan(_app: FastAPI):
     scan_service.start()
     yield
 
-app = FastAPI(title='光影集 · 本地摄影照片管理', version='2.0.0', lifespan=lifespan)
+from backend.version import VERSION,build_id
+BUILD_ID=build_id()
+app = FastAPI(title='光影集 · 本地摄影照片管理', version=VERSION, lifespan=lifespan)
 from .watermark_drafts import router as draft_router
 app.include_router(draft_router)
 from .face_routes import router as face_router
@@ -72,7 +74,7 @@ def count_mode(request: Request) -> str:
 
 @app.get('/api/health')
 def health():
-    return {'status':'ok','version':'2.0.0','data_dir':str(DATA),'exports_dir':str(EXPORTS)}
+    return {'status':'ok','version':VERSION,'build_id':BUILD_ID,'data_dir':str(DATA),'exports_dir':str(EXPORTS)}
 
 @app.get('/api/library/scan')
 def scan_status():
