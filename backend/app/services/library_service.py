@@ -95,10 +95,10 @@ def remove_photo(session, photo: Photo, whole_capture: bool) -> int:
 
 def set_tags(session, photo: Photo, names: list[str]) -> None:
     session.execute(delete(PhotoTag).where(PhotoTag.photo_id == photo.id))
-    for name in dict.fromkeys(n.strip() for n in names if n.strip()):
+    for name in dict.fromkeys(n.strip()[:100] for n in names if n.strip()):
         tag = session.scalar(select(Tag).where(Tag.name == name))
         if not tag:
-            tag = Tag(name=name[:100])
+            tag = Tag(name=name)
             session.add(tag)
             session.flush()
         session.add(PhotoTag(photo_id=photo.id, tag_id=tag.id))

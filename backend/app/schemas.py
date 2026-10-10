@@ -16,8 +16,8 @@ class BatchEditRequest(BaseModel):
     favorite: bool | None = None
     rating: int | None = Field(default=None, ge=0, le=5)
     color_label: str | None = Field(default=None, pattern='^(red|yellow|green|blue|none)$')
-    add_tags: list[str] | None = None
-    remove_tags: list[str] | None = None
+    add_tags: list[str] | None = Field(default=None, max_length=100)
+    remove_tags: list[str] | None = Field(default=None, max_length=100)
     clear_rating: bool = False
     clear_color_label: bool = False
 
