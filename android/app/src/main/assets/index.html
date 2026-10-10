@@ -1,0 +1,9 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<link rel="stylesheet" href="app.css"><title>光影集</title></head><body>
+<header><div><strong>光影集</strong><small>手机独立照片库 · 本地处理</small></div><button id="storageBadge" aria-label="查看手机存储">存储</button></header>
+<nav aria-label="主导航"><button data-page="photos">照片</button><button data-page="albums">影集</button><button data-page="smart">智能</button><button data-page="stats">报告</button><button data-page="drafts">水印图库</button><button data-page="settings">设置</button></nav>
+<main id="main"></main><p id="notice" role="status" aria-live="polite"></p>
+<dialog id="confirmLeave"><h2>当前水印尚未保存</h2><p>保存后可在水印图库中继续编辑。</p><button id="leaveSave">保存到水印图库</button><button id="leaveDrop">放弃修改</button><button id="leaveStay">继续编辑</button></dialog>
+<dialog id="exportDialog"><h2>导出到手机相册</h2><p>保存为新文件，原图保持不变。</p><label>格式<select id="exportFormat"><option value="jpg">JPG</option><option value="png">PNG</option></select></label><label>长边<select id="exportEdge"><option>2560</option><option>2048</option><option>4096</option><option>1080</option></select></label><label>JPG 质量<input id="exportQuality" type="number" min="1" max="100" value="95"></label><button id="exportGo">导出</button><button id="exportCancel">取消</button></dialog>
+<script src="app.js"></script></body></html>

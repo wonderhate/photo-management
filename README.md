@@ -10,9 +10,32 @@ Windows 本地优先照片管理系统，当前版本 **2.1.0**。React / TypeSc
 
 解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带；缺少时从 Microsoft 安装 WebView2 Evergreen Runtime。
 
-独立应用使用自己启动的随机本地端口，只监听 `127.0.0.1`，关闭窗口会停止该实例。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
+独立应用使用自己启动的随机本地端口，只监听 `127.0.0.1`，关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
+
+### Android 独立应用
+
+将 `releases/PhotoCollection-Android.apk` 传到手机，在文件管理器中打开并允许该文件管理器安装应用。支持 Android 10+；需要正常可用、较新的 Android System WebView。手机库完全独立，**不用电脑、不用局域网、不用账户**。
+
+1. 打开“光影集”，点击“选择照片”从系统相册/文件选择器选图，或点击“授权并扫描相册”。Android 14+ 可以只授权部分照片；扫描范围服从系统授权。
+2. 应用保存内容 URI、SHA-256、EXIF、收藏与标签，**不复制整个手机相册，不写入原图**。图库每页 40 张，预览缓存可清理。
+3. 在“智能”中分析尚未识别的照片，模型随 APK 安装并离线运行。输入 `日落`、`海边 AND 日落`、`猫 OR 狗`，调整置信阈值，选择候选后保存影集；普通影集从照片页多选后创建。
+4. 照片详情 → 创建水印 → 选择相框 / 沉浸光感、EXIF、署名 → 保存到水印图库。已有草稿约 1.5 秒自动保存；首次预览不会自动创建草稿。支持继续编辑、复制、撤销/重做、待导出状态与单张 / 批量导出；每个作品使用自己的参数。
+5. 导出创建新图片，写入手机 `Pictures/PhotoCollection`，可在系统相册找到。JPG / PNG、长边 1080 / 2048 / 2560 / 4096、JPG 质量可选。可用内存不足时自动收紧导出尺寸并提示，手机不提供无限尺寸导出；导出时保持应用打开。
+6. 设置显示可用空间、数据库和预览缓存占用；缓存上限 16–2048 MB，默认 128 MB。实际预算自动限制在可用空间扣除 100 MB 后的四分之一以内，空间不足 100 MB 时停止导出。缓存只保存派生缩略图，清理后按需重新生成，草稿仍然保留。
+
+手机数据库、草稿和视觉标签在应用私有存储中，手机系统管理其位置；**卸载或清除应用数据会移除这些记录**，手机原图和已经导出的相册文件保留。相册访问被撤销、照片被移走或删除时，作品仍保留并提示重新授权。重新授权同一照片可恢复引用；当前手机版不提供把缺失作品绑定到不同文件的定位工具。
+
+手机版的离线智能分类使用 [ML Kit 内置视觉标签模型](https://developers.google.com/ml-kit/vision/image-labeling/android)，是画面标签及中文关键词映射，**不是桌面 Chinese-CLIP 的中文语义 embedding**。抽象情绪、复杂语句和人脸分组仍使用桌面版。手机 HEIC 解码依赖系统，部分 RAW 能读取 EXIF 但不能预览；手机版摄影报告按文件计数，目前不提供桌面 RAW+JPG 拍摄组统计及镜头生命周期报告。Android 清单已移除网络权限，手机照片不会通过此应用上传。
+
+开发者使用 JDK 17、Android SDK 35 / Build Tools 35.0.0，项目 Gradle Wrapper 会下载并验证 Gradle 8.11.1，也可以指定已安装的 Gradle，执行：
+
+```powershell
+.\build-android.ps1 -JavaHome 'D:\jdk-17' -AndroidSdk 'D:\Android\Sdk' -Gradle 'D:\gradle-8.11.1\bin\gradle.bat'
+```
+
+脚本构建、运行 Android 测试与 Lint，并验证发布签名。首次自动生成本机签名密钥，保存在 `.runtime/signing/`，不会提交到 Git；请备份该目录，未来更新 APK 必须使用同一密钥。重新生成密钥会导致手机无法覆盖安装旧版本；不要通过卸载解决，以免丢失草稿。第三方组件遵循各自开源许可证，模型版权归其提供方；不附带用户照片。
 
 需要 Python 3.12+、Node.js 22.12+，并使 `python`、`npm` 可在 PowerShell 找到。本次验证使用 Python 3.12.10 / Node.js 24.19。
 
