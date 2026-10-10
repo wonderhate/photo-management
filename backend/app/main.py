@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from uuid import uuid4
+from tempfile import TemporaryDirectory
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -87,6 +88,12 @@ def scan_library(force: bool = False):
 @app.post('/api/dialog/{kind}')
 def picker(kind: Literal['files','directory']):
     creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+    if getattr(sys, 'frozen', False):
+        with TemporaryDirectory(prefix='photo-picker-') as directory:
+            target = Path(directory) / 'result.json'
+            result = subprocess.run([sys.executable, '--dialog', kind, '--result', str(target)], timeout=300, creationflags=creationflags)
+            if result.returncode or not target.is_file(): raise HTTPException(503, '系统文件选择器不可用，请粘贴绝对路径')
+            return {'paths': json.loads(target.read_text('utf-8'))}
     result = subprocess.run([sys.executable, '-m', 'backend.app.dialog', kind], cwd=PROJECT, capture_output=True, text=True, timeout=300, creationflags=creationflags)
     if result.returncode: raise HTTPException(503, '系统文件选择器不可用，请粘贴绝对路径')
     return {'paths': json.loads(result.stdout)}

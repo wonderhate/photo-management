@@ -6,6 +6,14 @@ Windows 本地优先照片管理系统，当前版本 **2.1.0**。React / TypeSc
 
 ## 1. 安装与手动启动
 
+### Windows 独立应用
+
+解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带；缺少时从 Microsoft 安装 WebView2 Evergreen Runtime。
+
+独立应用使用自己启动的随机本地端口，只监听 `127.0.0.1`，关闭窗口会停止该实例。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
+
+开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
+
 需要 Python 3.12+、Node.js 22.12+，并使 `python`、`npm` 可在 PowerShell 找到。本次验证使用 Python 3.12.10 / Node.js 24.19。
 
 ```powershell

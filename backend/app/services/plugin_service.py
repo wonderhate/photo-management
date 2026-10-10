@@ -4,7 +4,8 @@ from pathlib import Path
 from sqlalchemy import select
 from ..models import Session, Photo, Tag, PhotoTag, now
 
-PLUGINS = Path(__file__).resolve().parents[3] / 'plugins'
+from ..config import USER_ROOT
+PLUGINS = USER_ROOT / 'plugins'
 
 class PluginContext:
     def __init__(self, params: dict) -> None:
@@ -53,7 +54,7 @@ def _load(path: Path):
     return module
 
 def discover() -> list[dict]:
-    PLUGINS.mkdir(exist_ok=True)
+    PLUGINS.mkdir(parents=True, exist_ok=True)
     result = []
     for path in sorted(PLUGINS.glob('*.py')):
         if path.name.startswith('_'):

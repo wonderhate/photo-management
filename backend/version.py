@@ -1,11 +1,14 @@
 """Identify the backend and served frontend build without importing application config."""
 from hashlib import sha256
 from pathlib import Path
+import sys
 
 VERSION='2.1.0'
 
 def build_id() -> str:
     root=Path(__file__).resolve().parents[1]
+    if getattr(sys, 'frozen', False):
+        return (root / 'backend' / 'build-id.txt').read_text('ascii').strip()
     digest=sha256()
     for path in sorted((root/'backend'/'app').rglob('*.py')):
         digest.update(str(path.relative_to(root)).encode());digest.update(path.read_bytes())

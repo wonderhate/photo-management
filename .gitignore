@@ -22,3 +22,9 @@ verification/
 library-config.json
 home-screenshot.png
 sample-vertical.jpg
+releases/
+desktop/build/
+desktop/dist/
+android/.gradle/
+android/**/build/
+android/local.properties
