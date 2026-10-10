@@ -82,18 +82,6 @@
 .hover-preview .hp-exif{font-size:9px;color:#7e8b82;margin-top:3px}
 
 /* ── Map Page ── */
-.map-page{display:flex;flex-direction:column;height:calc(100vh - 74px - 46px)}
-.map-toolbar{display:flex;justify-content:space-between;align-items:center;padding:16px 0 14px;border-bottom:1px solid #272f2c}
-.map-toolbar h2{font-weight:400;font-size:18px;color:#d4dbc4}
-.map-toolbar p{font-size:10px;color:#7e8b82;margin-top:4px}
-.map-container{flex:1;position:relative;border:1px solid #2c3630;border-radius:8px;overflow:hidden;margin-top:16px;background:#161c18}
-.leaflet-container{background:#161c18!important;font-family:var(--font-sans)!important}
-.leaflet-popup-content-wrapper{background:#1e2420!important;color:#d4dbc4!important;border-radius:8px!important;border:1px solid #3a4535}
-.leaflet-popup-tip{background:#1e2420!important;border:1px solid #3a4535}
-.leaflet-popup-content{margin:12px!important;font-size:12px!important;line-height:1.6!important}
-.leaflet-popup-content img{border-radius:5px;margin-bottom:6px}
-.leaflet-popup-content a{color:#c6b08a!important}
-.map-marker-icon{filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
 
 /* ── Timeline Page ── */
 .timeline-page{display:flex;gap:0;height:calc(100vh - 74px - 46px);margin:-32px -34px -25px}

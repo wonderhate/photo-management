@@ -432,25 +432,6 @@ def export_file(filename: str):
     if target is None: raise HTTPException(404,'导出文件不存在')
     return FileResponse(target, filename=target.name)
 
-@app.get('/api/map/photos')
-def map_photos():
-    with Session() as session:
-        photos = session.scalars(
-            select(Photo).where(
-                Photo.gps_latitude.isnot(None),
-                Photo.gps_longitude.isnot(None)
-            )
-        ).all()
-        return [{
-            'id': p.id,
-            'latitude': p.gps_latitude,
-            'longitude': p.gps_longitude,
-            'altitude': p.gps_altitude,
-            'thumbnail': f'/api/photos/{p.id}/thumbnail',
-            'date_taken': p.date_taken,
-            'file_name': p.file_name
-        } for p in photos]
-
 @app.get('/api/timeline')
 def timeline():
     return timeline_service.get_timeline_hierarchy()
@@ -557,7 +538,6 @@ if dist.exists():
     @app.get('/watermark')
     @app.get('/watermark/workshop')
     @app.get('/watermark/gallery')
-    @app.get('/map')
     @app.get('/timeline')
     @app.get('/compare')
     @app.get('/faces')

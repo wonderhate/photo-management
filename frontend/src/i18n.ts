@@ -1,7 +1,7 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
-  '照片':'Photos','影集':'Albums','智能影集':'Smart Albums','地图':'Map','时间线':'Timeline','人物':'People','统计':'Statistics','摄影报告':'Reports','水印工坊':'Watermark','水印图库':'Gallery','设置':'Settings','我的收藏':'Favorites',
+  '照片':'Photos','影集':'Albums','智能影集':'Smart Albums','时间线':'Timeline','人物':'People','统计':'Statistics','摄影报告':'Reports','水印工坊':'Watermark','水印图库':'Gallery','设置':'Settings','我的收藏':'Favorites',
   '你的摄影空间':'Your Photography Space','本地照片库':'Local Library','原图保留 · 私密存储':'Originals kept · Private','照片工作室':'Photo Studio',
   '导入照片':'Import Photos','所有照片':'All Photos','影集照片':'Album Photos','每一次按下快门，都是值得留下的瞬间。':'Every shutter press is a moment worth keeping.',
   '上次筛选':'Last Filter','同步目录':'Sync Folder','选择可见':'Select Visible','已选':'Selected','制作水印':'Watermark','收入影集':'To Album','对比':'Compare','批量编辑':'Batch Edit','移出图库':'Remove','筛选':'Filter',

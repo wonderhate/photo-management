@@ -32,11 +32,6 @@ export interface WatermarkDraft {
   source:{file_name:string;file_path:string;camera_model:string|null;lens_model:string|null;date_taken:string|null};
 }
 
-export interface MapPhoto {
-  id:string;latitude:number;longitude:number;altitude:number|null;
-  thumbnail:string;date_taken:string|null;file_name:string;
-}
-
 export interface TimelineYear {
   months: Record<string, {days: Record<string, number>; total: number}>;
   total: number;
