@@ -10,10 +10,25 @@ Windows 独立程序：PyInstaller 6.22.3 / Python 3.12.10 / pywebview 6.2.1。A
 - 实际 JPG EXIF、重复导入、统计、创建水印草稿、正式导出、删除草稿和记录。
 - `--ai` 读取已有模型缓存，实际加载 Chinese-CLIP CPU、生成 embedding、关键词检索。
 - 测试原图前后 SHA-256 一致。
-- 37 项原有后端测试通过；前端生产构建通过。
+- 2.1.0 的 37 项后端测试通过；2.1.1 新增脚本编码回归后为 38 项，前端生产构建通过。
 - `--window-check` 在隔离库上实际创建冻结 EXE 的 WebView2 原生窗口，收到页面加载事件后自动关闭，状态文件确认 `window_loaded=true`。
 
 Windows 原生窗口内部的完整交互及文件选择器还需要人工验收。Codex 内置浏览器目前无法连接真实浏览器会话；窗口启动、程序及 API 检查不等于完整桌面交互验收，未绕过此前浏览器权限限制。
+
+### Windows 2.1.1 与跨电脑反馈
+
+另一台 Windows 电脑报告 2.1.0 源码安装、自行打包、16 项 HTTP 流程、离线语义索引、人物识别、11 个网页和 390×844 布局通过，同时报告两处浅色主题缺陷与 PowerShell 5.1 脚本编码问题。这是用户提供的外部测试报告；该机器的原始截图、日志和安装环境没有复制到本工作区，不能当成本机重复验证结果。
+
+本次在 `codex/windows-light-theme-fixes` 中实际复现并修复：
+
+- 影集浅色卡片标题与说明缺少颜色覆盖。
+- 人物卡片 CSS 依赖未渲染的 avatar/info/actions 结构，缺少留白、文字颜色与按钮换行；修复直接使用已有 JSX，删除无效卡片样式。
+- 浅色主题逗号后的 `Lselect`、`L.recent-panel` 等错误选择器，及窄屏子导航的字号覆盖顺序。
+- 两个中文打包脚本的 UTF-8 BOM；`build-windows.ps1` 显式以 UTF-8 读取本机配置，避免中文照片库路径乱码。四个根目录 PowerShell 脚本均通过真实 Windows PowerShell 5.1 解析。
+
+[GitHub Actions 主题回归](https://github.com/wonderhate/photo-management/actions/runs/38061688553)已通过：真实 Chromium 加载生产前端，四组 light/dark × 1440/390px，测量标题与说明的对比度至少 4.5:1，验证卡片按钮边界、长人物名、页面无横向溢出、下拉框/弹出面板以及窄屏导航。8 张截图均来自合成 API 数据，已检查代表性的明暗主题及窄屏截图。测试与用户登录的浏览器无关，不访问照片库、模型或原始文件；这次检查只覆盖修复涉及的界面。
+
+对应 CI 同时通过 38 项后端测试、3 项前端逻辑测试、生产构建、Android 单元测试/Lint/构建。本机新 EXE（2.1.1，build id `f87671720352690e`）通过 720 次拍摄 / 721 个合成文件的 16 项真实 HTTP 工作流，正式生成各自使用不同模板的 PNG；全部 721 个测试源文件 SHA-256 一致，并确认 EXE 实际提供本次生产构建的 CSS。WebView2 原生窗口加载后自动关闭。另以 `HF_HUB_OFFLINE=1` 运行 `desktop/verify_package.py --ai`，实际加载本地 Chinese-CLIP、生成 embedding 和搜索通过。此处不重复访问用户原图；公开包排除私人配置、数据库、模型缓存和照片。
 
 ## Android
 

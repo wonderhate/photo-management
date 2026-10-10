@@ -1,4 +1,4 @@
-param([string]$JavaHome, [string]$AndroidSdk, [string]$Gradle, [switch]$SkipTests)
+﻿param([string]$JavaHome, [string]$AndroidSdk, [string]$Gradle, [switch]$SkipTests)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 if (!$JavaHome) { $JavaHome = $env:JAVA_HOME }

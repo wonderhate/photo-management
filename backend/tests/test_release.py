@@ -1,4 +1,12 @@
 from test_library import import_paths
+from pathlib import Path
+
+
+def test_windows_powershell_scripts_use_bom_for_non_ascii():
+    for script in Path(__file__).resolve().parents[2].glob('*.ps1'):
+        content=script.read_bytes()
+        if not content.decode('utf-8-sig').isascii():
+            assert content.startswith(b'\xef\xbb\xbf'),script.name
 
 def test_album_order_cover_compare_settings_and_routes(client,image_factory):
     paths=[image_factory(f'p{i}.jpg',color=(i,30,80)) for i in range(3)]
