@@ -56,3 +56,5 @@ WebView 禁用磁盘资源缓存，远程响应使用 `Cache-Control: no-store`�
 Windows 分支 `codex/android-remote-desktop` 合入 `codex/netease-ui-redesign`：同步新版布局、浅色分区、完整英文界面、网页版图标、人物影集创建及自定义照片库和存储目录。Android 客户端保持 2.0.0，同一配对与导出协议继续使用。
 
 本机 Windows 安装器为 `releases/PhotoCollection-Setup-2.2.1-x64.exe`，便携包为 `releases/PhotoCollection-Windows.zip`。开发分支未推送或公开发布；用户正式安装位置未用于覆盖升级测试。
+
+2.2.1 实际打包 EXE 的配对、编辑、电脑草稿/导出、图片禁止缓存、源文件哈希和访问撤销通过；原生 WebView 成功加载。新版远程浏览器流程及 ZIP CRC/私人文件排除通过。Android APK 的 SHA-256 保持原值，校验文件同步记录新的 Windows 包。
