@@ -1,0 +1,17 @@
+**
+!Dockerfile
+!backend/
+!backend/app/
+!backend/app/**
+!backend/version.py
+!backend/requirements.txt
+!frontend/
+!frontend/**
+frontend/node_modules/
+frontend/dist/
+frontend/tests/
+frontend/test-results/
+frontend/.env*
+**/__pycache__/
+**/*.pyc
+**/*.tsbuildinfo
