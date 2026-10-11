@@ -247,6 +247,7 @@ h1,h2{font-family:var(--font-display);font-weight:400;letter-spacing:.025em;line
 .home-shell :is(.archive-wordmark,.home-nav,.menu-toggle){display:flex!important}
 :root:root[data-theme] .archive-wordmark{padding:0;background:transparent;border:0;gap:12px;color:var(--text);flex-shrink:0}
 .archive-wordmark>svg{color:var(--accent)}
+.brand-icon img,.archive-wordmark>img{width:28px;height:28px;object-fit:contain;flex-shrink:0}
 .archive-wordmark span{font:23px var(--font-display);letter-spacing:.12em;line-height:1.2;text-align:left}
 .archive-wordmark small{display:block;font:7px var(--font-sans);letter-spacing:.17em;margin-top:6px;color:var(--muted)}
 .home-nav{gap:22px;margin:auto}
@@ -329,7 +330,7 @@ h1,h2{font-family:var(--font-display);font-weight:400;letter-spacing:.025em;line
   .main-workspace,:root[data-remote=true] .main-workspace{margin-left:0;width:100%;min-height:100dvh}
   :root:root[data-theme] .topbar,:root:root[data-remote=true][data-theme] .topbar{height:68px;padding:0 20px;position:sticky;background:var(--bg);border-bottom:1px solid var(--line);gap:12px}
   .menu-toggle,.archive-wordmark{display:flex!important}
-  .archive-wordmark span{font-size:21px}.archive-wordmark>svg,.archive-wordmark small{display:none}
+  .archive-wordmark span{font-size:21px}.archive-wordmark>svg,.archive-wordmark>img,.archive-wordmark small{display:none}
   .breadcrumb,.home-nav,.local-pill,.mobile-wordmark{display:none!important}
   .home-shell .home-nav{display:none!important}
   .topbar-actions,.home-shell .topbar-actions{margin-left:auto;gap:3px;width:auto;flex:0 0 auto}
