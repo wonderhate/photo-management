@@ -2,9 +2,12 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
 from PyInstaller.utils.win32.versioninfo import VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct, VarFileInfo, VarStruct
 from backend.version import VERSION
+from desktop.icon import application_icon
 
 root = Path(SPECPATH).parent
+icon = application_icon(root / '.cache' / 'packaging')
 datas = [(str(root/'frontend'/'dist'), 'frontend/dist'),
+         (str(icon), 'desktop'),
          (str(root/'backend'/'app'/'assets'), 'backend/app/assets'),
          (str(root/'.cache'/'packaging'/'build-id.txt'), 'backend')]
 for package in ('transformers', 'huggingface_hub', 'safetensors', 'tokenizers'):
@@ -23,5 +26,5 @@ version = VSVersionInfo(
         'ProductName': 'Photo Collection', 'FileVersion': VERSION, 'ProductVersion': VERSION,
         'OriginalFilename': 'PhotoCollection.exe',
     }.items()])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])])
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='PhotoCollection', console=False, version=version, upx=False)
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='PhotoCollection', console=False, version=version, upx=False, icon=str(icon))
 coll = COLLECT(exe, a.binaries, a.datas, name='PhotoCollection', upx=False)

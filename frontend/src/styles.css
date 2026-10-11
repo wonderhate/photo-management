@@ -293,4 +293,5 @@ mark{background:#6b5a2e;color:#f0e3bb;border-radius:2px;padding:0 1px}
 :root[data-theme=light] input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:#a5875a}
 :root[data-theme=light] :is(.modal>header h2,.selection-toolbar b){color:#43543c}
 :root[data-theme=light] :is(.params,.range-label small,.download-result,.raw-exif dd,.batch-edit-section>span,.loading,.eyebrow){color:#596650}
+.draft-toolbar .button-row{min-width:0;max-width:100%}
 
