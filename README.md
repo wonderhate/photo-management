@@ -4,6 +4,13 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 
 **原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。默认仅监听 `127.0.0.1:8000`。
 
+| 下载 | 用途 |
+| --- | --- |
+| [Windows 安装程序（推荐）](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Setup-2.1.1-x64.exe) | Windows 10 / 11 x64，中文向导、快捷方式、卸载入口 |
+| [Windows 便携 ZIP](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Windows.zip) | 解压即用，保留 `_internal` 文件夹 |
+| [Android APK](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Android.apk) | Android 10+，手机独立照片库，实际版本 1.0.0 |
+| [SHA-256 校验文件](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/SHA256SUMS.txt) | 核对下载完整性；不是发布者签名 |
+
 ## 1. 安装与手动启动
 
 ### Windows 独立应用
@@ -12,11 +19,15 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 
 **下载安全提示**：Windows 当前没有受信任的代码签名，SmartScreen / 未知发布者提示仍可能出现；Android APK 已使用原发布密钥签名，侧载许可和 Play Protect 扫描提示仍可能出现。防病毒扫描与发布者信誉是不同的检查，不建议关闭防护。检查结果、文件校验方法及仍需的账号/证书见 [下载与安全检查](docs/apps-security.md)。iOS 保持暂停。
 
-解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带；缺少时从 Microsoft 安装 WebView2 Evergreen Runtime。
+下载并打开 `PhotoCollection-Setup-2.1.1-x64.exe`，按中文向导安装。默认安装在当前用户的 `%LOCALAPPDATA%\Programs\PhotoCollection`，不要求管理员权限；可选桌面快捷方式，开始菜单提供启动与卸载入口。缺少 WebView2 时，安装器运行经过 Microsoft 发布者签名验证的官方引导程序，需要联网；安装失败会明确提示并停止。关闭旧应用后再运行安装程序即可覆盖升级。卸载保留照片库、模型缓存、导出文件及用户创建的配置。
+
+也可以解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；两种 Windows 包都无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带。
 
 独立应用使用自己启动的随机本地端口，只监听 `127.0.0.1`，关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
+
+制作安装程序：安装官方 [Inno Setup 7](https://jrsoftware.org/isdl.php) 后运行 `./build-installer.ps1 -Compiler 'C:\Program Files\Inno Setup 7\ISCC.exe'`。先运行 Windows 打包脚本，再运行安装器脚本；输出在 `releases/PhotoCollection-Setup-2.1.1-x64.exe`。WebView2 引导程序首次从 Microsoft 下载并验证 Authenticode，私人 `library-config.json` 始终排除。`desktop/verify_installer.py <安装程序路径>` 实际检查隔离安装、升级、窗口启动、卸载和数据保留；已安装正式软件的账户应改用专用测试账户，验证脚本会拒绝覆盖现有安装。
 
 升级时先关闭旧版，将新 ZIP 解压到新目录；有本机 `library-config.json` 时复制该配置到新 EXE 同目录。不要用公开包中的示例覆盖已有配置、数据库或模型缓存。默认库仍使用 `%LOCALAPPDATA%\PhotoCollection\data`。
 
