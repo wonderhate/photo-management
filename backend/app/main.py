@@ -21,7 +21,7 @@ from .services import jobs, import_service, library_service, stats_service, wate
 from .services.embedding_service import service as ai
 from .services import timeline_service, face_service, nl_search, plugin_service
 from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename, AlbumUpdate, AlbumOrderRequest, PluginRunRequest, IdsRequest
-from .models import FacePerson
+from .models import FacePerson, DetectedFace
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -335,15 +335,23 @@ def smart_preview(payload: SmartRequest):
 def create_album(payload: AlbumRequest):
     if payload.type == 'smart' and not any(k.strip() for k in payload.keywords): raise ValueError('智能影集需要关键词')
     with Session() as session:
-        album = Album(**payload.model_dump(exclude={'photo_ids','scores'}), ai_model=ai.model_name if payload.type=='smart' else None)
+        if payload.person_id is not None:
+            if payload.type != 'normal' or payload.photo_ids: raise ValueError('人物影集请使用普通影集，照片由人物分组自动选取')
+            if not session.get(FacePerson, payload.person_id): raise HTTPException(404, '人物不存在')
+            if session.scalar(select(DetectedFace.id).where(DetectedFace.person_id==payload.person_id, DetectedFace.confirmed.is_(False)).limit(1)):
+                raise ValueError('请先确认该人物的分组，再新建人物影集')
+            members = session.scalars(library_service.query_photos({'person_id':payload.person_id}).order_by(Photo.date_taken.desc(), Photo.id)).all()
+            if not members: raise ValueError('该人物没有已确认的照片')
+        else:
+            members = session.scalars(select(Photo).where(Photo.id.in_(payload.photo_ids))).all()
+        album = Album(**payload.model_dump(exclude={'photo_ids','scores','person_id'}), ai_model=ai.model_name if payload.type=='smart' else None)
         session.add(album)
         session.flush()
-        members = session.scalars(select(Photo).where(Photo.id.in_(payload.photo_ids))).all()
         seen = set()
-        for photo in members:
+        for position, photo in enumerate(members):
             if photo.capture_group_id in seen: continue
             seen.add(photo.capture_group_id)
-            session.add(AlbumPhoto(album_id=album.id, photo_id=photo.id, similarity_score=payload.scores.get(photo.id)))
+            session.add(AlbumPhoto(album_id=album.id, photo_id=photo.id, similarity_score=payload.scores.get(photo.id), position=position if payload.person_id else 0))
         session.commit()
         return album_dict(session,album)
 
