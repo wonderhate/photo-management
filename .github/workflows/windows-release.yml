@@ -1,0 +1,61 @@
+name: Windows release files
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PHOTO_AUTOLOAD_AI: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Check the existing draft
+        shell: pwsh
+        run: |
+          $version=python -c "from backend.version import VERSION; print(VERSION)"
+          $tag="v$version"
+          if ((gh release view $tag --json isDraft --jq .isDraft) -ne 'true') { throw 'Only an existing draft may receive rebuilt files.' }
+          "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+      - name: Install the existing build dependencies
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          ./.venv/Scripts/python.exe -m pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+          ./.venv/Scripts/python.exe -m pip install -r backend/requirements.txt -r backend/requirements-ai.txt -r backend/requirements-faces.txt -r desktop/requirements.txt
+          if ($LASTEXITCODE) { throw 'Build dependencies failed.' }
+          npm ci --prefix frontend
+          if ($LASTEXITCODE) { throw 'Frontend dependencies failed.' }
+      - name: Build and verify the Windows package
+        shell: pwsh
+        run: |
+          ./build-windows.ps1 -SkipDependencies
+          if ($LASTEXITCODE) { throw 'Windows package failed.' }
+          New-Item -ItemType Directory -Force .test-artifacts/remote-client/synthetic-originals | Out-Null
+          ./.venv/Scripts/python.exe -c "from PIL import Image; Image.new('RGB',(640,480),'orange').save('.test-artifacts/remote-client/synthetic-originals/Light-01.jpg')"
+          ./.venv/Scripts/python.exe -m unittest desktop.test_icon
+          if ($LASTEXITCODE) { throw 'Web icon verification failed.' }
+          ./.venv/Scripts/python.exe -m desktop.verify_remote_package
+          if ($LASTEXITCODE) { throw 'Packaged remote access verification failed.' }
+          ./build-installer.ps1
+      - name: Upload the verified files to the draft
+        shell: pwsh
+        run: |
+          gh release download $env:RELEASE_TAG -p PhotoCollection-Android.apk -D releases
+          if ($LASTEXITCODE) { throw 'Existing signed APK download failed.' }
+          $version=./.venv/Scripts/python.exe -c "from backend.version import VERSION; print(VERSION)"
+          $files=@('PhotoCollection-Android.apk','PhotoCollection-Windows.zip',"PhotoCollection-Setup-$version-x64.exe")
+          $hashes=$files | ForEach-Object { $hash=Get-FileHash -LiteralPath "releases/$_" -Algorithm SHA256; "$($hash.Hash.ToLower())  $_" }
+          [IO.File]::WriteAllText((Join-Path $PWD 'releases/SHA256SUMS.txt'),($hashes -join "`n")+"`n",[Text.UTF8Encoding]::new($false))
+          gh release upload $env:RELEASE_TAG "releases/PhotoCollection-Setup-$version-x64.exe" releases/PhotoCollection-Windows.zip releases/SHA256SUMS.txt --clobber
+          if ($LASTEXITCODE) { throw 'Draft upload failed.' }
