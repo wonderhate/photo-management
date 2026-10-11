@@ -1,10 +1,12 @@
 # 光影集 · 本地摄影照片管理
 
-Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
+Windows 本地优先照片管理系统，当前开发版 **2.2.0**，Android 远程客户端 **2.0.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
 
-**原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。默认仅监听 `127.0.0.1:8000`。
+**原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。桌面服务监听局域网接口，远程访问默认关闭；开启后必须配对才能访问。手机只缓存 JSON 索引，图片预览不落盘。
 
-| 下载 | 用途 |
+本次远程版本在本机 `releases/`，用法及验证记录见 [手机远程客户端](docs/android-remote.md)。以下 GitHub 下载仍是历史发布 **2.1.1 / Android 1.0.0**，不包含此次远程功能。
+
+| 历史公开下载 | 用途 |
 | --- | --- |
 | [Windows 安装程序（推荐）](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Setup-2.1.1-x64.exe) | Windows 10 / 11 x64，中文向导、快捷方式、卸载入口 |
 | [Windows 便携 ZIP](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Windows.zip) | 解压即用，保留 `_internal` 文件夹 |
@@ -23,7 +25,7 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 
 也可以解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；两种 Windows 包都无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带。
 
-独立应用使用自己启动的随机本地端口，只监听 `127.0.0.1`，关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
+新版独立应用优先使用 8000 端口，被占用时使用其他空闲端口，手机地址以设置页为准。远程访问默认关闭，开启后须配对。关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
 
@@ -35,28 +37,22 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 
 测试记录见 [应用验证说明](docs/apps-verification.md)。Windows 原生窗口启动、Android 模拟器实际编辑/恢复/导出与原图保护已检查；不同实体手机的相册权限和格式兼容性仍需安装后确认。
 
-### Android 独立应用
+### Android 远程客户端
 
-将 `releases/PhotoCollection-Android.apk` 传到手机，在文件管理器中打开并允许该文件管理器安装应用。支持 Android 10+；需要正常可用、较新的 Android System WebView。手机库完全独立，**不用电脑、不用局域网、不用账户**。
+Android 2.0.0 访问电脑照片库，需要同时运行本次 Windows 2.2.0 或更新后的源码服务；历史 Windows 2.1.1 包不支持配对。支持 Android 10+ 和较新的 Android System WebView。
 
-1. 打开“光影集”，点击“选择照片”从系统相册/文件选择器选图，或点击“授权并扫描相册”。Android 14+ 可以只授权部分照片；扫描范围服从系统授权。
-2. 应用保存内容 URI、SHA-256、EXIF、收藏与标签，**不复制整个手机相册，不写入原图**。图库每页 40 张，预览缓存可清理。
-3. 在“智能”中分析尚未识别的照片，模型随 APK 安装并离线运行。输入 `日落`、`海边 AND 日落`、`猫 OR 狗`，调整置信阈值，选择候选后保存影集；普通影集从照片页多选后创建。
-4. 照片详情 → 创建水印 → 选择相框 / 沉浸光感、EXIF、署名 → 保存到水印图库。已有草稿约 1.5 秒自动保存；首次预览不会自动创建草稿。支持继续编辑、复制、撤销/重做、待导出状态与单张 / 批量导出；每个作品使用自己的参数。
-5. 导出创建新图片，写入手机 `Pictures/PhotoCollection`，可在系统相册找到。JPG / PNG、长边 1080 / 2048 / 2560 / 4096、JPG 质量可选。可用内存不足时自动收紧导出尺寸并提示，手机不提供无限尺寸导出；导出时保持应用打开。
-6. 设置显示可用空间、数据库和预览缓存占用；缓存上限 16–2048 MB，默认 128 MB。实际预算自动限制在可用空间扣除 100 MB 后的四分之一以内，空间不足 100 MB 时停止导出。缓存只保存派生缩略图，清理后按需重新生成，草稿仍然保留。
+1. 电脑「设置 → 手机远程访问」开启访问，查看电脑地址和八位配对码。
+2. 手机和电脑连接同一 Wi-Fi 或私有 VPN，安装 `releases/PhotoCollection-Android.apk`，填写地址和配对码。再次使用可选择「连接已配对的电脑」。
+3. 手机底部提供照片、影集、创作、报告、我的。智能影集、人物、时间线与统计在「我的」中进入；筛选、评分、标签、多选、对比、删除记录等复用电脑端功能。
+4. 整理、AI、水印渲染和草稿都保存在电脑。手机仅保存索引、连接信息和界面偏好，不缓存原图、缩略图、水印预览或离线编辑队列。
+5. 单张导出后，电脑生成成品并自动保存到手机相册 `Pictures/PhotoCollection`。批量任务完成后逐个点击作品链接保存到手机。下载失败会报错，可从电脑水印图库再次导出。
+6. 手机隐藏原图下载。打开原图、文件位置和文件选择器对应电脑；导入也可填写电脑绝对路径。
 
-手机数据库、草稿和视觉标签在应用私有存储中，手机系统管理其位置；**卸载或清除应用数据会移除这些记录**，手机原图和已经导出的相册文件保留。相册访问被撤销、照片被移走或删除时，作品仍保留并提示重新授权。重新授权同一照片可恢复引用；当前手机版不提供把缺失作品绑定到不同文件的定位工具。
+电脑需要保持运行。配对码有效 10 分钟，设备会话有效 30 天；电脑生成新码会撤销旧设备，也可立即关闭访问。当前连接方式为局域网 / 私有 VPN 的 IP 地址，未部署公网穿透或云中转。
 
-手机版的离线智能分类使用 [ML Kit 内置视觉标签模型](https://developers.google.com/ml-kit/vision/image-labeling/android)，是画面标签及中文关键词映射，**不是桌面 Chinese-CLIP 的中文语义 embedding**。抽象情绪、复杂语句和人脸分组仍使用桌面版。手机 HEIC 解码依赖系统，部分 RAW 能读取 EXIF 但不能预览；手机版摄影报告按文件计数，目前不提供桌面 RAW+JPG 拍摄组统计及镜头生命周期报告。Android 清单已移除网络权限，手机照片不会通过此应用上传。
+覆盖升级继续使用原签名，保留旧独立库及已有相册导出；新客户端不再打开旧库，只清理旧派生预览。清除应用数据不会影响电脑库或已导出的相册作品。
 
-开发者使用 JDK 17、Android SDK 35 / Build Tools 35.0.0，项目 Gradle Wrapper 会下载并验证 Gradle 8.11.1，也可以指定已安装的 Gradle，执行：
-
-```powershell
-.\build-android.ps1 -JavaHome 'D:\jdk-17' -AndroidSdk 'D:\Android\Sdk' -Gradle 'D:\gradle-8.11.1\bin\gradle.bat'
-```
-
-脚本构建、运行 Android 测试与 Lint，并验证发布签名。首次自动生成本机签名密钥，保存在 `.runtime/signing/`，不会提交到 Git；请备份该目录，未来更新 APK 必须使用同一密钥。重新生成密钥会导致手机无法覆盖安装旧版本；不要通过卸载解决，以免丢失草稿。第三方组件遵循各自开源许可证，模型版权归其提供方；不附带用户照片。
+开发者运行 `./build-android.ps1` 完成构建、Lint、单元测试和签名验证；保留私有 `.runtime/signing/` 密钥用于覆盖升级。完整用法与实际验证边界见 [远程客户端说明](docs/android-remote.md)。
 
 ### 网页容器包（GitHub Packages）
 
@@ -68,7 +64,7 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" ghcr.io/wonderhate/photo-management:2.1.1
 ```
 
-这是图库、EXIF、影集、统计、报告与水印的基础网页版。镜像不安装桌面 Chinese-CLIP / 人物识别依赖，也不提供 Windows 原生文件选择器；智能功能使用 Windows 应用或源码版。不要把端口公开到互联网，当前程序没有多用户账户与远程访问认证。使用新版前备份数据卷中的 `library.db` 和派生文件，不要运行删除数据卷的命令。开发者也可用 `docker build -t photo-management .` 构建；工作流位于 `.github/workflows/package.yml`。
+这是图库、EXIF、影集、统计、报告与水印的基础网页版。镜像不安装桌面 Chinese-CLIP / 人物识别依赖，也不提供 Windows 原生文件选择器；智能功能使用 Windows 应用或源码版。不要把端口公开到互联网，历史 2.1.1 容器没有配对认证；本次源码支持受控配对，但未重新发布容器。使用新版前备份数据卷中的 `library.db` 和派生文件，不要运行删除数据卷的命令。开发者也可用 `docker build -t photo-management .` 构建；工作流位于 `.github/workflows/package.yml`。
 
 ### 源码启动
 

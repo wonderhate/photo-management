@@ -1,4 +1,4 @@
-"""One localhost server owned by one desktop window; no LAN listener."""
+"""Desktop server with opt-in, authenticated phone access."""
 import argparse
 import json
 import logging
@@ -36,10 +36,14 @@ def main() -> None:
     from backend.app.main import app
     import uvicorn
     sock = socket.socket()
-    sock.bind(('127.0.0.1', args.port))
+    try:
+        sock.bind(('0.0.0.0', args.port or 8000))
+    except OSError:
+        if args.port: raise
+        sock.bind(('0.0.0.0', 0))
     sock.listen(128)
     url = f'http://127.0.0.1:{sock.getsockname()[1]}'
-    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', log_level='info'))
+    server = uvicorn.Server(uvicorn.Config(app, host='0.0.0.0', log_level='info', proxy_headers=False))
     worker = threading.Thread(target=server.run, kwargs={'sockets': [sock]}, daemon=True)
     worker.start()
     try:
