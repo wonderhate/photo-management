@@ -1,5 +1,6 @@
 {
   "data_dir": "D:\\PhotoLibrary",
+  "models_dir": "D:\\PhotoModels",
   "exports_dir": "D:\\PhotoExports",
   "scan_paths": ["D:\\Photos"]
 }

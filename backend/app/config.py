@@ -2,20 +2,25 @@ import json
 import os
 import sys
 from pathlib import Path
+from . import storage
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT.parent
 FROZEN = getattr(sys, 'frozen', False)
 USER_ROOT = Path(os.environ.get('LOCALAPPDATA', Path.home())) / 'PhotoCollection' if FROZEN else PROJECT
-LOCAL_CONFIG_FILE = (Path(sys.executable).parent if FROZEN else PROJECT) / 'library-config.json'
-LOCAL_CONFIG = json.loads(LOCAL_CONFIG_FILE.read_text('utf-8-sig')) if LOCAL_CONFIG_FILE.exists() else {}
+LOCAL_CONFIG_FILE = Path(os.environ.get('PHOTO_LIBRARY_CONFIG', (Path(os.environ['PHOTO_DATA_DIR']) if 'PHOTO_DATA_DIR' in os.environ else USER_ROOT) / 'library-config.json')).resolve()
+LEGACY_CONFIG_FILE = Path(sys.executable).parent / 'library-config.json' if FROZEN and 'PHOTO_DATA_DIR' not in os.environ else None
+LOCAL_CONFIG = storage.read_config(LOCAL_CONFIG_FILE,LEGACY_CONFIG_FILE)
+LOCKED_STORAGE = [key for key,env in [('data_dir','PHOTO_DATA_DIR'),('models_dir','PHOTO_MODELS_DIR'),('exports_dir','PHOTO_EXPORT_DIR')] if env in os.environ]
+LOCAL_CONFIG, STORAGE_ERROR = storage.apply_pending(LOCAL_CONFIG_FILE,LOCAL_CONFIG,LOCKED_STORAGE)
 # Explicit environment libraries (including tests) are isolated from machine defaults.
 USE_LOCAL_CONFIG = 'PHOTO_DATA_DIR' not in os.environ
 DATA = Path(os.environ.get('PHOTO_DATA_DIR', LOCAL_CONFIG.get('data_dir', USER_ROOT / 'data'))).resolve()
 DEFAULT_EXPORTS = Path.home() / 'Downloads' if FROZEN else DATA / 'exports'
-EXPORTS = Path(os.environ.get('PHOTO_EXPORT_DIR', LOCAL_CONFIG.get('exports_dir', DEFAULT_EXPORTS) if USE_LOCAL_CONFIG else DATA / 'exports')).resolve()
-SCAN_PATHS = [str(Path(value).resolve()) for value in LOCAL_CONFIG.get('scan_paths', [])] if USE_LOCAL_CONFIG else []
-MODELS = Path(os.environ.get('PHOTO_MODELS_DIR', LOCAL_CONFIG.get('models_dir', USER_ROOT / 'models') if USE_LOCAL_CONFIG else USER_ROOT / 'models')).resolve()
+EXPORTS = Path(os.environ.get('PHOTO_EXPORT_DIR', LOCAL_CONFIG.get('exports_dir', DEFAULT_EXPORTS))).resolve()
+SCAN_PATHS = [str(Path(value).resolve()) for value in LOCAL_CONFIG.get('scan_paths', [])]
+MODELS = Path(os.environ.get('PHOTO_MODELS_DIR', LOCAL_CONFIG.get('models_dir', USER_ROOT / 'models' if USE_LOCAL_CONFIG else DATA / 'models'))).resolve()
+EXPORT_ROOTS = [EXPORTS] + [Path(value).resolve() for value in LOCAL_CONFIG.get('previous_exports_dirs',[])]
 AUTOLOAD_AI = os.environ.get('PHOTO_AUTOLOAD_AI', '1') == '1'
 for folder in ('thumbnails', 'watermark_previews', 'previews', 'embeddings', 'exports', 'imports'):
     (DATA / folder).mkdir(parents=True, exist_ok=True)
@@ -41,6 +46,29 @@ def save_settings(value: dict) -> dict:
     temporary.write_text(json.dumps(merged, ensure_ascii=False, indent=2), 'utf-8')
     temporary.replace(SETTINGS_FILE)
     return merged
+
+
+def storage_paths() -> dict:
+    current = {'data_dir':str(DATA),'models_dir':str(MODELS),'exports_dir':str(EXPORTS),'scan_paths':SCAN_PATHS}
+    pending = storage.read_config(LOCAL_CONFIG_FILE,LEGACY_CONFIG_FILE).get('pending_paths')
+    return {'current':current,'pending':pending,'locked_fields':LOCKED_STORAGE,'error':STORAGE_ERROR if pending else None}
+
+
+def save_storage_paths(value: dict) -> dict:
+    global STORAGE_ERROR
+    storage.save_paths(LOCAL_CONFIG_FILE,storage_paths()['current'],value,LOCKED_STORAGE,LEGACY_CONFIG_FILE)
+    STORAGE_ERROR = None
+    return storage_paths()
+
+
+def cancel_storage_paths() -> dict:
+    global STORAGE_ERROR
+    with storage.lock:
+        config = storage.read_config(LOCAL_CONFIG_FILE,LEGACY_CONFIG_FILE)
+        config.pop('pending_paths',None)
+        storage.write_config(LOCAL_CONFIG_FILE,config)
+    STORAGE_ERROR = None
+    return storage_paths()
 
 RAW_EXTENSIONS = {'.arw', '.cr2', '.cr3', '.nef', '.raf', '.dng', '.orf', '.rw2', '.pef'}
 EXTENSIONS = RAW_EXTENSIONS | {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.heic', '.heif', '.webp', '.avif'}

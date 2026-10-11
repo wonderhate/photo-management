@@ -113,6 +113,69 @@ test('confirmed person can create and open a named album',async({page})=>{
   expect(errors).toEqual([]);
 });
 
+test('storage directories can be selected, saved for restart and cancelled',async({page},testInfo)=>{
+  const current={data_dir:'C:/Photo Library',models_dir:'C:/Models/'+'cached-model-'.repeat(20),exports_dir:'C:/Exports',scan_paths:['C:/Photos']};
+  let state={current,pending:null,locked_fields:['models_dir'],error:null};
+  const submitted=[],errors=[];
+  page.on('pageerror',error=>errors.push(String(error)));
+  await page.addInitScript(()=>{localStorage.setItem('onboarded','1')});
+  const responses={
+    '/settings':{...current,focal_bands:[24,35,60,100,200],count_mode:'capture',preview_preference:'jpeg',thumbnail_quality:85,export_format:'jpg',export_quality:95,export_long_edge:4096},
+    '/filter-options':{},'/plugins':[], '/library/scan':{job:null},'/jobs':[],
+    '/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[],total:0},
+    '/dialog/directory':{paths:['D:/New Photo Library']},
+  };
+  await page.route('**/api/**',async route=>{
+    const request=route.request(),key=new URL(request.url()).pathname.slice(4);
+    if(key==='/library/paths'){
+      if(request.method()==='PUT'){
+        submitted.push(request.postDataJSON());
+        if(submitted.length===1)return route.fulfill({status:400,json:{detail:'目录不可写'}});
+        state={...state,pending:submitted.at(-1)};
+      }
+      if(request.method()==='DELETE')state={...state,pending:null};
+      return route.fulfill({json:state});
+    }
+    if(!(key in responses))errors.push(`Unexpected API request: ${key}`);
+    return route.fulfill({json:responses[key]??{}});
+  });
+  await page.goto('/?page=settings');
+  const card=page.locator('.settings-card').filter({has:page.getByRole('heading',{name:'照片库与存储',exact:true})});
+  await expect(card.getByLabel('照片库（数据库与缓存）',{exact:true})).toHaveValue(current.data_dir);
+  await expect(card.getByLabel('AI 模型缓存目录',{exact:true})).toBeDisabled();
+  await card.getByRole('button',{name:'选择照片库（数据库与缓存）',exact:true}).click();
+  await expect(card.getByLabel('照片库（数据库与缓存）',{exact:true})).toHaveValue('D:/New Photo Library');
+  await card.getByLabel('水印导出目录',{exact:true}).fill('D:/New Exports');
+  await card.getByLabel('自动扫描照片目录',{exact:true}).fill(' D:/Photos A \n\n D:/Photos B ');
+  await card.getByRole('button',{name:'保存目录设置',exact:true}).click();
+  await expect(page.locator('.toast')).toContainText('目录不可写');
+  await expect(card.getByRole('status')).toHaveCount(0);
+  await card.getByRole('button',{name:'保存目录设置',exact:true}).click();
+  await expect(card.getByRole('status')).toContainText('重启程序后生效');
+  expect(submitted.at(-1)).toEqual({...current,data_dir:'D:/New Photo Library',exports_dir:'D:/New Exports',scan_paths:['D:/Photos A','D:/Photos B']});
+  await expect(card).toContainText('当前使用：C:/Photo Library');
+  await page.reload();
+  await expect(card.getByLabel('水印导出目录',{exact:true})).toHaveValue('D:/New Exports');
+  await expect(card.getByRole('status')).toContainText('重启程序后生效');
+  for(const theme of ['light','dark'])for(const width of [1440,390]){
+    await page.evaluate(theme=>{document.documentElement.dataset.theme=theme},theme);
+    await page.setViewportSize({width,height:1200});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    const contrast=await card.evaluate(card=>{
+      const luminance=color=>color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+      const background=luminance(getComputedStyle(card).backgroundColor);
+      return [...card.querySelectorAll('h3,p,small')].map(el=>{const text=luminance(getComputedStyle(el).color);return(Math.max(text,background)+.05)/(Math.min(text,background)+.05)});
+    });
+    for(const ratio of contrast)expect(ratio).toBeGreaterThanOrEqual(4.5);
+    await card.screenshot({path:testInfo.outputPath(`storage-${theme}-${width}.png`)});
+  }
+  await card.getByRole('button',{name:'取消待生效修改',exact:true}).click();
+  await expect(card.getByLabel('照片库（数据库与缓存）',{exact:true})).toHaveValue(current.data_dir);
+  await expect(card.getByLabel('自动扫描照片目录',{exact:true})).toHaveValue('C:/Photos');
+  await expect(card.getByRole('status')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('all pages and watermark workflow under production CSP',async({page,request})=>{
   test.setTimeout(90000);
   const errors=[];

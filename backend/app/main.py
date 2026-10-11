@@ -22,6 +22,8 @@ from .services.embedding_service import service as ai
 from .services import timeline_service, face_service, nl_search, plugin_service
 from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename, AlbumUpdate, AlbumOrderRequest, PluginRunRequest, IdsRequest
 from .models import FacePerson, DetectedFace
+from .config import storage_paths, save_storage_paths, cancel_storage_paths
+from .schemas import StoragePathsRequest
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -529,6 +531,22 @@ def delete_face_person(person_id: str):
 
 @app.get('/api/settings')
 def get_settings(): return settings() | {'data_dir':str(DATA),'models_dir':str(MODELS),'exports_dir':str(EXPORTS),'scan_paths':SCAN_PATHS}
+
+
+@app.get('/api/library/paths')
+def get_library_paths(): return storage_paths()
+
+
+@app.put('/api/library/paths')
+def update_library_paths(payload: StoragePathsRequest):
+    try: return save_storage_paths(payload.model_dump())
+    except OSError as error: raise HTTPException(400,f'目录或配置文件不可写：{error}') from error
+
+
+@app.delete('/api/library/paths')
+def cancel_library_paths():
+    try: return cancel_storage_paths()
+    except OSError as error: raise HTTPException(400,f'无法取消目录修改：{error}') from error
 
 @app.put('/api/settings')
 def put_settings(payload: SettingsRequest): return save_settings(payload.model_dump())
