@@ -45,18 +45,19 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     expect(response.headers()['x-content-type-options']).toBe('nosniff');
     expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
     await checkCard('.album-card');
-    if(width===390)await expect(page.locator('.sidebar nav .nav-child')).toHaveCSS('font-size','0px');
+    if(width===390){await page.getByRole('button',{name:'打开导航',exact:true}).click();await expect(page.locator('.sidebar nav .nav-child')).toBeVisible();await page.keyboard.press('Escape');}
     await page.goto('/faces');await checkCard('.face-card');
     await expect(page.locator('.face-card button')).toHaveCount(5);
     expect(await page.locator('.face-card').evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft))).toBeGreaterThanOrEqual(14);
     // These comma-separated light selectors used to contain literal "L" prefixes.
     await page.goto('/?page=photos');
-    const light=theme==='light';
-    await expect(page.getByRole('combobox',{name:'照片排序'})).toHaveCSS('color',light?'rgb(51, 53, 47)':'rgb(220, 225, 221)');
+    const color=await page.evaluate(()=>getComputedStyle(document.documentElement).color);
+    const panel=await page.evaluate(()=>{const el=document.createElement('div');el.style.background='var(--panel)';document.body.appendChild(el);const result=getComputedStyle(el).backgroundColor;el.remove();return result});
+    await expect(page.getByRole('combobox',{name:'照片排序'})).toHaveCSS('color',color);
     await page.getByRole('button',{name:'网格显示设置',exact:true}).click();
-    await expect(page.locator('.display-panel')).toHaveCSS('background-color',light?'rgb(253, 252, 248)':'rgb(30, 36, 32)');
+    await expect(page.locator('.display-panel')).toHaveCSS('background-color',panel);
     await page.getByRole('button',{name:'最近操作',exact:true}).click();
-    await expect(page.locator('.recent-panel')).toHaveCSS('background-color',light?'rgb(253, 252, 248)':'rgb(30, 36, 32)');
+    await expect(page.locator('.recent-panel')).toHaveCSS('background-color',panel);
     expect(errors).toEqual([]);
   });
 }
