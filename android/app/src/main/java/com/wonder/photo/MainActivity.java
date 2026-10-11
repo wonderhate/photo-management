@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         web = new WebView(this);
-        web.setBackgroundColor(0xfff7f7f9);
+        web.setBackgroundColor(0xfff7f5f0);
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true); // JSON index and UI preferences only.
@@ -73,7 +73,7 @@ public class MainActivity extends Activity {
             worker.execute(() -> saveExport(url, cookie, filename, mime));
         });
         FrameLayout frame = new FrameLayout(this);
-        frame.setBackgroundColor(0xfff7f7f9);
+        frame.setBackgroundColor(0xfff7f5f0);
         frame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         frame.setOnApplyWindowInsetsListener((view, insets) -> {
             view.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
@@ -90,12 +90,45 @@ public class MainActivity extends Activity {
         web.loadUrl(HOME);
     }
 
-    private void toast(String text) { runOnUiThread(() -> Toast.makeText(this, text, Toast.LENGTH_LONG).show()); }
+    private void toast(String text) {
+        runOnUiThread(() -> {
+            if (isDestroyed()) return;
+            web.evaluateJavascript("document.documentElement.lang", lang ->
+                Toast.makeText(this, "\"en\"".equals(lang) ? englishToast(text) : text, Toast.LENGTH_LONG).show());
+        });
+    }
+    private static String englishToast(String text) {
+        switch (text) {
+            case "旧预览清理失败，请在系统设置清除应用缓存": return "Unable to clear old previews. Clear the app cache in system settings.";
+            case "无法连接电脑，请确认电脑已启动且网络可达": return "Unable to connect. Keep the computer app running and check the network.";
+            case "电脑已关闭访问或配对已失效，请重新配对": return "Computer access is disabled or pairing has expired. Pair again.";
+            case "手机只保存正式导出的 JPG / PNG 水印作品": return "Only exported JPG / PNG works can be saved to the phone.";
+            case "导出下载失败，请重新连接电脑后重试": return "Export download failed. Reconnect to the computer and retry.";
+            case "电脑返回的内容不是水印图片": return "The computer did not return an exported image.";
+            case "手机无法创建导出文件": return "Unable to create the exported file on the phone.";
+            case "手机存储不可写": return "Phone storage is not writable.";
+            case "网络中断，导出未保存完整，请重试": return "Connection lost. The export was incomplete. Please retry.";
+            case "已保存至手机相册 · PhotoCollection": return "Saved to the phone gallery · PhotoCollection";
+            case "水印保存失败，请检查手机剩余空间": return "Unable to save the work. Check available phone storage.";
+            default: return text;
+        }
+    }
     private void connectionError(String text) {
         runOnUiThread(() -> { pairing = false; if (!isDestroyed()) web.evaluateJavascript("window.connectionDone(" + JSONObject.quote(text) + ")", null); });
     }
 
+    private String libraryUrl() {
+        String lang = getSharedPreferences("remote", MODE_PRIVATE).getString("lang", "zh");
+        return server + "/?page=photos&lang=" + ("en".equals(lang) ? "en" : "zh");
+    }
+
     private final class Connect {
+        @JavascriptInterface public void setLanguage(String lang) {
+            if (!"zh".equals(lang) && !"en".equals(lang)) return;
+            runOnUiThread(() -> {
+                if (HOME.equals(web.getUrl())) getSharedPreferences("remote", MODE_PRIVATE).edit().putString("lang", lang).apply();
+            });
+        }
         @JavascriptInterface public void connect(String address, String code) {
             if (address.length() > 2048 || code.length() > 8) { connectionError("电脑地址或配对码无效"); return; }
             runOnUiThread(() -> {
@@ -123,7 +156,7 @@ public class MainActivity extends Activity {
                                 if (!ok) { connectionError("无法保存配对，请重试"); return; }
                                 CookieManager.getInstance().flush();
                                 web.removeJavascriptInterface("Connect"); // No bridge on network pages.
-                                web.loadUrl(server + "/?page=photos");
+                                web.loadUrl(libraryUrl());
                             });
                         });
                     } catch (Exception error) { connectionError(error.getMessage() == null ? "无法连接电脑" : error.getMessage()); }
@@ -138,7 +171,7 @@ public class MainActivity extends Activity {
                     server = RemoteConnection.normalize(address);
                     if (CookieManager.getInstance().getCookie(server) == null) { connectionError("请先输入配对码连接电脑"); return; }
                     web.removeJavascriptInterface("Connect");
-                    web.loadUrl(server + "/?page=photos");
+                    web.loadUrl(libraryUrl());
                 } catch (Exception error) { connectionError("电脑地址无效"); }
             });
         }

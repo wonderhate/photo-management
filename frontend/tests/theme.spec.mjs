@@ -264,9 +264,12 @@ test('all pages and watermark workflow under production CSP',async({page,request
       await checkLightSurfaces('chart tooltip');
     }
     if(path==='/?page=settings'){
-      await page.locator('.plugin-row button').first().click();
-      await expect(page.locator('.plugin-output')).toBeVisible();
-      await checkLightSurfaces('plugin output');
+      const plugins=await(await request.get('/api/plugins')).json();
+      if(plugins.length){
+        await page.locator('.plugin-row button').first().click();
+        await expect(page.locator('.plugin-output')).toBeVisible();
+        await checkLightSurfaces('plugin output');
+      }else await expect(page.getByText('暂无插件。把脚本放进照片库的 plugins 文件夹后刷新本页。',{exact:true})).toBeVisible();
     }
     if(['/timeline','/?page=reports','/?page=settings'].includes(path))await page.screenshot({path:testInfo.outputPath(`light-${path.includes('settings')?'settings':path.includes('reports')?'reports':'timeline'}.png`),fullPage:true});
   }

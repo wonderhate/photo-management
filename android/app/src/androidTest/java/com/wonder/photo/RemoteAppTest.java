@@ -37,6 +37,7 @@ public class RemoteAppTest {
         fail("Timed out: "+expression+"; body="+evaluate("document.body.innerText"));
     }
     private void screenshot(String name) throws Exception {
+        instrumentation.waitForIdleSync();Thread.sleep(500); // Let WebView's compositor paint the inspected DOM.
         File folder=new File(context.getExternalFilesDir(null),"verification");assertTrue(folder.isDirectory()||folder.mkdirs());
         Bitmap image=instrumentation.getUiAutomation().takeScreenshot();assertNotNull(image);
         try(FileOutputStream out=new FileOutputStream(new File(folder,name+".png"))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,out));}finally{image.recycle();}
@@ -50,13 +51,26 @@ public class RemoteAppTest {
         MainActivity activity=(MainActivity)instrumentation.startActivitySync(intent);
         try {
             instrumentation.runOnMainSync(()->{ViewGroup root=activity.findViewById(android.R.id.content);web=(WebView)((ViewGroup)root.getChildAt(0)).getChildAt(0);});
-            await("document.getElementById('pair')");screenshot("remote-connect");
+            await("document.getElementById('pair')");
+            evaluate("if(document.documentElement.lang==='en')document.getElementById('language').click()");
+            screenshot("remote-connect");
+            evaluate("document.getElementById('language').click()");
+            await("document.documentElement.lang==='en'");
+            assertEquals("false",evaluate("/[\\u3400-\\u9fff]/u.test(document.body.innerText)"));
+            screenshot("remote-connect-en");
             evaluate("document.getElementById('address').value='http://10.0.2.2:8012';document.getElementById('code').value='12345678';document.getElementById('pair').click()");
             await("document.querySelectorAll('.photo-card').length>0 && document.documentElement.dataset.remote==='true'");
+            assertEquals("\"en\"",evaluate("document.documentElement.lang"));
+            assertEquals("false",evaluate("new URL(location.href).searchParams.has('lang')"));
+            screenshot("remote-gallery-en");
+            evaluate("localStorage.setItem('lang','zh');location.reload()");
+            await("document.documentElement.lang==='zh' && document.querySelectorAll('.photo-card').length>0");
+            await("document.querySelectorAll('.photo-image img').length>0 && [...document.querySelectorAll('.photo-image img')].every(img=>img.complete && img.naturalWidth>0)");
             assertEquals("5",evaluate("document.querySelectorAll('.mobile-nav button').length"));
             assertEquals("true",evaluate("typeof Connect==='undefined'"));
             screenshot("remote-gallery");
             evaluate("document.querySelector('.photo-image').click()");await("document.querySelector('.photo-detail')");
+            evaluate("document.querySelector('[aria-label=\"照片信息\"]').click()");
             boolean favorite="true".equals(evaluate("[...document.querySelectorAll('.photo-detail button')].some(b=>b.innerText==='已收藏')"));
             evaluate("[...document.querySelectorAll('.photo-detail button')].find(b=>b.innerText==='收藏'||b.innerText==='已收藏').click()");
             await("[...document.querySelectorAll('.photo-detail button')].some(b=>b.innerText==='"+(favorite?"收藏":"已收藏")+"')");

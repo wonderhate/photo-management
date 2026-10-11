@@ -1,6 +1,6 @@
 # Android 远程客户端
 
-Android 2.0.0 / versionCode 2 访问 Windows 2.2.0 或更新版本的照片库。Windows 2.2.2 的配对界面直接列出手机需要填写的电脑地址和八位配对码。
+Android 2.0.1 / versionCode 3 访问 Windows 2.2.0 或更新版本的照片库。Windows 2.2.3 同步网页版最新界面；配对界面直接列出手机需要填写的电脑地址和八位配对码。
 
 ## 使用
 
@@ -13,7 +13,7 @@ Android 2.0.0 / versionCode 2 访问 Windows 2.2.0 或更新版本的照片库�
 
 ## 功能与存储
 
-手机复用电脑 React 页面和 FastAPI 接口，底部提供照片、影集、创作、报告、我的。智能影集、时间线、人物和统计收进「我的」。手机布局使用红色强调、浅色底、圆角卡片及五栏导航，保留暗色模式。
+手机复用电脑 React 页面和 FastAPI 接口，底部提供照片、影集、创作、报告、我的。智能影集、时间线、人物和统计收进「我的」。连接页与照片库统一采用网页版的暖白分区、金色强调、细边框和衬线标题；保留暗色模式。连接页可切换中英文，所选语言带入照片库；网页版图标同时用于连接页和 Android 启动图标。
 
 照片收藏、评分、标签、批量操作、影集、人物、统计、AI、水印草稿与渲染均对电脑库执行。原始照片只读；删除图库只移除电脑记录。导入路径、文件选择器、原图打开和文件位置对应电脑。
 
@@ -58,3 +58,9 @@ Windows 分支 `codex/android-remote-desktop` 合入 `codex/netease-ui-redesign`
 本机 Windows 安装器为 `releases/PhotoCollection-Setup-2.2.1-x64.exe`，便携包为 `releases/PhotoCollection-Windows.zip`。GitHub 下载入口见 README；用户正式安装位置未用于覆盖升级测试。
 
 2.2.1 实际打包 EXE 的配对、编辑、电脑草稿/导出、图片禁止缓存、源文件哈希和访问撤销通过；原生 WebView 成功加载。新版远程浏览器流程及 ZIP CRC/私人文件排除通过。Android APK 的 SHA-256 保持原值，校验文件同步记录新的 Windows 包。
+
+## Windows 2.2.3 与 Android 2.0.1
+
+两端同步网页版最新 UI：Windows 使用相同的首页、照片布局和沉浸浏览；Android 连接页与远程照片库统一暖白、金色、衬线标题和细边框，优化手机留白与底部导航。英文模式同时覆盖连接提示与原生导出、网络提示。完整变更与隔离验证结果见 `native-ui-sync-2026-10-11.md`。
+
+本次交付文件为 `releases/PhotoCollection-Setup-2.2.3-x64.exe`、`releases/PhotoCollection-Windows.zip` 和 Android 2.0.1 的 `releases/PhotoCollection-Android.apk`。Android 继续使用既有发布签名。

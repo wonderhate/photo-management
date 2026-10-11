@@ -446,6 +446,16 @@ h1,h2{font-family:var(--font-display);font-weight:400;letter-spacing:.025em;line
   .archive-hero.playing .hero-images img.active{animation:none}
   :root:root[data-remote=true][data-theme] .mobile-nav button.active{color:var(--accent);background:var(--accent-soft)}
   :root:root[data-remote=true][data-theme] .mobile-shortcuts button:first-child{background:var(--accent);color:var(--bg)}
+  :root:root[data-remote=true][data-theme] .page-content{padding:18px 18px 24px}
+  :root:root[data-remote=true][data-theme] .gallery-heading{gap:12px!important;margin-bottom:16px!important}
+  :root:root[data-remote=true][data-theme] .gallery-heading .eyebrow{display:none}
+  :root:root[data-remote=true][data-theme] .gallery-heading p{margin-top:6px}
+  :root:root[data-remote=true][data-theme] .library-toolbar{gap:6px;padding:0 0 12px}
+  :root:root[data-remote=true][data-theme] .mobile-nav button{background:transparent;color:var(--muted)}
+  :root:root[data-remote=true][data-theme] .mobile-nav button.active{background:var(--accent-soft);color:var(--accent)}
+  :root:root[data-remote=true][data-theme] :is(.select-box,.favorite){background:var(--panel);color:var(--text)}
+  :root:root[data-remote=true][data-theme] .select-box.checked{background:var(--accent);color:var(--bg)}
+  :root:root[data-remote=true][data-theme] .favorite.on{color:var(--danger)}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}

@@ -5,7 +5,12 @@ import './styles.css';
 import './mobile.css';
 import './archive.css';
 import {isRemote,setRemote} from './remote-client';
+import {setStoredLang} from './i18n';
 async function start(){
+  const url=new URL(location.href),lang=url.searchParams.get('lang');
+  if(isRemote&&(lang==='zh'||lang==='en')){
+    setStoredLang(lang);url.searchParams.delete('lang');history.replaceState(null,'',url);
+  }
   try{const response=await fetch('/api/remote/session',{cache:'no-store'});if(response.ok){const session=await response.json();setRemote(isRemote||session.remote)}}catch{/* Keep the native user-agent hint when the connection drops. */}
   if(isRemote){
     document.documentElement.dataset.remote='true';

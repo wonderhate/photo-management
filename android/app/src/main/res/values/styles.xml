@@ -1,0 +1,10 @@
+<resources>
+    <style name="PhotoCollectionTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">#f7f5f0</item>
+        <item name="android:navigationBarColor">#f7f5f0</item>
+        <item name="android:windowBackground">#f7f5f0</item>
+        <item name="android:colorAccent">#826225</item>
+    </style>
+</resources>

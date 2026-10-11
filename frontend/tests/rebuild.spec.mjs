@@ -29,6 +29,21 @@ async function synthetic(page,{theme='dark',width=1440,reducedMotion='no-prefere
   });
   return{errors,edits};
 }
+test.describe('Android remote language handoff',()=>{
+  test.use({userAgent:'PhotoCollectionRemote/2 Chrome'});
+  test('native language reaches the library without locking later preferences',async({page})=>{
+    const {errors}=await synthetic(page,{width:390,theme:'light',remote:true});
+    await page.goto('/?page=photos&lang=en');
+    await expect(page.locator('html')).toHaveAttribute('lang','en');
+    await expect(page.locator('.mobile-nav')).toBeVisible();
+    await expect(page.locator('.gallery-heading h1')).toContainText('All Photos');
+    expect(new URL(page.url()).searchParams.has('lang')).toBe(false);
+    expect(await page.evaluate(()=>localStorage.getItem('lang'))).toBe('en');
+    await page.evaluate(()=>localStorage.setItem('lang','zh'));
+    await page.reload();await expect(page.locator('html')).toHaveAttribute('lang','zh');
+    expect(errors).toEqual([]);
+  });
+});
 for(const theme of ['dark','light'])for(const width of [1440,390])test(`rebuilt home and viewer ${theme} ${width}`,async({page},info)=>{
   const {errors,edits}=await synthetic(page,{theme,width});
   await page.goto('/?page=home');await expect(page.locator('.collection-tile')).toHaveCount(5);

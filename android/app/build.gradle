@@ -3,7 +3,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'com.wonder.photo'
     compileSdk 35
-    defaultConfig { applicationId 'com.wonder.photo'; minSdk 29; targetSdk 35; versionCode 2; versionName '2.0.0'; testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner' }
+    defaultConfig { applicationId 'com.wonder.photo'; minSdk 29; targetSdk 35; versionCode 3; versionName '2.0.1'; testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     lint {
         warningsAsErrors = true
