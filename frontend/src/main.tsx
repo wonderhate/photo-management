@@ -4,7 +4,6 @@ import App from './App';
 import './styles.css';
 import './mobile.css';
 import './archive.css';
-import './music-layout.css';
 import {isRemote,setRemote} from './remote-client';
 async function start(){
   try{const response=await fetch('/api/remote/session',{cache:'no-store'});if(response.ok){const session=await response.json();setRemote(isRemote||session.remote)}}catch{/* Keep the native user-agent hint when the connection drops. */}
