@@ -32,10 +32,17 @@ jobs:
         run: |
           python -m venv .venv
           ./.venv/Scripts/python.exe -m pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+          if ($LASTEXITCODE) { throw 'CPU torch installation failed.' }
           ./.venv/Scripts/python.exe -m pip install -r backend/requirements.txt -r backend/requirements-ai.txt -r backend/requirements-faces.txt -r desktop/requirements.txt
           if ($LASTEXITCODE) { throw 'Build dependencies failed.' }
           npm ci --prefix frontend
           if ($LASTEXITCODE) { throw 'Frontend dependencies failed.' }
+      - name: Install the pinned installer translation
+        shell: pwsh
+        run: |
+          $language='C:/Program Files (x86)/Inno Setup 6/Languages/ChineseSimplified.isl'
+          Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/jrsoftware/issrc/347bf29bc619ca8a644e05ff22879df5c5e5e5ff/Files/Languages/ChineseSimplified.isl' -OutFile $language
+          if ((Get-FileHash -LiteralPath $language -Algorithm SHA256).Hash.ToLower() -ne 'e0b0b350e2245f3c5e65586dfe43d574f6e7f06f2261149aba284954b3fc9a8d') { throw 'Installer translation integrity verification failed.' }
       - name: Build and verify the Windows package
         shell: pwsh
         run: |
