@@ -1,4 +1,4 @@
-# Windows 与 Android 应用验证（2026-10-10）
+# Windows、Android 与网页容器应用验证（2026-10-11）
 
 Windows 独立程序：PyInstaller 6.22.3 / Python 3.12.10 / pywebview 6.2.1。Android 独立程序：AGP 8.9.2 / Gradle 8.11.1 / JDK 17 / compile & target SDK 35 / min SDK 29；模型随包安装。
 
@@ -38,6 +38,20 @@ Windows 原生窗口内部的完整交互及文件选择器还需要人工验收
 
 Python 依赖复扫 69 个包无已知漏洞，前端 npm audit 为 0；Windows Defender 对发布目录扫描无该目录威胁。当前 Windows 仍未签名，Android 系统信誉判定未实测，剩余资源与验证边界见 [下载与安全检查](apps-security.md)。
 
+### Windows 安装程序
+
+使用 Inno Setup 7.1.0 制作 `PhotoCollection-Setup-2.1.1-x64.exe`，内含上述 build id `8c5460d4929c8d57` 的实际 EXE。Microsoft WebView2 引导程序打包前通过微软发布者 Authenticode 验证。
+
+`desktop/verify_installer.py` 在专用临时安装目录实际通过：当前用户安装、两个开始菜单快捷方式、私人配置排除、同版本覆盖升级、用户配置/数据保留、安装后的 EXE 导入/EXIF/去重/统计/草稿/导出/原图保护，以及 WebView2 原生窗口 `window_loaded=true`。随后运行真实卸载器，确认程序、开始菜单与卸载注册移除，用户创建的配置及外部数据仍存在。测试拒绝覆盖账户内已有的正式安装；清理只作用于 `.test-artifacts` 下自己的目录，并处理 WebView2 长路径缓存。
+
+本机已有 WebView2，未卸载系统运行库模拟缺失环境；自动安装运行库的分支经过编译与签名校验检查，但尚无干净虚拟机上的联网安装结果。安装程序仍未签名，未知发布者/SmartScreen 的限制不变。
+
+## 网页容器 / GitHub Packages
+
+[容器构建验证](https://github.com/wonderhate/photo-management/actions/runs/38099165258)通过。GitHub Linux runner 构建并运行实际 amd64 镜像，以非 root 用户启动，合成原图目录只读挂载；真实 HTTP 检查导入、草稿、环境光 PNG 导出、原图 SHA-256 不变、HTML CSP。镜像中没有私人配置、数据库或签名密钥。
+
+工作流在 main 上验证后发布 `ghcr.io/wonderhate/photo-management:2.1.1` 和 `latest`，OCI source 标签关联当前仓库。基础镜像不包含桌面 AI / 人物识别依赖，也未验证 arm64。初次发布的可见性需单独设置为 Public；README 说明这一步，不能用 CI 推送成功代替匿名下载成功。数据库与派生文件使用独立数据卷，原图目录通过 Docker 的只读挂载保护。
+
 ## Android
 
 3 项 Robolectric 测试通过，覆盖实际 Bitmap 渲染、环境光颜色、EXIF 隐藏、标签 AND/OR、无效参数、草稿重新打开、多版本互不影响、导出后修改状态、数值筛选、报告、缓存清理及安全删除。
@@ -67,6 +81,7 @@ Android 15 / API 35 / x86_64 AOSP 模拟器（WHPX）实际安装并运行 `Inde
 
 ```powershell
 .venv\Scripts\python.exe desktop/verify_package.py releases/windows/PhotoCollection/PhotoCollection.exe --ai
+.venv\Scripts\python.exe desktop/verify_installer.py releases/PhotoCollection-Setup-2.1.1-x64.exe
 .\build-android.ps1
 ```
 
