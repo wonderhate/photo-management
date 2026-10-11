@@ -1,27 +1,27 @@
 # 光影集 · 本地摄影照片管理
 
-Windows 本地优先照片管理系统，当前开发版 **2.2.1**，Android 远程客户端 **2.0.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
+Windows 本地优先照片管理系统，Windows **2.2.1**，Android 远程客户端 **2.0.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
 
 **原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。桌面服务监听局域网接口，远程访问默认关闭；开启后必须配对才能访问。手机只缓存 JSON 索引，图片预览不落盘。
 
-本次远程版本在本机 `releases/`，用法及验证记录见 [手机远程客户端](docs/android-remote.md)。以下 GitHub 下载仍是历史发布 **2.1.1 / Android 1.0.0**，不包含此次远程功能。
+新版包含人物影集创建、自定义照片库和存储目录、重新设计的浅色界面、完整英文界面与网页版同源图标。Android 2.0.0 连接电脑端，手机仅保留索引，正式水印导出可保存到手机相册。用法及验证记录见 [手机远程客户端](docs/android-remote.md)。
 
-| 历史公开下载 | 用途 |
+| 当前公开下载 | 用途 |
 | --- | --- |
-| [Windows 安装程序（推荐）](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Setup-2.1.1-x64.exe) | Windows 10 / 11 x64，中文向导、快捷方式、卸载入口 |
-| [Windows 便携 ZIP](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Windows.zip) | 解压即用，保留 `_internal` 文件夹 |
-| [Android APK](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Android.apk) | Android 10+，手机独立照片库，实际版本 1.0.0 |
-| [SHA-256 校验文件](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/SHA256SUMS.txt) | 核对下载完整性；不是发布者签名 |
+| [Windows 安装程序（推荐）](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/PhotoCollection-Setup-2.2.1-x64.exe) | Windows 10 / 11 x64，中文向导、快捷方式、卸载入口 |
+| [Windows 便携 ZIP](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/PhotoCollection-Windows.zip) | 解压即用，保留 `_internal` 文件夹 |
+| [Android APK](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/PhotoCollection-Android.apk) | Android 10+，电脑照片库的远程客户端，实际版本 2.0.0 |
+| [SHA-256 校验文件](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/SHA256SUMS.txt) | 核对下载完整性；不是发布者签名 |
 
 ## 1. 安装与手动启动
 
 ### Windows 独立应用
 
-[下载 Windows 2.1.1 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.1.1)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件的实际版本为 **1.0.0**，与桌面版本分别编号。
+[下载 Windows 2.2.1 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.2.1)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件的实际版本为 **2.0.0**，与桌面版本分别编号。
 
 **下载安全提示**：Windows 当前没有受信任的代码签名，SmartScreen / 未知发布者提示仍可能出现；Android APK 已使用原发布密钥签名，侧载许可和 Play Protect 扫描提示仍可能出现。防病毒扫描与发布者信誉是不同的检查，不建议关闭防护。检查结果、文件校验方法及仍需的账号/证书见 [下载与安全检查](docs/apps-security.md)。iOS 应用开发已取消，相关代码与构建文件已移除；目前提供 Windows、Android 和网页版本。
 
-下载并打开 `PhotoCollection-Setup-2.1.1-x64.exe`，按中文向导安装。默认安装在当前用户的 `%LOCALAPPDATA%\Programs\PhotoCollection`，不要求管理员权限；可选桌面快捷方式，开始菜单提供启动与卸载入口。缺少 WebView2 时，安装器运行经过 Microsoft 发布者签名验证的官方引导程序，需要联网；安装失败会明确提示并停止。关闭旧应用后再运行安装程序即可覆盖升级。卸载保留照片库、模型缓存、导出文件及用户创建的配置。
+下载并打开 `PhotoCollection-Setup-2.2.1-x64.exe`，按中文向导安装。默认安装在当前用户的 `%LOCALAPPDATA%\Programs\PhotoCollection`，不要求管理员权限；可选桌面快捷方式，开始菜单提供启动与卸载入口。缺少 WebView2 时，安装器运行经过 Microsoft 发布者签名验证的官方引导程序，需要联网；安装失败会明确提示并停止。关闭旧应用后再运行安装程序即可覆盖升级。卸载保留照片库、模型缓存、导出文件及用户创建的配置。
 
 也可以解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；两种 Windows 包都无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带。
 
@@ -29,7 +29,7 @@ Windows 本地优先照片管理系统，当前开发版 **2.2.1**，Android 远
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
 
-制作安装程序：安装官方 [Inno Setup 7](https://jrsoftware.org/isdl.php) 后运行 `./build-installer.ps1 -Compiler 'C:\Program Files\Inno Setup 7\ISCC.exe'`。先运行 Windows 打包脚本，再运行安装器脚本；输出在 `releases/PhotoCollection-Setup-2.1.1-x64.exe`。WebView2 引导程序首次从 Microsoft 下载并验证 Authenticode，私人 `library-config.json` 始终排除。`desktop/verify_installer.py <安装程序路径>` 实际检查隔离安装、升级、窗口启动、卸载和数据保留；已安装正式软件的账户应改用专用测试账户，验证脚本会拒绝覆盖现有安装。
+制作安装程序：安装官方 [Inno Setup 7](https://jrsoftware.org/isdl.php) 后运行 `./build-installer.ps1 -Compiler 'C:\Program Files\Inno Setup 7\ISCC.exe'`。先运行 Windows 打包脚本，再运行安装器脚本；输出在 `releases/PhotoCollection-Setup-2.2.1-x64.exe`。WebView2 引导程序首次从 Microsoft 下载并验证 Authenticode，私人 `library-config.json` 始终排除。`desktop/verify_installer.py <安装程序路径>` 实际检查隔离安装、升级、窗口启动、卸载和数据保留；已安装正式软件的账户应改用专用测试账户，验证脚本会拒绝覆盖现有安装。
 
 升级时先关闭旧版，将新 ZIP 解压到新目录；有本机 `library-config.json` 时复制该配置到新 EXE 同目录。不要用公开包中的示例覆盖已有配置、数据库或模型缓存。默认库仍使用 `%LOCALAPPDATA%\PhotoCollection\data`。
 
@@ -56,7 +56,7 @@ Android 2.0.0 访问电脑照片库，需要同时运行本次 Windows 2.2.0 或
 
 ### 网页容器包（GitHub Packages）
 
-[容器包页面](https://github.com/users/wonderhate/packages/container/package/photo-management)：`ghcr.io/wonderhate/photo-management:2.1.1`，同时提供 `latest`。GitHub Actions 构建实际镜像、检查导入/草稿/导出和原图哈希后才发布，镜像使用非 root 用户；不包含任何私人库或照片。首次发布的包默认为私有，仓库所有者需在 Package settings → Change visibility 设为 Public 后，其他用户才能匿名拉取；仓库公开不等于容器包自动公开。
+[容器包页面](https://github.com/users/wonderhate/packages/container/package/photo-management)：`ghcr.io/wonderhate/photo-management:2.1.1`，同时提供 `latest`。手动运行主分支的 Web package 工作流时，GitHub Actions 构建实际镜像、检查导入/草稿/导出和原图哈希后才发布；Windows / Android Release 不自动更新容器，镜像使用非 root 用户；不包含任何私人库或照片。首次发布的包默认为私有，仓库所有者需在 Package settings → Change visibility 设为 Public 后，其他用户才能匿名拉取；仓库公开不等于容器包自动公开。
 
 已安装 Docker 的电脑可运行以下 PowerShell 命令。将 `D:\Photos` 换成自己的照片目录，该目录**只读挂载**；数据库和派生导出保存在独立 Docker volume 中，卸载容器不删除 volume。打开 <http://127.0.0.1:8000>，导入框填写容器里的 `/photos` 路径。
 

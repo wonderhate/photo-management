@@ -28,12 +28,12 @@ jobs:
           docker run -d --name photo-test -p 127.0.0.1:8000:8000 --mount "type=bind,source=$PWD/verification/container-originals,target=/photos,readonly" photo-management:verify
           trap 'docker logs photo-test; docker rm -f photo-test' EXIT
           for i in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:8000/api/health; then break; fi
+            if docker exec photo-test python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=2)" >/dev/null 2>&1; then break; fi
             sleep 1
           done
           docker exec photo-test python -c "from PIL import Image; Image.new('RGB',(640,480),'orange').save('/data/package-test.jpg')"
           docker cp photo-test:/data/package-test.jpg verification/container-originals/source.jpg
-          python - <<'PY'
+          docker exec -i photo-test python - <<'PY'
           import hashlib,json,urllib.request,time
           def api(path,body=None):
               req=urllib.request.Request('http://127.0.0.1:8000'+path,data=json.dumps(body).encode() if body is not None else None,headers={'Content-Type':'application/json'})
@@ -54,13 +54,14 @@ jobs:
           PY
           docker exec photo-test test -z "$(docker exec photo-test find /app -name library-config.json -o -name library.db -o -name '*.p12')"
       - uses: docker/login-action@v3
-        if: github.ref == 'refs/heads/main'
+        # Windows/Android releases do not replace the existing public web image.
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish the verified image
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         run: |
           version=$(docker run --rm photo-management:verify python -c 'from backend.version import VERSION; print(VERSION)')
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
