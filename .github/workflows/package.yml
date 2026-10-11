@@ -1,5 +1,7 @@
 name: Web package
 on:
+  push:
+    branches: [main, 'codex/web-package']
   workflow_dispatch:
   release:
     types: [published]
@@ -52,11 +54,13 @@ jobs:
           PY
           docker exec photo-test test -z "$(docker exec photo-test find /app -name library-config.json -o -name library.db -o -name '*.p12')"
       - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish the verified image
+        if: github.ref == 'refs/heads/main'
         run: |
           version=$(docker run --rm photo-management:verify python -c 'from backend.version import VERSION; print(VERSION)')
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
