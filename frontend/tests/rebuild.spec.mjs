@@ -32,8 +32,13 @@ for(const theme of ['dark','light'])for(const width of [1440,390])test(`rebuilt 
   const {errors,edits}=await synthetic(page,{theme,width});
   await page.goto('/?page=home');await expect(page.locator('.collection-tile')).toHaveCount(5);
   await expect(page.locator('.archive-hero h1')).toBeVisible();
-  await expect(page.locator('.hero-primary')).toHaveCSS('background-color','rgb(255, 255, 255)');
-  await expect(page.locator('.hero-primary')).toHaveCSS('color','rgb(17, 17, 17)');
+  await expect(page.locator('.archive-hero')).toHaveCSS('height','360px');
+  if(width>760){await expect(page.locator('.sidebar')).toBeVisible();await expect(page.locator('.sidebar')).toHaveCSS('width','228px');await expect(page.locator('.brand-icon img')).toHaveCSS('width','38px')}
+  await expect(page.locator('.hero-primary')).toBeEnabled();
+  const actionBackground=await page.evaluate(()=>{const probe=document.createElement('div');probe.style.background='var(--accent-soft)';document.body.append(probe);const color=getComputedStyle(probe).backgroundColor;probe.remove();return color});
+  await expect(page.locator('.hero-primary')).toHaveCSS('background-color',actionBackground);
+  const plainBackground=await page.evaluate(()=>{const probe=document.createElement('div');probe.style.background='var(--panel)';document.body.append(probe);const color=getComputedStyle(probe).backgroundColor;probe.remove();return color});
+  await expect(page.locator('.hero-secondary')).toHaveCSS('background-color',plainBackground);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath('home.png')});
   await page.locator('.home-collections').scrollIntoViewIfNeeded();

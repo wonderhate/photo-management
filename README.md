@@ -1,6 +1,6 @@
 # 光影集 · 本地摄影照片管理
 
-Windows 本地优先照片管理系统，当前开发版 **2.2.0**，Android 远程客户端 **2.0.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
+Windows 本地优先照片管理系统，当前开发版 **2.2.1**，Android 远程客户端 **2.0.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
 
 **原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。桌面服务监听局域网接口，远程访问默认关闭；开启后必须配对才能访问。手机只缓存 JSON 索引，图片预览不落盘。
 
@@ -112,11 +112,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1 -Install
 
 首次使用可以直接启动：未提供本机配置时，数据库与缓存默认位于项目 `data/`，导出位于 `data/exports/`。
 
-也可以把 `library-config.example.json` 复制为 `library-config.json`，修改三个目录后重启。配置文件不提交 Git。
+也可以把 `library-config.example.json` 复制为 `library-config.json`，修改目录后重启。配置文件不提交 Git。
+
+源码新增「设置 → 照片库与存储」目录编辑入口：可以选择文件夹或填写绝对路径，自定义照片库（数据库与缓存）、AI 模型缓存、水印导出和多个自动扫描照片目录。「保存目录设置」后显示待生效的新位置，刷新页面仍保留；也可以「取消待生效修改」。修改在下次启动程序时生效，网页刷新不会切换正在使用的照片库。
+
+修改照片库位置时必须选择空目录；关闭其他应用实例后重启，程序会复制数据库、影集、草稿、预览、人物缓存及浏览器导入文件，验证数据库后再切换。外部原图保持原位置，旧照片库保留；目标已有文件、复制失败或配置写入失败时继续使用原库并显示错误。首次复制较大的库可能需要等待。导出路径只改变后续导出位置，历史导出保留原位置并继续可下载。模型目录改动不搬动原缓存；新目录为空时需重新准备模型。
+
+Windows 打包源码将界面配置写入 `%LOCALAPPDATA%\PhotoCollection\library-config.json`，兼容读取旧 EXE 同目录的配置；个人配置保存后优先使用，不会写入安装目录。源码版仍写入项目 `library-config.json`。显式设置 `PHOTO_DATA_DIR` 的实例使用该数据目录内的独立配置，不读取本机项目配置；由 `PHOTO_DATA_DIR`、`PHOTO_MODELS_DIR`、`PHOTO_EXPORT_DIR` 指定的路径在界面中锁定。容器中的路径指容器可见的目录，需要预先配置挂载。详细实现和验证见 [目录设置验证](docs/storage-paths.md)。本机 Windows 2.2.1 安装包已同步目录设置和新版界面。
 
 ```json
 {
   "data_dir": "D:\\PhotoLibrary",
+  "models_dir": "D:\\PhotoModels",
   "exports_dir": "D:\\PhotoExports",
   "scan_paths": ["D:\\Photos"]
 }

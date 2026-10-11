@@ -33,6 +33,7 @@ try{
   }
   await page.locator('.photo-image').first().click();
   await page.locator('.photo-detail').waitFor();
+  await page.getByRole('button',{name:'照片信息',exact:true}).click();
   await page.getByRole('button',{name:'制作水印',exact:true}).click();
   await page.locator('.render-stage img').waitFor();
   await page.getByLabel('水印作品名称').fill('Chromium remote draft');
@@ -48,12 +49,12 @@ try{
   await page.locator('.mobile-nav').getByRole('button',{name:'照片',exact:true}).click();
   await page.locator('.photo-image').first().click();
   await page.locator('.photo-detail').waitFor();
-  const favorite=page.locator('.photo-detail').getByRole('button',{name:/^(已收藏|收藏)$/});
-  const label=await favorite.innerText();
+  const favorite=page.locator('.viewer-toolbar').getByRole('button',{name:/^收藏 /});
+  const pressed=await favorite.getAttribute('aria-pressed');
   await context.setOffline(true);
   await favorite.click();
   await page.locator('.toast').filter({hasText:'操作未保存'}).waitFor();
-  assert.equal(await favorite.innerText(),label);
+  assert.equal(await favorite.getAttribute('aria-pressed'),pressed);
   await context.setOffline(false);
   assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('remote-index:')&&/data:image|blob:/.test(localStorage.getItem(k)))),false);
   assert.deepEqual(errors,[]);

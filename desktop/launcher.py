@@ -63,14 +63,15 @@ def main() -> None:
             worker.join(args.duration or None)
         else:
             import webview
+            from desktop.icon import application_icon
             webview.settings['ALLOW_DOWNLOADS'] = True
-            window=webview.create_window('光影集 · 摄影管理', url, width=1440, height=960, min_size=(900, 650), background_color='#151719')
+            window=webview.create_window('光影集 · 摄影管理', url, width=1440, height=960, min_size=(900, 650), background_color='#f4f5f8')
             if args.window_check:
                 def loaded() -> None:
                     if args.status_file: args.status_file.write_text(json.dumps({'url':url, **health, 'window_loaded':True}), 'utf-8')
                     threading.Timer(2,window.destroy).start()
                 window.events.loaded += loaded
-            webview.start(gui='edgechromium', private_mode=False, storage_path=str(log_dir.parent / 'webview'))
+            webview.start(gui='edgechromium', private_mode=False, storage_path=str(log_dir.parent / 'webview'), icon=str(application_icon(log_dir.parent)))
     finally:
         server.should_exit = True
         worker.join(timeout=15)

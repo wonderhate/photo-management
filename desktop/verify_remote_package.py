@@ -4,11 +4,13 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import struct
 import tempfile
 import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, build_opener, ProxyHandler
 import zipfile
+from backend.version import VERSION, build_id
 
 ROOT=Path(__file__).resolve().parents[1]
 opener=build_opener(ProxyHandler({}))
@@ -18,6 +20,12 @@ def main():
         data=Path(folder)
         env=os.environ|{'PHOTO_DATA_DIR':str(data/'library'),'PHOTO_EXPORT_DIR':str(data/'exports'),'PHOTO_MODELS_DIR':str(data/'models'),'PHOTO_LIBRARY_CONFIG':str(data/'config.json'),'PHOTO_AUTOLOAD_AI':'0'}
         exe=ROOT/'releases/windows/PhotoCollection/PhotoCollection.exe'
+        icon=(ROOT/'.cache/packaging/PhotoCollection.ico').read_bytes()
+        assert (exe.parent/'_internal/desktop/PhotoCollection.ico').read_bytes()==icon
+        executable=exe.read_bytes()
+        for index in range(struct.unpack_from('<H',icon,4)[0]):
+            length,offset=struct.unpack_from('<II',icon,6+16*index+8)
+            assert icon[offset:offset+length] in executable,'Missing embedded web icon size'
         process=subprocess.Popen([str(exe),'--serve','--port','8013','--duration','180'],env=env,creationflags=subprocess.CREATE_NO_WINDOW)
         base='http://127.0.0.1:8013'
         def call(path,method='GET',body=None,phone=False,cookie=''):
@@ -32,7 +40,8 @@ def main():
                 try:health,_=call('/api/health');break
                 except (OSError,URLError):time.sleep(.2)
             else:raise AssertionError('Packaged server failed to start')
-            assert health['version']=='2.2.0',health
+            assert health['version']==VERSION,health
+            assert health['build_id']==build_id(),health
             assert b'root' in call('/')[0]
             source=ROOT/'.test-artifacts/remote-client/synthetic-originals/Light-01.jpg'
             before=hashlib.sha256(source.read_bytes()).hexdigest()
@@ -71,6 +80,6 @@ def main():
         names=archive.namelist()
         assert not any(Path(name).name in {'library.db','library-config.json','remote-access.json','android-password.txt'} or name.endswith(('.p12','.keystore')) for name in names)
         assert any(name.endswith('docs/android-remote.md') for name in names)
-    print('PASS: built Windows 2.2.0 EXE pairing, desktop edits, drafts/export, image no-store, source hash, revocation and ZIP privacy')
+    print(f'PASS: built Windows {VERSION} EXE web icon, build identity, pairing, desktop edits, drafts/export, image no-store, source hash, revocation and ZIP privacy')
 
 if __name__=='__main__':main()
