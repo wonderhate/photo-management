@@ -176,7 +176,7 @@ test('storage directories can be selected, saved for restart and cancelled',asyn
   expect(errors).toEqual([]);
 });
 
-test('all pages and watermark workflow under production CSP',async({page,request})=>{
+test('all pages and watermark workflow under production CSP',async({page,request},testInfo)=>{
   test.setTimeout(90000);
   const errors=[];
   page.on('pageerror',error=>errors.push(String(error)));
@@ -185,23 +185,73 @@ test('all pages and watermark workflow under production CSP',async({page,request
   const health=await(await request.get('/api/health')).json();
   expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');
   const source=join(health.data_dir,'security-browser-source.jpg');
-  execFileSync(process.env.PHOTO_TEST_PYTHON||'python',['-c',"from PIL import Image; import sys; exif=Image.Exif(); exif[272]='Test Camera'; exif[36867]='2026:09:29 18:24:00'; Image.new('RGB',(640,480),'orange').save(sys.argv[1],exif=exif)",source]);
+  execFileSync(process.env.PHOTO_TEST_PYTHON||'python',['-c',"from PIL import Image; from PIL.TiffImagePlugin import IFDRational; import sys; exif=Image.Exif(); exif[272]='Test Camera'; exif[36867]='2026:09:29 18:24:00'; exif[37386]=IFDRational(50); exif[33437]=IFDRational(28,10); exif[33434]=IFDRational(1,125); exif[34855]=400; exif[42036]='Test Lens'; Image.new('RGB',(640,480),'orange').save(sys.argv[1],exif=exif)",source]);
   const digest=()=>createHash('sha256').update(readFileSync(source)).digest('hex');
   const before=digest();
   const job=await(await request.post('/api/photos/import',{data:{paths:[source]}})).json();
   await expect.poll(async()=> (await(await request.get('/api/jobs/'+job.id)).json()).status).toBe('completed');
   const photo=(await(await request.get('/api/photos')).json()).photos[0];
-  await page.addInitScript(()=>{localStorage.setItem('onboarded','1')});
-  for(const path of ['/?page=photos','/?page=albums','/?page=smart','/timeline','/faces','/?page=stats','/?page=reports','/watermark/gallery','/?page=settings','/compare']){
+  await page.addInitScript(()=>{localStorage.setItem('onboarded','1');localStorage.setItem('theme','light')});
+  async function checkLightSurfaces(name){
+    await expect.poll(()=>page.evaluate(()=>[...document.querySelectorAll('*')].filter(el=>{
+      if(!(el instanceof HTMLElement))return false;
+      const rect=el.getBoundingClientRect();
+      if(rect.width<40||rect.height<20||getComputedStyle(el).visibility==='hidden')return false;
+      const rgba=getComputedStyle(el).backgroundColor.match(/[\d.]+/g)?.map(Number);
+      if(!rgba||rgba[3]===0||rgba[3]<.5)return false;
+      const luminance=rgba.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+      return luminance<.45;
+    }).map(el=>({element:el.tagName,class:el.className,background:getComputedStyle(el).backgroundColor}))),{message:`Dark UI surfaces in ${name}`,timeout:2000}).toEqual([]);
+    const unreadableTitles=await page.locator('h1,h2,h3').evaluateAll(titles=>{
+      const luminance=color=>color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+      return titles.filter(el=>el.getClientRects().length).map(el=>{
+        let surface=el;
+        while(surface.parentElement&&getComputedStyle(surface).backgroundColor==='rgba(0, 0, 0, 0)')surface=surface.parentElement;
+        const text=luminance(getComputedStyle(el).color),background=luminance(getComputedStyle(surface).backgroundColor);
+        return{text:el.textContent,contrast:(Math.max(text,background)+.05)/(Math.min(text,background)+.05)};
+      }).filter(title=>title.contrast<4.5);
+    });
+    expect(unreadableTitles,`Unreadable titles in ${name}`).toEqual([]);
+  }
+  for(const path of ['/?page=photos','/?page=albums','/?page=smart','/timeline','/faces','/?page=stats','/?page=reports','/watermark/gallery','/?page=settings','/compare?ids='+photo.id]){
     const response=await page.goto(path);
     expect(response.status()).toBe(200);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('main')).toBeVisible();
+    await expect(page.locator('.sidebar-note p')).toHaveText('收集光，收藏爱');
+    await checkLightSurfaces(path);
+    if(path==='/?page=stats'){
+      await page.locator('.recharts-bar-rectangle').first().hover();
+      await expect(page.locator('.recharts-default-tooltip').first()).toBeVisible();
+      await checkLightSurfaces('chart tooltip');
+    }
+    if(path==='/?page=settings'){
+      await page.locator('.plugin-row button').first().click();
+      await expect(page.locator('.plugin-output')).toBeVisible();
+      await checkLightSurfaces('plugin output');
+    }
+    if(['/timeline','/?page=reports','/?page=settings'].includes(path))await page.screenshot({path:testInfo.outputPath(`light-${path.includes('settings')?'settings':path.includes('reports')?'reports':'timeline'}.png`),fullPage:true});
   }
+  await page.goto('/?page=photos');
+  await page.locator('.photo-image').first().click();
+  await expect(page.locator('.detail-image')).toBeVisible();
+  await checkLightSurfaces('photo detail');
+  await page.screenshot({path:testInfo.outputPath('light-detail.png'),fullPage:true});
+  await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:'导入照片',exact:true}).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await checkLightSurfaces('import dialog');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('?');
+  await expect(page.locator('.shortcuts-list')).toBeVisible();
+  await checkLightSurfaces('keyboard shortcuts');
+  await page.keyboard.press('Escape');
   await page.goto('/watermark/workshop?photo='+photo.id);
   const preview=page.getByAltText('水印实时预览');
   await expect(preview).toBeVisible();
   await expect.poll(()=>preview.evaluate(img=>img.naturalWidth)).toBeGreaterThan(0);
+  await checkLightSurfaces('watermark editor');
+  await page.screenshot({path:testInfo.outputPath('light-watermark.png'),fullPage:true});
   await page.getByRole('button',{name:'保存到水印图库',exact:true}).click();
   await expect(page).toHaveURL(/draft=/);
   const draftURL=page.url();
@@ -210,8 +260,13 @@ test('all pages and watermark workflow under production CSP',async({page,request
   await page.getByRole('button',{name:'标记为待导出',exact:true}).click();
   await page.getByRole('button',{name:'导出当前照片',exact:true}).click();
   await expect(page.locator('.download-result')).toBeVisible();
+  await checkLightSurfaces('watermark export');
   const draftId=new URL(draftURL).searchParams.get('draft');
   expect((await(await request.get('/api/watermark/drafts/'+draftId)).json()).status).toBe('exported');
+  await page.goto('/watermark/gallery');
+  await expect(page.locator('.draft-card')).toBeVisible();
+  await checkLightSurfaces('watermark gallery');
+  await page.screenshot({path:testInfo.outputPath('light-drafts.png'),fullPage:true});
   expect(digest()).toBe(before);
   expect(errors).toEqual([]);
 });
