@@ -84,7 +84,7 @@ def get_settings(request: Request):
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
             address = ip_address(info[4][0])
-            if address.is_private and not address.is_loopback and not address.is_link_local:
+            if (address.is_private or address in ip_network('100.64.0.0/10')) and not address.is_loopback and not address.is_link_local and not address.is_unspecified and not address.is_multicast:
                 addresses.add(str(address))
     except OSError:
         pass

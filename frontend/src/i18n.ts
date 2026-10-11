@@ -1,6 +1,9 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
+  '在手机连接页面填写以下两项':'Enter these two fields on your phone',
+  '电脑地址':'Computer Address','电脑地址 {0}':'Computer Address {0}','八位配对码':'8-Digit Pairing Code','开启手机访问后显示':'Enable phone access to see the code',
+  '填写完整地址（含 http:// 和端口）；多个地址时，选择手机能访问的局域网或私有 VPN 地址。':'Enter the full address, including http:// and the port. If several addresses are shown, use the local network or private VPN address your phone can reach.',
   '摄影空间':'Photography Space','主导航':'Main navigation','摄影空间导航':'Photography navigation','快捷导航':'Quick navigation','打开导航':'Open navigation','关闭导航':'Close navigation','跳到主要内容':'Skip to main content',
   '摄影空间封面':'Photography cover','把看见的光，':'The light you see,','留在自己的世界。':'a world of your own.','进入照片库':'Open Library','探索影集':'Explore Collections','封面照片':'Cover photo','暂停封面轮播':'Pause cover slideshow','播放封面轮播':'Play cover slideshow','让瞬间，成为故事。':'Moments become stories.','全部影集':'All Collections','你的故事，从第一张照片开始。':'Your story starts with one photo.','收藏，也创作。':'Collect. Create.','整理照片':'Organize Photos','完整构图，清晰参数，找回每一次拍摄。':'Full compositions and clear metadata for every capture.','水印作品':'Watermark Works','从草稿到导出，为照片留下自己的署名。':'From drafts to exports, give every photo your signature.','从时间与镜头，读懂自己的摄影语言。':'Explore your photographic language through time and lenses.',
   '浏览布局':'Gallery layout','保持构图 · 拼排行':'Original proportions · Justified','规则网格':'Regular grid','照片信息':'Photo information','上一张':'Previous photo','下一张':'Next photo','播放展映':'Play slideshow','暂停展映':'Pause slideshow','全屏':'Fullscreen','展映模式':'Presentation','普通浏览':'Standard view','极光':'Aurora','雪境':'Snow','手电筒':'Flashlight','胶片列车':'Film train','开启手电筒':'Turn on flashlight','关闭手电筒':'Turn off flashlight','摄影氛围':'Photography atmosphere','列车速度':'Train speed','跳过开场':'Skip introduction',

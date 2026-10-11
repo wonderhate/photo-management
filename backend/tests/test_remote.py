@@ -6,6 +6,18 @@ from backend.app import remote
 from test_library import import_paths
 
 
+def test_pairing_addresses_include_private_vpn_and_actual_port(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(remote, 'CONFIG', tmp_path / 'remote.json')
+    hosts = ['192.168.1.20', '100.64.1.20', '192.168.1.20', '127.0.0.1',
+             '169.254.1.20', '0.0.0.0', '239.1.1.1', '8.8.8.8']
+    monkeypatch.setattr(remote.socket, 'getaddrinfo', lambda *args: [
+        (remote.socket.AF_INET, remote.socket.SOCK_STREAM, 6, '', (host, 0)) for host in hosts])
+    access = client.get('/api/remote/settings', headers={'Host': 'localhost:8123'}).json()
+    assert access['enabled'] is False
+    assert access['pairing_code'] == ''
+    assert access['addresses'] == ['http://100.64.1.20:8123', 'http://192.168.1.20:8123']
+
+
 def test_paired_phone_edits_desktop_draft_and_export_without_cached_images(client, image_factory, monkeypatch, tmp_path):
     monkeypatch.setattr(remote, 'CONFIG', tmp_path / 'remote.json')
     remote.attempts.clear()
