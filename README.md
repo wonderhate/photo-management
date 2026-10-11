@@ -58,6 +58,20 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 
 脚本构建、运行 Android 测试与 Lint，并验证发布签名。首次自动生成本机签名密钥，保存在 `.runtime/signing/`，不会提交到 Git；请备份该目录，未来更新 APK 必须使用同一密钥。重新生成密钥会导致手机无法覆盖安装旧版本；不要通过卸载解决，以免丢失草稿。第三方组件遵循各自开源许可证，模型版权归其提供方；不附带用户照片。
 
+### 网页容器包（GitHub Packages）
+
+[容器包页面](https://github.com/users/wonderhate/packages/container/package/photo-management)：`ghcr.io/wonderhate/photo-management:2.1.1`，同时提供 `latest`。GitHub Actions 构建实际镜像、检查导入/草稿/导出和原图哈希后才发布，镜像使用非 root 用户；不包含任何私人库或照片。首次发布的包默认为私有，仓库所有者需在 Package settings → Change visibility 设为 Public 后，其他用户才能匿名拉取；仓库公开不等于容器包自动公开。
+
+已安装 Docker 的电脑可运行以下 PowerShell 命令。将 `D:\Photos` 换成自己的照片目录，该目录**只读挂载**；数据库和派生导出保存在独立 Docker volume 中，卸载容器不删除 volume。打开 <http://127.0.0.1:8000>，导入框填写容器里的 `/photos` 路径。
+
+```powershell
+docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" ghcr.io/wonderhate/photo-management:2.1.1
+```
+
+这是图库、EXIF、影集、统计、报告与水印的基础网页版。镜像不安装桌面 Chinese-CLIP / 人物识别依赖，也不提供 Windows 原生文件选择器；智能功能使用 Windows 应用或源码版。不要把端口公开到互联网，当前程序没有多用户账户与远程访问认证。使用新版前备份数据卷中的 `library.db` 和派生文件，不要运行删除数据卷的命令。开发者也可用 `docker build -t photo-management .` 构建；工作流位于 `.github/workflows/package.yml`。
+
+### 源码启动
+
 需要 Python 3.12+、Node.js 22.12+，并使 `python`、`npm` 可在 PowerShell 找到。本次验证使用 Python 3.12.10 / Node.js 24.19。
 
 ```powershell
