@@ -81,10 +81,11 @@ def main() -> None:
                 raise TimeoutError('Uninstaller has not released its test log')
             print('Installer: uninstall removes application and shortcuts, keeps configuration and data PASS')
             assert work.resolve().parent == test_root.resolve(), 'Cleanup must stay inside test artifacts'
-            # WebView2 may finish writing its private test cache shortly after the window exits.
+            # Test paths plus WebView2 cache names can exceed Windows' legacy 260-character limit.
+            cleanup_path = '\\\\?\\' + str(work.resolve())
             for _ in range(150):
                 try:
-                    shutil.rmtree(work)
+                    shutil.rmtree(cleanup_path)
                     break
                 except OSError:
                     time.sleep(.2)
