@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 from urllib.parse import quote
-from ..config import DATA, EXPORTS
+from ..config import DATA, EXPORTS, EXPORT_ROOTS
 
 def record_path(filename: str) -> Path:
     return DATA / 'export-records' / (hashlib.sha256(filename.encode('utf-8')).hexdigest() + '.json')
@@ -25,7 +25,7 @@ def lookup(filename: str) -> Path | None:
         target = Path(metadata['file_path']).resolve()
         if metadata.get('custom') and filename == hashlib.sha256(str(target).encode('utf-8')).hexdigest() + '__' + target.name and target.is_file():
             return target
-        if target.parent == EXPORTS.resolve() and target.name == filename and target.is_file():
+        if target.parent in {EXPORTS.resolve(), *EXPORT_ROOTS} and target.name == filename and target.is_file():
             return target
     # Keep pre-existing exports and database backups downloadable from the private library.
     target = (DATA / 'exports' / filename).resolve()

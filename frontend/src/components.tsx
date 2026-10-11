@@ -1,14 +1,32 @@
-import {useEffect,useRef,useState} from 'react';
+import {t} from './i18n';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import type {ReactNode,MouseEvent,KeyboardEvent,CSSProperties} from 'react';
-import {FixedSizeGrid} from 'react-window';
-import type {GridChildComponentProps} from 'react-window';
+import {FixedSizeGrid,VariableSizeList} from 'react-window';
+import type {GridChildComponentProps,ListChildComponentProps} from 'react-window';
+import {galleryRows} from './gallery-layout';
+import type {GalleryRow} from './gallery-layout';
 import {ImageOff, Heart, Check, X, ChevronLeft, ChevronRight, Star, Search, Camera, Focus, Tag as TagIcon, FileText} from 'lucide-react';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid} from 'recharts';
 import type {Photo,Bin,Summary} from './types';
 import {PhotoBadge} from './RatingColorLabel';
 
-export function Modal({title,onClose,children,wide=false}:{title:string;onClose:()=>void;children:ReactNode;wide?:boolean}) {
-  return <div className="scrim" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section role="dialog" aria-modal="true" aria-label={title} className={'modal '+(wide?'wide':'')}><header><h2>{title}</h2><button className="icon" aria-label="关闭" onClick={onClose}><X size={20}/></button></header>{children}</section></div>;
+export function Modal({title,onClose,children,wide=false,className=''}:{title:string;onClose:()=>void;children:ReactNode;wide?:boolean;className?:string}) {
+  const ref=useRef<HTMLElement|null>(null),close=useRef(onClose);close.current=onClose;
+  useEffect(()=>{
+    const previous=document.activeElement as HTMLElement|null,overflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const key=(event:globalThis.KeyboardEvent)=>{
+      if([...document.querySelectorAll('[aria-modal=true]')].at(-1)!==ref.current)return;
+      if(event.key==='Escape'){event.stopPropagation();close.current();return}
+      if(event.key!=='Tab')return;
+      const controls=[...ref.current!.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);
+      const first=controls[0],last=controls.at(-1);
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
+    };
+    document.addEventListener('keydown',key,true);
+    return()=>{document.body.style.overflow=overflow;document.removeEventListener('keydown',key,true);if(previous?.isConnected)previous.focus()};
+  },[]);
+  return <div className={'scrim '+className} onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section ref={ref} role="dialog" aria-modal="true" aria-label={title} className={'modal '+(wide?'wide':'')}><header><h2>{title}</h2><button className="icon" aria-label={t("关闭")} onClick={onClose}><X size={20}/></button></header>{children}</section></div>;
 }
 type Suggestion={kind:'camera_model'|'lens_model'|'tag'|'search';value:string;label:string};
 export function Marked({text,term}:{text:string;term?:string}) {
@@ -30,7 +48,7 @@ export function SearchBox({value,options,onFilter,onSemantic}:{value:string;opti
     for(const cam of options.camera_model||[])if(String(cam).toLowerCase().includes(q))suggestions.push({kind:'camera_model',value:String(cam),label:String(cam)});
     for(const lens of options.lens_model||[])if(String(lens).toLowerCase().includes(q))suggestions.push({kind:'lens_model',value:String(lens),label:String(lens)});
     for(const tag of options.tags||[])if(String(tag).toLowerCase().includes(q))suggestions.push({kind:'tag',value:String(tag),label:String(tag)});
-    suggestions.push({kind:'search',value:draft.trim(),label:`搜索文件名「${draft.trim()}」`});
+    suggestions.push({kind:'search',value:draft.trim(),label:t("搜索文件名「{0}」",{0:draft.trim()})});
   }
   const shown=suggestions.slice(0,9);
   function pick(item:Suggestion){if(item.kind==='search'){onFilter('search',item.value)}else{onFilter('search','');onFilter(item.kind,item.value);setDraft('')}setOpen(false);setActive(-1)}
@@ -41,14 +59,14 @@ export function SearchBox({value,options,onFilter,onSemantic}:{value:string;opti
     else if(e.key==='Escape')setOpen(false);
   }
   const icons={camera_model:<Camera size={13}/>,lens_model:<Focus size={13}/>,tag:<TagIcon size={13}/>,search:<FileText size={13}/>};
-  const kindNames={camera_model:'相机',lens_model:'镜头',tag:'标签',search:'文件名'};
+  const kindNames={camera_model:t("相机"),lens_model:t("镜头"),tag:t("标签"),search:t("文件名")};
   return <label className="search search-autocomplete" ref={boxRef}><Search size={16}/>
-    <input placeholder="试试：上个月用 50mm 拍的照片" value={draft} onChange={e=>{setDraft(e.target.value);setOpen(true);setActive(-1);if(!e.target.value)onFilter('search','')}} onFocus={()=>setOpen(true)} onKeyDown={key}/>
+    <input placeholder={t("试试：上个月用 50mm 拍的照片")} value={draft} onChange={e=>{setDraft(e.target.value);setOpen(true);setActive(-1);if(!e.target.value)onFilter('search','')}} onFocus={()=>setOpen(true)} onKeyDown={key}/>
     {open&&shown.length>0&&<div className="autocomplete-panel">{shown.map((item,i)=><button key={item.kind+item.value} className={i===active?'active':''} onMouseDown={e=>{e.preventDefault();pick(item)}} onMouseEnter={()=>setActive(i)}>{icons[item.kind]}<span className="ac-label">{item.label}</span><small>{kindNames[item.kind]}</small></button>)}</div>}
   </label>;
 }
 export function Empty({title,children,action}:{title:string;children?:ReactNode;action?:ReactNode}) {return <div className="empty"><div className="empty-icon"><ImageOff size={32}/></div><h2>{title}</h2><p>{children}</p>{action}</div>}
-export function Parameters({photo}:{photo:Photo}) {return <span className="params">{[photo.focal_length?`${photo.focal_length} mm`:null,photo.f_number?`f/${photo.f_number}`:null,photo.exposure_time?`${photo.exposure_time} s`:null,photo.iso?`ISO ${photo.iso}`:null].filter(Boolean).join(' · ')||'未记录拍摄参数'}</span>}
+export function Parameters({photo}:{photo:Photo}) {return <span className="params">{[photo.focal_length?`${photo.focal_length} mm`:null,photo.f_number?`f/${photo.f_number}`:null,photo.exposure_time?`${photo.exposure_time} s`:null,photo.iso?`ISO ${photo.iso}`:null].filter(Boolean).join(' · ')||t("未记录拍摄参数")}</span>}
 export function HoverPreview({photo,pos}:{photo:Photo;pos:{x:number;y:number}}) {
   const w=360,h=380,m=16;
   const left=pos.x+m+w>window.innerWidth?pos.x-w-m:pos.x+m;
@@ -62,6 +80,7 @@ export function HoverPreview({photo,pos}:{photo:Photo;pos:{x:number;y:number}}) 
 }
 export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite,dragHandle,highlight}:{photo:Photo;selected:boolean;onToggle:()=>void;onOpen:()=>void;onFavorite?:(photo:Photo)=>void;dragHandle?:{onStart:()=>void;onDrop:()=>void};highlight?:string}) {
   const [failed,setFailed]=useState(false);
+  const [loaded,setLoaded]=useState(false);
   const [hoverPos,setHoverPos]=useState<{x:number;y:number}|null>(null);
   const hoverTimer=useRef<number|undefined>(undefined);
   useEffect(()=>()=>clearTimeout(hoverTimer.current),[]);
@@ -70,36 +89,45 @@ export function PhotoCard({photo,selected,onToggle,onOpen,onFavorite,dragHandle,
   function leave(){clearTimeout(hoverTimer.current);setHoverPos(null)}
   const paired=photo.files.some(f=>f.is_raw)&&photo.files.some(f=>!f.is_raw);
   return <article className={'photo-card '+(selected?'selected':'')+(dragHandle?' sortable':'')} draggable={!!dragHandle} onDragStart={dragHandle?()=>dragHandle.onStart():undefined} onDragOver={dragHandle?e=>e.preventDefault():undefined} onDrop={dragHandle?e=>{e.preventDefault();e.stopPropagation();dragHandle.onDrop()}:undefined} onMouseEnter={enter} onMouseMove={move} onMouseLeave={leave}>
-    <button className="photo-image" onClick={onOpen} aria-label={'查看 '+photo.file_name}>
-      {photo.thumbnail_path&&!failed?<img loading="lazy" src={photo.thumbnail_url} alt={photo.file_name} onError={()=>setFailed(true)}/>:<div className="image-fallback"><ImageOff/><span>预览不可用</span></div>}
+    <button className="photo-image" onClick={onOpen} aria-label={t("查看 ")+photo.file_name}>
+      {photo.thumbnail_path&&!failed?<img className={loaded?'loaded':'loading-image'} loading="lazy" src={photo.thumbnail_url} alt={photo.file_name} onLoad={()=>setLoaded(true)} onError={()=>setFailed(true)}/>:<div className="image-fallback"><ImageOff/><span>{t("预览不可用")}</span></div>}
       {(paired||photo.is_raw)&&<span className="format-badge">{paired?'RAW + JPG':'RAW'}</span>}
       {photo.similarity_score!==undefined&&<span className="score">{photo.similarity_score.toFixed(3)}</span>}
       <PhotoBadge rating={photo.rating??null} colorLabel={photo.color_label??null}/>
     </button>
-    <button className={'select-box '+(selected?'checked':'')} onClick={onToggle} aria-label={'选择 '+photo.file_name} aria-pressed={selected}>{selected&&<Check size={13}/>}</button>
-    {onFavorite&&<button className={'favorite '+(photo.favorite?'on':'')} aria-label={'收藏 '+photo.file_name} onClick={()=>onFavorite(photo)}><Heart size={16} fill={photo.favorite?'currentColor':'none'}/></button>}
+    <button className={'select-box '+(selected?'checked':'')} onClick={onToggle} aria-label={t("选择 ")+photo.file_name} aria-pressed={selected}>{selected&&<Check size={13}/>}</button>
+    {onFavorite&&<button className={'favorite '+(photo.favorite?'on':'')} aria-label={t("收藏 ")+photo.file_name} onClick={()=>onFavorite(photo)}><Heart size={16} fill={photo.favorite?'currentColor':'none'}/></button>}
     <div className="photo-caption"><span title={photo.file_name}><Marked text={photo.file_name} term={highlight}/></span><small>{photo.camera_model||photo.file_format}</small></div>
     {hoverPos&&<HoverPreview photo={photo} pos={hoverPos}/>}
   </article>;
 }
-export function Pager({page,total,size=80,onChange}:{page:number;total:number;size?:number;onChange:(value:number)=>void}) {const pages=Math.max(1,Math.ceil(total/size));return <div className="pager"><span>共 {total.toLocaleString()} 次拍摄</span><button disabled={page<=1} onClick={()=>onChange(page-1)}><ChevronLeft size={16}/>上一页</button><span>{page} / {pages}</span><button disabled={page>=pages} onClick={()=>onChange(page+1)}>下一页<ChevronRight size={16}/></button></div>}
+export function Pager({page,total,size=80,onChange}:{page:number;total:number;size?:number;onChange:(value:number)=>void}) {const pages=Math.max(1,Math.ceil(total/size));return <div className="pager"><span>{t("共 ")}{total.toLocaleString()}{t(" 次拍摄")}</span><button disabled={page<=1} onClick={()=>onChange(page-1)}><ChevronLeft size={16}/>{t("上一页")}</button><span>{page} / {pages}</span><button disabled={page>=pages} onClick={()=>onChange(page+1)}>{t("下一页")}<ChevronRight size={16}/></button></div>}
 type GridData={ids:string[];cache:Record<string,Photo>;cols:number;gap:number;renderCard:(photo:Photo|undefined,id:string)=>ReactNode};
 function GalleryCell({columnIndex,rowIndex,style,data}:{columnIndex:number;rowIndex:number;style:CSSProperties;data:GridData}) {const index=rowIndex*data.cols+columnIndex;const id=data.ids[index];if(!id)return null;return <div style={{...style,padding:`0 ${data.gap/2}px ${data.gap}px`}}>{data.renderCard(data.cache[id],id)}</div>}
-export function VirtualGallery({ids,cache,grid,gap,dense,onNeed,onRange,renderCard}:{ids:string[];cache:Record<string,Photo>;grid:number;gap:number;dense?:boolean;onNeed:(start:number,end:number)=>void;onRange?:(start:number,end:number)=>void;renderCard:(photo:Photo|undefined,id:string)=>ReactNode}) {
+type RowData={rows:GalleryRow[];cache:Record<string,Photo>;gap:number;renderCard:(photo:Photo|undefined,id:string)=>ReactNode};
+function JustifiedRow({index,style,data}:{index:number;style:CSSProperties;data:RowData}){
+  const row=data.rows[index];return <div className="justified-row" style={{...style,gap:data.gap,['--photo-height' as string]:row.height+'px'}}>{row.ids.map((id,i)=><div key={id} style={{width:row.ratios[i]*row.height,minWidth:0}}>{data.renderCard(data.cache[id],id)}</div>)}</div>;
+}
+export function VirtualGallery({ids,cache,grid,gap,dense,layout='grid',onNeed,onRange,renderCard}:{ids:string[];cache:Record<string,Photo>;grid:number;gap:number;dense?:boolean;layout?:'grid'|'justified';onNeed:(start:number,end:number)=>void;onRange?:(start:number,end:number)=>void;renderCard:(photo:Photo|undefined,id:string)=>ReactNode}) {
   const wrapRef=useRef<HTMLDivElement|null>(null);
   const [size,setSize]=useState({width:0,height:600});
+  const listRef=useRef<VariableSizeList|null>(null);
   useEffect(()=>{const el=wrapRef.current;if(!el)return;const measure=()=>setSize({width:el.clientWidth,height:el.clientHeight});measure();const observer=new ResizeObserver(measure);observer.observe(el);return()=>observer.disconnect()},[]);
-  const cols=Math.max(1,Math.floor((size.width+gap)/(grid+gap)));
+  const mobile=document.documentElement.dataset.remote==='true'&&size.width<=760;
+  const cols=mobile?2:Math.max(1,Math.floor((size.width+gap)/(grid+gap)));
   const colWidth=size.width/cols;
   const rows=Math.ceil(ids.length/cols);
-  const rowHeight=215+(dense?6:34)+gap;
+  const rowHeight=mobile?colWidth+(dense?10:34):215+(dense?6:34)+gap;
+  const justified=useMemo(()=>galleryRows(ids,cache,size.width,Math.min(grid,size.width*.66),gap),[ids,cache,size.width,grid,gap]);
+  useEffect(()=>{listRef.current?.resetAfterIndex(0)},[cache,size.width,grid,gap,dense]);
+  if(layout==='justified')return <div className="virtual-gallery justified-gallery" ref={wrapRef}>{size.width>0&&<VariableSizeList ref={listRef} height={size.height} width={size.width} itemCount={justified.length} itemSize={i=>justified[i].height+(dense?0:38)+gap} itemData={{rows:justified,cache,gap,renderCard}} overscanCount={2} onItemsRendered={({overscanStartIndex,overscanStopIndex,visibleStartIndex,visibleStopIndex})=>{if(!justified.length)return;onNeed(justified[overscanStartIndex].start,justified[overscanStopIndex].end);onRange?.(justified[visibleStartIndex].start,justified[visibleStopIndex].end)}}>{JustifiedRow as (props:ListChildComponentProps<RowData>)=>ReactNode}</VariableSizeList>}</div>;
   return <div className="virtual-gallery" ref={wrapRef}>{size.width>0&&<FixedSizeGrid itemData={{ids,cache,cols,gap,renderCard}} columnCount={cols} columnWidth={colWidth} height={size.height} rowCount={rows} rowHeight={rowHeight} width={size.width} overscanRowCount={2} onItemsRendered={({overscanRowStartIndex,overscanRowStopIndex,visibleRowStartIndex,visibleRowStopIndex})=>{onNeed(overscanRowStartIndex*cols,(overscanRowStopIndex+1)*cols-1);onRange?.(visibleRowStartIndex*cols,(visibleRowStopIndex+1)*cols-1)}}>{GalleryCell as (props:GridChildComponentProps<GridData>)=>ReactNode}</FixedSizeGrid>}</div>;
 }
 export function Histogram({title,items,onSelect}:{title:string;items:Bin[];onSelect:(bin:Bin)=>void}) {
-  return <section className="chart-panel"><header><h3>{title}</h3><small>点击筛选照片</small></header><div className="chart"><ResponsiveContainer width="100%" height={210}><BarChart data={items} margin={{left:-20,right:8,top:15,bottom:10}}><CartesianGrid vertical={false} stroke="#2c3032"/><XAxis dataKey="label" tick={{fill:'#929999',fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:'#929999',fontSize:10}} axisLine={false} tickLine={false} allowDecimals={false}/><Tooltip cursor={{fill:'#ffffff08'}} contentStyle={{background:'#25292b',border:'1px solid #3b4143',borderRadius:8}}/><Bar isAnimationActive={false} dataKey="count" name="拍摄数量" fill="#c6b08a" radius={[4,4,0,0]} onClick={(_data,index)=>{if(items[index])onSelect(items[index])}} style={{cursor:'pointer'}}/></BarChart></ResponsiveContainer></div><div className="chart-legend">{items.filter(i=>i.count>0).slice(0,20).map(item=><button key={item.label} onClick={()=>onSelect(item)}>{item.label}<b>{item.count}</b>{item.percent!==undefined&&<small>{item.percent}%</small>}</button>)}</div></section>
+  return <section className="chart-panel"><header><h3>{title}</h3><small>{t("点击筛选照片")}</small></header><div className="chart"><ResponsiveContainer width="100%" height={210}><BarChart data={items.map(bin=>({...bin,label:t(bin.label)}))} margin={{left:-20,right:8,top:15,bottom:10}}><CartesianGrid vertical={false} stroke="var(--line)"/><XAxis dataKey="label" tick={{fill:'var(--muted)',fontSize:10}} axisLine={false} tickLine={false}/><YAxis tick={{fill:'var(--muted)',fontSize:10}} axisLine={false} tickLine={false} allowDecimals={false}/><Tooltip cursor={{fill:'var(--line)',fillOpacity:.35}} contentStyle={{background:'var(--panel)',border:'1px solid var(--line)',color:'inherit',borderRadius:8}}/><Bar isAnimationActive={false} dataKey="count" name={t("拍摄数量")} fill="#c6b08a" radius={[4,4,0,0]} onClick={(_data,index)=>{if(items[index])onSelect(items[index])}} style={{cursor:'pointer'}}/></BarChart></ResponsiveContainer></div><div className="chart-legend">{items.filter(i=>i.count>0).slice(0,20).map(item=><button key={item.label} onClick={()=>onSelect(item)}>{t(item.label)}<b>{item.count}</b>{item.percent!==undefined&&<small>{item.percent}%</small>}</button>)}</div></section>
 }
 export function SummaryCards({summary,report=false}:{summary:Summary;report?:boolean}) {
-  const metrics=report?[['拍摄次数',summary.captures??summary.total],['原始文件',summary.files??summary.total],['拍摄天数',summary.shooting_days],['使用镜头',summary.lenses]]:[['照片 / 拍摄',summary.total],['相机',summary.cameras],['镜头',summary.lenses],['最常用焦段',summary.common_focal?`${summary.common_focal} mm`:'—']];
+  const metrics=report?[[t("拍摄次数"),summary.captures??summary.total],[t("原始文件"),summary.files??summary.total],[t("拍摄天数"),summary.shooting_days],[t("使用镜头"),summary.lenses]]:[[t("照片 / 拍摄"),summary.total],[t("相机"),summary.cameras],[t("镜头"),summary.lenses],[t("最常用焦段"),summary.common_focal?`${summary.common_focal} mm`:'—']];
   return <div className="metrics">{metrics.map(([label,value])=><div key={label}><span>{label}</span><strong>{typeof value==='number'?value.toLocaleString():value}</strong></div>)}</div>;
 }
 

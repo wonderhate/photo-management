@@ -1,3 +1,4 @@
+import {t} from './i18n';
 import {useState} from 'react';
 import {Modal} from './components';
 import {batchEditPhotos} from './api';
@@ -21,19 +22,19 @@ export default function BatchEditDialog({photoIds,onClose,onComplete,notify}:{ph
       if(addTags.trim())payload.add_tags=addTags.split(/[,，]/).map(t=>t.trim()).filter(Boolean);
       if(removeTags.trim())payload.remove_tags=removeTags.split(/[,，]/).map(t=>t.trim()).filter(Boolean);
       await batchEditPhotos(payload);
-      notify(`已更新 ${photoIds.length} 张照片`);
+      notify(t("已更新 {0} 张照片",{0:photoIds.length}));
       onComplete();
       onClose();
-    }catch(e){notify(e instanceof Error?e.message:'保存失败')}finally{setSaving(false)}
+    }catch(e){notify(e instanceof Error?e.message:t("保存失败"))}finally{setSaving(false)}
   }
 
-  return <Modal title={`批量编辑 · ${photoIds.length} 张照片`} onClose={onClose}>
+  return <Modal title={t("批量编辑 · {0} 张照片",{0:photoIds.length})} onClose={onClose}>
     <div className="batch-edit-content">
-      <div className="batch-edit-section"><span>评分</span><div className="row"><RatingStars rating={rating} onChange={setRating} size={20}/><label className="check"><input type="checkbox" checked={clearRating} onChange={e=>setClearRating(e.target.checked)}/>清除评分</label></div></div>
-      <div className="batch-edit-section"><span>颜色标签</span><div className="row"><ColorLabelPicker color={colorLabel} onChange={setColorLabel}/><label className="check"><input type="checkbox" checked={clearColor} onChange={e=>setClearColor(e.target.checked)}/>清除颜色标签</label></div></div>
-      <div className="batch-edit-section"><span>添加标签</span><input type="text" value={addTags} onChange={e=>setAddTags(e.target.value)} placeholder="用逗号分隔，如：人像，旅行"/></div>
-      <div className="batch-edit-section"><span>移除标签</span><input type="text" value={removeTags} onChange={e=>setRemoveTags(e.target.value)} placeholder="用逗号分隔要移除的标签"/></div>
-      <footer className="modal-footer"><button onClick={onClose} disabled={saving}>取消</button><button className="primary" disabled={saving} onClick={handleSave}>{saving?'保存中…':'保存'}</button></footer>
+      <div className="batch-edit-section"><span>{t("评分")}</span><div className="row"><RatingStars rating={rating} onChange={setRating} size={20}/><label className="check"><input type="checkbox" checked={clearRating} onChange={e=>setClearRating(e.target.checked)}/>{t("清除评分")}</label></div></div>
+      <div className="batch-edit-section"><span>{t("颜色标签")}</span><div className="row"><ColorLabelPicker color={colorLabel} onChange={setColorLabel}/><label className="check"><input type="checkbox" checked={clearColor} onChange={e=>setClearColor(e.target.checked)}/>{t("清除颜色标签")}</label></div></div>
+      <div className="batch-edit-section"><span>{t("添加标签")}</span><input type="text" value={addTags} onChange={e=>setAddTags(e.target.value)} placeholder={t("用逗号分隔，如：人像，旅行")}/></div>
+      <div className="batch-edit-section"><span>{t("移除标签")}</span><input type="text" value={removeTags} onChange={e=>setRemoveTags(e.target.value)} placeholder={t("用逗号分隔要移除的标签")}/></div>
+      <footer className="modal-footer"><button onClick={onClose} disabled={saving}>{t("取消")}</button><button className="primary" disabled={saving} onClick={handleSave}>{saving?t("保存中…"):t("保存")}</button></footer>
     </div>
   </Modal>;
 }

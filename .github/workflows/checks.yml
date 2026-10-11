@@ -34,6 +34,7 @@ jobs:
           path: verification/theme
           retention-days: 7
       - run: python -m pytest backend/tests -q
+      - run: python -m unittest desktop.test_icon
   windows-scripts:
     runs-on: windows-latest
     steps:

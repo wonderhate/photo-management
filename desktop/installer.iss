@@ -23,6 +23,7 @@ OutputBaseFilename=PhotoCollection-Setup-{#AppVersion}-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile={#PackageDir}\_internal\desktop\PhotoCollection.ico
 UninstallDisplayIcon={app}\PhotoCollection.exe
 CloseApplications=no
 RestartApplications=no

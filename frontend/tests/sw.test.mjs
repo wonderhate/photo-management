@@ -12,6 +12,7 @@ test('service worker refreshes HTML and bounds its cache',async()=>{
   store.set('http://localhost/',new Response('old-build'));
   assert.equal(await (await load('/')).text(),'current-build');
   await load('/assets/index-hash.js');await load('/assets/index-hash.js');assert.equal(requests,2);
-  for(let i=0;i<260;i++)await load(`/api/photos/${i}/thumbnail`);
+  for(let i=0;i<260;i++)assert.equal(await load(`/api/photos/${i}/thumbnail`),undefined);
+  assert.ok([...store.keys()].every(key=>!key.includes('/api/')));
   assert.ok(store.size<=250);
 });

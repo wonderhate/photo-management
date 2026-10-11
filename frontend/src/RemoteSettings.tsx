@@ -1,0 +1,12 @@
+import {t} from './i18n';
+import {useEffect,useState} from 'react';
+import {Monitor,Smartphone,RefreshCw} from 'lucide-react';
+import {api,message} from './api';
+import {isRemote,clearIndex} from './remote-client';
+type Access={enabled:boolean;pairing_code:string;pairing_expires:number;addresses:string[];devices:number};
+export default function RemoteSettings({notify}:{notify:(text:string)=>void}){
+  const [access,setAccess]=useState<Access|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  useEffect(()=>{if(!isRemote)api<Access>('/remote/settings').then(setAccess).catch(e=>setError(message(e)))},[]);
+  async function change(enabled:boolean){setBusy(true);try{setAccess(await api<Access>('/remote/settings','PUT',{enabled}));setError('');notify(enabled?t("已生成新配对码，旧设备需重新配对"):t("手机访问已关闭"))}catch(e){setError(message(e))}finally{setBusy(false)}}
+  return <section className="settings-card remote-settings"><header><Smartphone size={22}/><div><h3>{isRemote?t("我的电脑"):t("手机远程访问")}</h3><p>{isRemote?t("整理、分析和水印草稿保存在电脑。"):t("让手机接续使用这个照片库。")}</p></div></header>{isRemote?<><div className="remote-computer"><Monitor size={28}/><div><b>{t("电脑照片库")}</b><small>{location.origin}</small></div><span>{t("已配对")}</span></div><p className="muted">{t("手机只缓存照片索引；图片与水印预览不保存到手机。正式导出后，作品保存至手机相册的 PhotoCollection。")}</p><div className="button-row"><button onClick={()=>{clearIndex(localStorage);notify(t("手机索引已清除"))}}>{t("清除手机索引")}</button><button onClick={()=>window.dispatchEvent(new Event('photo-disconnect'))}>{t("切换电脑 / 重新配对")}</button></div></>:<>{access&&<><div className="button-row"><button className={access.enabled?'':'primary'} disabled={busy} onClick={()=>change(!access.enabled)}>{access.enabled?t("关闭手机访问"):t("开启手机访问")}</button>{access.enabled&&<button disabled={busy} onClick={()=>change(true)}><RefreshCw size={15}/>{t("生成新配对码 / 撤销旧设备")}</button>}</div>{access.enabled&&<div className="pairing-details"><b className="pairing-code">{access.pairing_code}</b><p>{t("配对码有效至 ")}{new Date(access.pairing_expires*1000).toLocaleTimeString('zh-CN')}{t(" · 已配对 ")}{access.devices}{t(" 台")}</p><label>{t("手机连接地址")}{access.addresses.length?access.addresses.map(address=><code key={address}>{address}</code>):<span>{t("未找到局域网地址，请使用电脑的私有网络 IP。")}</span>}</label><p className="muted">{t("手机和电脑连接同一 Wi-Fi，或使用私有 VPN。电脑需要保持运行。若 Windows 防火墙提示，请允许专用网络访问。")}</p></div>}</>}{error&&<p className="error-box">{error}</p>}</>}</section>;
+}

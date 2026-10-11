@@ -53,6 +53,7 @@ class SmartRequest(BaseModel):
 
 class AlbumRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    person_id: str | None = Field(default=None, min_length=1, max_length=120)
     type: Literal['normal', 'smart'] = 'normal'
     keywords: list[str] = Field(default_factory=list, max_length=16)
     match_mode: Literal['all', 'any'] = 'any'
@@ -148,6 +149,13 @@ class WatermarkRequest(BaseModel):
 class BatchRequest(BaseModel):
     photo_ids: list[str] = Field(min_length=1, max_length=10000)
     options: WatermarkOptions = Field(default_factory=WatermarkOptions)
+
+class StoragePathsRequest(BaseModel):
+    data_dir: str = Field(min_length=1,max_length=4096)
+    models_dir: str = Field(min_length=1,max_length=4096)
+    exports_dir: str = Field(min_length=1,max_length=4096)
+    scan_paths: list[str] = Field(default_factory=list,max_length=100)
+
 
 class SettingsRequest(BaseModel):
     thumbnail_quality: int = Field(default=85, ge=30, le=100)

@@ -12,7 +12,6 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy import select, func, delete
 from .config import DATA, EXPORTS, SCAN_PATHS, MODELS, PROJECT, EXTENSIONS, AUTOLOAD_AI, settings, save_settings
 from .models import initialize, Session, Photo, CaptureGroup, Album, AlbumPhoto, Tag, PhotoTag, now
@@ -21,7 +20,9 @@ from .services import jobs, import_service, library_service, stats_service, wate
 from .services.embedding_service import service as ai
 from .services import timeline_service, face_service, nl_search, plugin_service
 from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, WatermarkRequest, BatchRequest, SettingsRequest, BatchEditRequest, FacePersonCreate, FacePersonRename, AlbumUpdate, AlbumOrderRequest, PluginRunRequest, IdsRequest
-from .models import FacePerson
+from .models import FacePerson, DetectedFace
+from .config import storage_paths, save_storage_paths, cancel_storage_paths
+from .schemas import StoragePathsRequest
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -39,22 +40,29 @@ from .watermark_drafts import router as draft_router
 app.include_router(draft_router)
 from .face_routes import router as face_router
 app.include_router(face_router)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost','127.0.0.1','testserver','[::1]'])
+from . import remote
+app.include_router(remote.router)
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'], allow_methods=['GET','POST','PATCH','DELETE','PUT'], allow_headers=['Content-Type'])
 
 @app.middleware('http')
 async def protect_local_requests(request: Request, call_next):
     origin = request.headers.get('origin')
     allowed = {'http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'}
-    if request.method not in ('GET','HEAD','OPTIONS') and origin and origin not in allowed and origin != str(request.base_url).rstrip('/'):
+    blocked = remote.guard(request)
+    if blocked is not None:
+        response = blocked
+    elif request.method not in ('GET','HEAD','OPTIONS') and origin and origin not in allowed and origin != str(request.base_url).rstrip('/'):
         response = JSONResponse({'detail':'禁止来自其他网站的本地操作'}, status_code=403)
     else:
         response = await call_next(request)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'
+    if request.url.path.startswith('/api/remote/') or not remote.local_request(request) or request.cookies.get(remote.COOKIE) or 'PhotoCollectionRemote/' in request.headers.get('user-agent', ''):
+        response.headers['Cache-Control'] = 'no-store, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
     if response.headers.get('content-type', '').startswith('text/html') and request.url.path not in ('/docs', '/redoc', '/docs/oauth2-redirect'):
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
     return response
 
 @app.exception_handler(ValueError)
@@ -335,15 +343,23 @@ def smart_preview(payload: SmartRequest):
 def create_album(payload: AlbumRequest):
     if payload.type == 'smart' and not any(k.strip() for k in payload.keywords): raise ValueError('智能影集需要关键词')
     with Session() as session:
-        album = Album(**payload.model_dump(exclude={'photo_ids','scores'}), ai_model=ai.model_name if payload.type=='smart' else None)
+        if payload.person_id is not None:
+            if payload.type != 'normal' or payload.photo_ids: raise ValueError('人物影集请使用普通影集，照片由人物分组自动选取')
+            if not session.get(FacePerson, payload.person_id): raise HTTPException(404, '人物不存在')
+            if session.scalar(select(DetectedFace.id).where(DetectedFace.person_id==payload.person_id, DetectedFace.confirmed.is_(False)).limit(1)):
+                raise ValueError('请先确认该人物的分组，再新建人物影集')
+            members = session.scalars(library_service.query_photos({'person_id':payload.person_id}).order_by(Photo.date_taken.desc(), Photo.id)).all()
+            if not members: raise ValueError('该人物没有已确认的照片')
+        else:
+            members = session.scalars(select(Photo).where(Photo.id.in_(payload.photo_ids))).all()
+        album = Album(**payload.model_dump(exclude={'photo_ids','scores','person_id'}), ai_model=ai.model_name if payload.type=='smart' else None)
         session.add(album)
         session.flush()
-        members = session.scalars(select(Photo).where(Photo.id.in_(payload.photo_ids))).all()
         seen = set()
-        for photo in members:
+        for position, photo in enumerate(members):
             if photo.capture_group_id in seen: continue
             seen.add(photo.capture_group_id)
-            session.add(AlbumPhoto(album_id=album.id, photo_id=photo.id, similarity_score=payload.scores.get(photo.id)))
+            session.add(AlbumPhoto(album_id=album.id, photo_id=photo.id, similarity_score=payload.scores.get(photo.id), position=position if payload.person_id else 0))
         session.commit()
         return album_dict(session,album)
 
@@ -521,6 +537,22 @@ def delete_face_person(person_id: str):
 
 @app.get('/api/settings')
 def get_settings(): return settings() | {'data_dir':str(DATA),'models_dir':str(MODELS),'exports_dir':str(EXPORTS),'scan_paths':SCAN_PATHS}
+
+
+@app.get('/api/library/paths')
+def get_library_paths(): return storage_paths()
+
+
+@app.put('/api/library/paths')
+def update_library_paths(payload: StoragePathsRequest):
+    try: return save_storage_paths(payload.model_dump())
+    except OSError as error: raise HTTPException(400,f'目录或配置文件不可写：{error}') from error
+
+
+@app.delete('/api/library/paths')
+def cancel_library_paths():
+    try: return cancel_storage_paths()
+    except OSError as error: raise HTTPException(400,f'无法取消目录修改：{error}') from error
 
 @app.put('/api/settings')
 def put_settings(payload: SettingsRequest): return save_settings(payload.model_dump())

@@ -1,4 +1,4 @@
-"""One localhost server owned by one desktop window; no LAN listener."""
+"""Desktop server with opt-in, authenticated phone access."""
 import argparse
 import json
 import logging
@@ -36,10 +36,14 @@ def main() -> None:
     from backend.app.main import app
     import uvicorn
     sock = socket.socket()
-    sock.bind(('127.0.0.1', args.port))
+    try:
+        sock.bind(('0.0.0.0', args.port or 8000))
+    except OSError:
+        if args.port: raise
+        sock.bind(('0.0.0.0', 0))
     sock.listen(128)
     url = f'http://127.0.0.1:{sock.getsockname()[1]}'
-    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', log_level='info'))
+    server = uvicorn.Server(uvicorn.Config(app, host='0.0.0.0', log_level='info', proxy_headers=False))
     worker = threading.Thread(target=server.run, kwargs={'sockets': [sock]}, daemon=True)
     worker.start()
     try:
@@ -59,14 +63,15 @@ def main() -> None:
             worker.join(args.duration or None)
         else:
             import webview
+            from desktop.icon import application_icon
             webview.settings['ALLOW_DOWNLOADS'] = True
-            window=webview.create_window('光影集 · 摄影管理', url, width=1440, height=960, min_size=(900, 650), background_color='#151719')
+            window=webview.create_window('光影集 · 摄影管理', url, width=1440, height=960, min_size=(900, 650), background_color='#f4f5f8')
             if args.window_check:
                 def loaded() -> None:
                     if args.status_file: args.status_file.write_text(json.dumps({'url':url, **health, 'window_loaded':True}), 'utf-8')
                     threading.Timer(2,window.destroy).start()
                 window.events.loaded += loaded
-            webview.start(gui='edgechromium', private_mode=False, storage_path=str(log_dir.parent / 'webview'))
+            webview.start(gui='edgechromium', private_mode=False, storage_path=str(log_dir.parent / 'webview'), icon=str(application_icon(log_dir.parent)))
     finally:
         server.should_exit = True
         worker.join(timeout=15)

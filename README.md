@@ -1,33 +1,35 @@
 # 光影集 · 本地摄影照片管理
 
-Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
+Windows 本地优先照片管理系统，Windows **2.2.1**，Android 远程客户端 **2.0.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
 
-**原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。默认仅监听 `127.0.0.1:8000`。
+**原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。桌面服务监听局域网接口，远程访问默认关闭；开启后必须配对才能访问。手机只缓存 JSON 索引，图片预览不落盘。
 
-| 下载 | 用途 |
+新版包含人物影集创建、自定义照片库和存储目录、重新设计的浅色界面、完整英文界面与网页版同源图标。Android 2.0.0 连接电脑端，手机仅保留索引，正式水印导出可保存到手机相册。用法及验证记录见 [手机远程客户端](docs/android-remote.md)。
+
+| 当前公开下载 | 用途 |
 | --- | --- |
-| [Windows 安装程序（推荐）](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Setup-2.1.1-x64.exe) | Windows 10 / 11 x64，中文向导、快捷方式、卸载入口 |
-| [Windows 便携 ZIP](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Windows.zip) | 解压即用，保留 `_internal` 文件夹 |
-| [Android APK](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/PhotoCollection-Android.apk) | Android 10+，手机独立照片库，实际版本 1.0.0 |
-| [SHA-256 校验文件](https://github.com/wonderhate/photo-management/releases/download/v2.1.1/SHA256SUMS.txt) | 核对下载完整性；不是发布者签名 |
+| [Windows 安装程序（推荐）](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/PhotoCollection-Setup-2.2.1-x64.exe) | Windows 10 / 11 x64，中文向导、快捷方式、卸载入口 |
+| [Windows 便携 ZIP](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/PhotoCollection-Windows.zip) | 解压即用，保留 `_internal` 文件夹 |
+| [Android APK](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/PhotoCollection-Android.apk) | Android 10+，电脑照片库的远程客户端，实际版本 2.0.0 |
+| [SHA-256 校验文件](https://github.com/wonderhate/photo-management/releases/download/v2.2.1/SHA256SUMS.txt) | 核对下载完整性；不是发布者签名 |
 
 ## 1. 安装与手动启动
 
 ### Windows 独立应用
 
-[下载 Windows 2.1.1 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.1.1)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件的实际版本为 **1.0.0**，与桌面版本分别编号。
+[下载 Windows 2.2.1 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.2.1)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件的实际版本为 **2.0.0**，与桌面版本分别编号。
 
 **下载安全提示**：Windows 当前没有受信任的代码签名，SmartScreen / 未知发布者提示仍可能出现；Android APK 已使用原发布密钥签名，侧载许可和 Play Protect 扫描提示仍可能出现。防病毒扫描与发布者信誉是不同的检查，不建议关闭防护。检查结果、文件校验方法及仍需的账号/证书见 [下载与安全检查](docs/apps-security.md)。iOS 应用开发已取消，相关代码与构建文件已移除；目前提供 Windows、Android 和网页版本。
 
-下载并打开 `PhotoCollection-Setup-2.1.1-x64.exe`，按中文向导安装。默认安装在当前用户的 `%LOCALAPPDATA%\Programs\PhotoCollection`，不要求管理员权限；可选桌面快捷方式，开始菜单提供启动与卸载入口。缺少 WebView2 时，安装器运行经过 Microsoft 发布者签名验证的官方引导程序，需要联网；安装失败会明确提示并停止。关闭旧应用后再运行安装程序即可覆盖升级。卸载保留照片库、模型缓存、导出文件及用户创建的配置。
+下载并打开 `PhotoCollection-Setup-2.2.1-x64.exe`，按中文向导安装。默认安装在当前用户的 `%LOCALAPPDATA%\Programs\PhotoCollection`，不要求管理员权限；可选桌面快捷方式，开始菜单提供启动与卸载入口。缺少 WebView2 时，安装器运行经过 Microsoft 发布者签名验证的官方引导程序，需要联网；安装失败会明确提示并停止。关闭旧应用后再运行安装程序即可覆盖升级。卸载保留照片库、模型缓存、导出文件及用户创建的配置。
 
 也可以解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；两种 Windows 包都无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带。
 
-独立应用使用自己启动的随机本地端口，只监听 `127.0.0.1`，关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
+新版独立应用优先使用 8000 端口，被占用时使用其他空闲端口，手机地址以设置页为准。远程访问默认关闭，开启后须配对。关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
 
-制作安装程序：安装官方 [Inno Setup 7](https://jrsoftware.org/isdl.php) 后运行 `./build-installer.ps1 -Compiler 'C:\Program Files\Inno Setup 7\ISCC.exe'`。先运行 Windows 打包脚本，再运行安装器脚本；输出在 `releases/PhotoCollection-Setup-2.1.1-x64.exe`。WebView2 引导程序首次从 Microsoft 下载并验证 Authenticode，私人 `library-config.json` 始终排除。`desktop/verify_installer.py <安装程序路径>` 实际检查隔离安装、升级、窗口启动、卸载和数据保留；已安装正式软件的账户应改用专用测试账户，验证脚本会拒绝覆盖现有安装。
+制作安装程序：安装官方 [Inno Setup 7](https://jrsoftware.org/isdl.php) 后运行 `./build-installer.ps1 -Compiler 'C:\Program Files\Inno Setup 7\ISCC.exe'`。先运行 Windows 打包脚本，再运行安装器脚本；输出在 `releases/PhotoCollection-Setup-2.2.1-x64.exe`。WebView2 引导程序首次从 Microsoft 下载并验证 Authenticode，私人 `library-config.json` 始终排除。`desktop/verify_installer.py <安装程序路径>` 实际检查隔离安装、升级、窗口启动、卸载和数据保留；已安装正式软件的账户应改用专用测试账户，验证脚本会拒绝覆盖现有安装。
 
 升级时先关闭旧版，将新 ZIP 解压到新目录；有本机 `library-config.json` 时复制该配置到新 EXE 同目录。不要用公开包中的示例覆盖已有配置、数据库或模型缓存。默认库仍使用 `%LOCALAPPDATA%\PhotoCollection\data`。
 
@@ -35,32 +37,26 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 
 测试记录见 [应用验证说明](docs/apps-verification.md)。Windows 原生窗口启动、Android 模拟器实际编辑/恢复/导出与原图保护已检查；不同实体手机的相册权限和格式兼容性仍需安装后确认。
 
-### Android 独立应用
+### Android 远程客户端
 
-将 `releases/PhotoCollection-Android.apk` 传到手机，在文件管理器中打开并允许该文件管理器安装应用。支持 Android 10+；需要正常可用、较新的 Android System WebView。手机库完全独立，**不用电脑、不用局域网、不用账户**。
+Android 2.0.0 访问电脑照片库，需要同时运行本次 Windows 2.2.0 或更新后的源码服务；历史 Windows 2.1.1 包不支持配对。支持 Android 10+ 和较新的 Android System WebView。
 
-1. 打开“光影集”，点击“选择照片”从系统相册/文件选择器选图，或点击“授权并扫描相册”。Android 14+ 可以只授权部分照片；扫描范围服从系统授权。
-2. 应用保存内容 URI、SHA-256、EXIF、收藏与标签，**不复制整个手机相册，不写入原图**。图库每页 40 张，预览缓存可清理。
-3. 在“智能”中分析尚未识别的照片，模型随 APK 安装并离线运行。输入 `日落`、`海边 AND 日落`、`猫 OR 狗`，调整置信阈值，选择候选后保存影集；普通影集从照片页多选后创建。
-4. 照片详情 → 创建水印 → 选择相框 / 沉浸光感、EXIF、署名 → 保存到水印图库。已有草稿约 1.5 秒自动保存；首次预览不会自动创建草稿。支持继续编辑、复制、撤销/重做、待导出状态与单张 / 批量导出；每个作品使用自己的参数。
-5. 导出创建新图片，写入手机 `Pictures/PhotoCollection`，可在系统相册找到。JPG / PNG、长边 1080 / 2048 / 2560 / 4096、JPG 质量可选。可用内存不足时自动收紧导出尺寸并提示，手机不提供无限尺寸导出；导出时保持应用打开。
-6. 设置显示可用空间、数据库和预览缓存占用；缓存上限 16–2048 MB，默认 128 MB。实际预算自动限制在可用空间扣除 100 MB 后的四分之一以内，空间不足 100 MB 时停止导出。缓存只保存派生缩略图，清理后按需重新生成，草稿仍然保留。
+1. 电脑「设置 → 手机远程访问」开启访问，查看电脑地址和八位配对码。
+2. 手机和电脑连接同一 Wi-Fi 或私有 VPN，安装 `releases/PhotoCollection-Android.apk`，填写地址和配对码。再次使用可选择「连接已配对的电脑」。
+3. 手机底部提供照片、影集、创作、报告、我的。智能影集、人物、时间线与统计在「我的」中进入；筛选、评分、标签、多选、对比、删除记录等复用电脑端功能。
+4. 整理、AI、水印渲染和草稿都保存在电脑。手机仅保存索引、连接信息和界面偏好，不缓存原图、缩略图、水印预览或离线编辑队列。
+5. 单张导出后，电脑生成成品并自动保存到手机相册 `Pictures/PhotoCollection`。批量任务完成后逐个点击作品链接保存到手机。下载失败会报错，可从电脑水印图库再次导出。
+6. 手机隐藏原图下载。打开原图、文件位置和文件选择器对应电脑；导入也可填写电脑绝对路径。
 
-手机数据库、草稿和视觉标签在应用私有存储中，手机系统管理其位置；**卸载或清除应用数据会移除这些记录**，手机原图和已经导出的相册文件保留。相册访问被撤销、照片被移走或删除时，作品仍保留并提示重新授权。重新授权同一照片可恢复引用；当前手机版不提供把缺失作品绑定到不同文件的定位工具。
+电脑需要保持运行。配对码有效 10 分钟，设备会话有效 30 天；电脑生成新码会撤销旧设备，也可立即关闭访问。当前连接方式为局域网 / 私有 VPN 的 IP 地址，未部署公网穿透或云中转。
 
-手机版的离线智能分类使用 [ML Kit 内置视觉标签模型](https://developers.google.com/ml-kit/vision/image-labeling/android)，是画面标签及中文关键词映射，**不是桌面 Chinese-CLIP 的中文语义 embedding**。抽象情绪、复杂语句和人脸分组仍使用桌面版。手机 HEIC 解码依赖系统，部分 RAW 能读取 EXIF 但不能预览；手机版摄影报告按文件计数，目前不提供桌面 RAW+JPG 拍摄组统计及镜头生命周期报告。Android 清单已移除网络权限，手机照片不会通过此应用上传。
+覆盖升级继续使用原签名，保留旧独立库及已有相册导出；新客户端不再打开旧库，只清理旧派生预览。清除应用数据不会影响电脑库或已导出的相册作品。
 
-开发者使用 JDK 17、Android SDK 35 / Build Tools 35.0.0，项目 Gradle Wrapper 会下载并验证 Gradle 8.11.1，也可以指定已安装的 Gradle，执行：
-
-```powershell
-.\build-android.ps1 -JavaHome 'D:\jdk-17' -AndroidSdk 'D:\Android\Sdk' -Gradle 'D:\gradle-8.11.1\bin\gradle.bat'
-```
-
-脚本构建、运行 Android 测试与 Lint，并验证发布签名。首次自动生成本机签名密钥，保存在 `.runtime/signing/`，不会提交到 Git；请备份该目录，未来更新 APK 必须使用同一密钥。重新生成密钥会导致手机无法覆盖安装旧版本；不要通过卸载解决，以免丢失草稿。第三方组件遵循各自开源许可证，模型版权归其提供方；不附带用户照片。
+开发者运行 `./build-android.ps1` 完成构建、Lint、单元测试和签名验证；保留私有 `.runtime/signing/` 密钥用于覆盖升级。完整用法与实际验证边界见 [远程客户端说明](docs/android-remote.md)。
 
 ### 网页容器包（GitHub Packages）
 
-[容器包页面](https://github.com/users/wonderhate/packages/container/package/photo-management)：`ghcr.io/wonderhate/photo-management:2.1.1`，同时提供 `latest`。GitHub Actions 构建实际镜像、检查导入/草稿/导出和原图哈希后才发布，镜像使用非 root 用户；不包含任何私人库或照片。首次发布的包默认为私有，仓库所有者需在 Package settings → Change visibility 设为 Public 后，其他用户才能匿名拉取；仓库公开不等于容器包自动公开。
+[容器包页面](https://github.com/users/wonderhate/packages/container/package/photo-management)：`ghcr.io/wonderhate/photo-management:2.1.1`，同时提供 `latest`。手动运行主分支的 Web package 工作流时，GitHub Actions 构建实际镜像、检查导入/草稿/导出和原图哈希后才发布；Windows / Android Release 不自动更新容器，镜像使用非 root 用户；不包含任何私人库或照片。首次发布的包默认为私有，仓库所有者需在 Package settings → Change visibility 设为 Public 后，其他用户才能匿名拉取；仓库公开不等于容器包自动公开。
 
 已安装 Docker 的电脑可运行以下 PowerShell 命令。将 `D:\Photos` 换成自己的照片目录，该目录**只读挂载**；数据库和派生导出保存在独立 Docker volume 中，卸载容器不删除 volume。打开 <http://127.0.0.1:8000>，导入框填写容器里的 `/photos` 路径。
 
@@ -68,7 +64,7 @@ Windows 本地优先照片管理系统，当前版本 **2.1.1**。React / TypeSc
 docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" ghcr.io/wonderhate/photo-management:2.1.1
 ```
 
-这是图库、EXIF、影集、统计、报告与水印的基础网页版。镜像不安装桌面 Chinese-CLIP / 人物识别依赖，也不提供 Windows 原生文件选择器；智能功能使用 Windows 应用或源码版。不要把端口公开到互联网，当前程序没有多用户账户与远程访问认证。使用新版前备份数据卷中的 `library.db` 和派生文件，不要运行删除数据卷的命令。开发者也可用 `docker build -t photo-management .` 构建；工作流位于 `.github/workflows/package.yml`。
+这是图库、EXIF、影集、统计、报告与水印的基础网页版。镜像不安装桌面 Chinese-CLIP / 人物识别依赖，也不提供 Windows 原生文件选择器；智能功能使用 Windows 应用或源码版。不要把端口公开到互联网，历史 2.1.1 容器没有配对认证；本次源码支持受控配对，但未重新发布容器。使用新版前备份数据卷中的 `library.db` 和派生文件，不要运行删除数据卷的命令。开发者也可用 `docker build -t photo-management .` 构建；工作流位于 `.github/workflows/package.yml`。
 
 ### 源码启动
 
@@ -116,11 +112,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1 -Install
 
 首次使用可以直接启动：未提供本机配置时，数据库与缓存默认位于项目 `data/`，导出位于 `data/exports/`。
 
-也可以把 `library-config.example.json` 复制为 `library-config.json`，修改三个目录后重启。配置文件不提交 Git。
+也可以把 `library-config.example.json` 复制为 `library-config.json`，修改目录后重启。配置文件不提交 Git。
+
+源码新增「设置 → 照片库与存储」目录编辑入口：可以选择文件夹或填写绝对路径，自定义照片库（数据库与缓存）、AI 模型缓存、水印导出和多个自动扫描照片目录。「保存目录设置」后显示待生效的新位置，刷新页面仍保留；也可以「取消待生效修改」。修改在下次启动程序时生效，网页刷新不会切换正在使用的照片库。
+
+修改照片库位置时必须选择空目录；关闭其他应用实例后重启，程序会复制数据库、影集、草稿、预览、人物缓存及浏览器导入文件，验证数据库后再切换。外部原图保持原位置，旧照片库保留；目标已有文件、复制失败或配置写入失败时继续使用原库并显示错误。首次复制较大的库可能需要等待。导出路径只改变后续导出位置，历史导出保留原位置并继续可下载。模型目录改动不搬动原缓存；新目录为空时需重新准备模型。
+
+Windows 打包源码将界面配置写入 `%LOCALAPPDATA%\PhotoCollection\library-config.json`，兼容读取旧 EXE 同目录的配置；个人配置保存后优先使用，不会写入安装目录。源码版仍写入项目 `library-config.json`。显式设置 `PHOTO_DATA_DIR` 的实例使用该数据目录内的独立配置，不读取本机项目配置；由 `PHOTO_DATA_DIR`、`PHOTO_MODELS_DIR`、`PHOTO_EXPORT_DIR` 指定的路径在界面中锁定。容器中的路径指容器可见的目录，需要预先配置挂载。详细实现和验证见 [目录设置验证](docs/storage-paths.md)。本机 Windows 2.2.1 安装包已同步目录设置和新版界面。
 
 ```json
 {
   "data_dir": "D:\\PhotoLibrary",
+  "models_dir": "D:\\PhotoModels",
   "exports_dir": "D:\\PhotoExports",
   "scan_paths": ["D:\\Photos"]
 }
@@ -188,6 +191,8 @@ Downloads 中其他私人文件不会被开放为下载链接。同名导出自�
 人物页下载两份 OpenCV ONNX 权重并验证 SHA-256：[官方模型与使用说明](https://docs.opencv.org/4.x/d0/dd4/tutorial_dnn_face.html)。分析使用预览，支持后台进度与取消，跳过已分析照片。
 
 流程：本地检测 → SFace 相似度分组建议 → 命名／确认分组 → 检查局部人脸图并重新关联 → 查看人物照片。相似度可调，建议默认 0.45；自动分组需要人工确认，不能保证身份识别准确率。删除人物保留照片，把相关人脸放回待确认列表。
+
+人物卡片新增「新建人物影集」：分组全部确认且有照片后可用，默认以人物名称命名，可改名或取消；保存后直接打开新影集，并可在「影集」页找到。一次收入该人物当前分组的全部照片，不受人物页分页限制，RAW + JPG 和同次拍摄的重复人脸只计一次。创建的是普通影集；后续人物改名、重新分类或删除人物不会自动改动该影集，删除影集也保留原图。这项更新适用于 Windows 源码版和使用该后端的网页版，现有 v2.1.1 发布安装包未重新打包。
 
 未安装依赖或模型时显示安装／下载入口；解码失败与“没有人脸”分开报告。人脸向量只保存在本机 SQLite。
 

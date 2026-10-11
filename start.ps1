@@ -36,14 +36,15 @@ if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'frontend\dist\index.ht
 }
 $health = $null
 $expectedBuild = & $pythonPath -m backend.version
+$expectedVersion = & $pythonPath -c 'from backend.version import VERSION; print(VERSION)'
 try { $health = Invoke-RestMethod 'http://127.0.0.1:8000/api/health' -TimeoutSec 2 } catch {}
 if ($health) {
     $libraryConfigPath = Join-Path $projectRoot 'library-config.json'
     $libraryConfig = if (Test-Path -LiteralPath $libraryConfigPath) { Get-Content -LiteralPath $libraryConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json } else { $null }
     $expectedData = if ($env:PHOTO_DATA_DIR) { [IO.Path]::GetFullPath($env:PHOTO_DATA_DIR) } elseif ($libraryConfig.data_dir) { [IO.Path]::GetFullPath($libraryConfig.data_dir) } else { Join-Path $projectRoot 'data' }
-    if ($health.version -ne '2.1.0' -or $health.data_dir -ne $expectedData -or $health.build_id -ne $expectedBuild) { throw 'Port 8000 is serving another library or an older build. Run .\start.ps1 -Restart -NoBrowser.' }
+    if ($health.version -ne $expectedVersion -or $health.data_dir -ne $expectedData -or $health.build_id -ne $expectedBuild) { throw 'Port 8000 is serving another library or an older build. Run .\start.ps1 -Restart -NoBrowser.' }
 } else {
-    $serverProcess = Start-Process -FilePath $pythonPath -ArgumentList @('-m','uvicorn','backend.app.main:app','--host','127.0.0.1','--port','8000') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimePath 'server.out.log') -RedirectStandardError (Join-Path $runtimePath 'server.err.log')
+    $serverProcess = Start-Process -FilePath $pythonPath -ArgumentList @('-m','uvicorn','backend.app.main:app','--host','0.0.0.0','--port','8000','--no-proxy-headers') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtimePath 'server.out.log') -RedirectStandardError (Join-Path $runtimePath 'server.err.log')
     $serverProcess.Id | Set-Content -LiteralPath (Join-Path $runtimePath 'server.pid')
     for ($attempt=0; $attempt -lt 30; $attempt++) {
         Start-Sleep -Milliseconds 500
