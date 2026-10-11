@@ -53,6 +53,7 @@ class SmartRequest(BaseModel):
 
 class AlbumRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    person_id: str | None = Field(default=None, min_length=1, max_length=120)
     type: Literal['normal', 'smart'] = 'normal'
     keywords: list[str] = Field(default_factory=list, max_length=16)
     match_mode: Literal['all', 'any'] = 'any'

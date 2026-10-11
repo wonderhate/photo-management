@@ -47,7 +47,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     await checkCard('.album-card');
     if(width===390)await expect(page.locator('.sidebar nav .nav-child')).toHaveCSS('font-size','0px');
     await page.goto('/faces');await checkCard('.face-card');
-    await expect(page.locator('.face-card button')).toHaveCount(4);
+    await expect(page.locator('.face-card button')).toHaveCount(5);
     expect(await page.locator('.face-card').evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft))).toBeGreaterThanOrEqual(14);
     // These comma-separated light selectors used to contain literal "L" prefixes.
     await page.goto('/?page=photos');
@@ -60,6 +60,58 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     expect(errors).toEqual([]);
   });
 }
+
+test('confirmed person can create and open a named album',async({page})=>{
+  const person={id:'test-person',name:'家人',photo_count:81,pending:82};
+  const albums=[],submitted=[],errors=[];
+  page.on('pageerror',error=>errors.push(String(error)));
+  await page.addInitScript(()=>{localStorage.setItem('onboarded','1')});
+  const responses={
+    '/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},
+    '/library/scan':{job:null},'/jobs':[],
+    '/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[],total:0},
+    '/faces/status':{available:true,dependency:true,cached:true},
+  };
+  await page.route('**/api/**',async route=>{
+    const request=route.request(),key=new URL(request.url()).pathname.slice(4);
+    if(key==='/faces/persons')return route.fulfill({json:[person,{id:'empty',name:'空人物',photo_count:0,pending:0}]});
+    if(key==='/faces/persons/test-person/confirm'){person.pending=0;return route.fulfill({json:{ok:true}})}
+    if(key==='/albums'&&request.method()==='POST'){
+      submitted.push(request.postDataJSON());
+      if(submitted.length===1)return route.fulfill({status:409,json:{detail:'测试创建失败，请重试'}});
+      const album={id:'person-album',name:submitted.at(-1).name,type:'normal',count:81,keywords:[],cover_id:null};
+      albums.push(album);return route.fulfill({json:album});
+    }
+    if(key==='/albums')return route.fulfill({json:albums});
+    if(key==='/albums/person-album')return route.fulfill({json:albums[0]});
+    if(!(key in responses))errors.push(`Unexpected API request: ${key}`);
+    return route.fulfill({json:responses[key]??{}});
+  });
+  await page.goto('/faces');
+  const card=page.locator('.face-card').filter({has:page.getByRole('heading',{name:'家人',exact:true})});
+  const create=card.getByRole('button',{name:'新建人物影集',exact:true});
+  await expect(create).toBeDisabled();
+  await expect(page.locator('.face-card').filter({hasText:'空人物'}).getByRole('button',{name:'新建人物影集'})).toBeDisabled();
+  await card.getByRole('button',{name:'确认分组',exact:true}).click();
+  await expect(create).toBeEnabled();
+  await page.reload();await expect(create).toBeEnabled();
+  page.once('dialog',async dialog=>{expect(dialog.defaultValue()).toBe('家人');await dialog.dismiss()});
+  await create.click();expect(submitted).toHaveLength(0);
+  page.once('dialog',dialog=>dialog.accept('  '));
+  await create.click();await expect(page.getByRole('status')).toContainText('请填写影集名称');
+  expect(submitted).toHaveLength(0);
+  page.once('dialog',dialog=>dialog.accept('家人影集'));
+  await create.click();await expect(page.getByRole('status')).toContainText('测试创建失败');
+  await expect(create).toBeEnabled();await expect(page).toHaveURL(/\/faces$/);
+  page.once('dialog',dialog=>dialog.accept(' 家人影集 '));
+  await create.click();await expect(page).toHaveURL(/page=photos/);
+  expect(submitted).toEqual([{name:'家人影集',person_id:'test-person'},{name:'家人影集',person_id:'test-person'}]);
+  await expect(page.getByRole('status')).toContainText('家人影集');
+  await page.locator('.sidebar nav').getByRole('button',{name:'影集',exact:true}).click();
+  await expect(page.locator('.album-card h3')).toHaveText('家人影集');
+  await expect(page.locator('.album-card p')).toContainText('81 次拍摄');
+  expect(errors).toEqual([]);
+});
 
 test('all pages and watermark workflow under production CSP',async({page,request})=>{
   test.setTimeout(90000);
