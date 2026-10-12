@@ -11,6 +11,20 @@ import threading
 import time
 import urllib.request
 
+def follow_browser_fullscreen(window) -> None:
+    from System import Action
+    native = window.native
+    def bind() -> None:
+        if getattr(native, '_photo_fullscreen_bound', False): return
+        core = native.webview.CoreWebView2
+        def changed(sender, event) -> None:
+            if bool(core.ContainsFullScreenElement) != native.is_fullscreen:
+                native.toggle_fullscreen()
+        core.ContainsFullScreenElementChanged += changed
+        native._photo_fullscreen_bound = True
+        native._photo_fullscreen_handler = changed
+    native.Invoke(Action(bind))
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -66,11 +80,12 @@ def main() -> None:
             from desktop.icon import application_icon
             webview.settings['ALLOW_DOWNLOADS'] = True
             window=webview.create_window('光影集 · 摄影管理', url, width=1440, height=960, min_size=(900, 650), background_color='#f4f5f8')
-            if args.window_check:
-                def loaded() -> None:
+            def loaded() -> None:
+                follow_browser_fullscreen(window)
+                if args.window_check:
                     if args.status_file: args.status_file.write_text(json.dumps({'url':url, **health, 'window_loaded':True}), 'utf-8')
                     threading.Timer(2,window.destroy).start()
-                window.events.loaded += loaded
+            window.events.loaded += loaded
             webview.start(gui='edgechromium', private_mode=False, storage_path=str(log_dir.parent / 'webview'), icon=str(application_icon(log_dir.parent)))
     finally:
         server.should_exit = True

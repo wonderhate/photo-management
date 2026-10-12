@@ -221,16 +221,12 @@ h1,h2{font-family:var(--font-display);font-weight:400;letter-spacing:.025em;line
 @keyframes snow-fall{from{transform:translateY(-30px)}to{transform:translateY(80vh)}}
 @keyframes aurora-breathe{50%{opacity:.5;transform:translateX(8%) rotate(8deg)}}
 @keyframes grain-shift{25%{transform:translate(1%,-1%)}75%{transform:translate(-1%,1%)}}
-@keyframes rail-scroll{to{transform:translateX(-8%)}}
 @media(min-width:761px) and (prefers-reduced-motion:no-preference){
   /* Overscan both axes so translation and rotation keep every edge outside the clipped viewer. */
   .exhibit-aurora .detail-image::after{content:"";position:absolute;inset:-20vmax;background:radial-gradient(ellipse at 20% 10%,#36bf8b66,transparent 55%),radial-gradient(ellipse at 80% 0%,#6580ff44,transparent 60%);pointer-events:none;mix-blend-mode:screen;animation:aurora-breathe 9s ease-in-out infinite;z-index:1}
   .exhibit-snow .snow-layer{display:block;position:absolute;inset:0;pointer-events:none;z-index:2}
   .snow-layer i{position:absolute;top:0;width:3px;height:3px;background:#fff;border-radius:50%;opacity:.6;animation:snow-fall linear infinite}
   .exhibit-torch .detail-image.torch-on::after{content:"";position:absolute;inset:0;background:radial-gradient(circle 150px at var(--pointer-x,50%) var(--pointer-y,50%),transparent 55%,#000d 100%);pointer-events:none;z-index:1}
-  .exhibit-rail .viewer-filmstrip{justify-content:flex-start;padding-left:10%;animation:rail-scroll var(--rail-duration,75s) linear infinite alternate;animation-play-state:paused}
-  .exhibit-rail.is-playing .viewer-filmstrip{animation-play-state:running}
-  .exhibit-rail .viewer-filmstrip:is(:hover,:focus-within){animation-play-state:paused}
   .atmosphere .viewfinder{display:block;position:absolute;left:var(--pointer-x,50%);top:var(--pointer-y,50%);width:38px;height:38px;transform:translate(-50%,-50%);border:1px solid var(--accent);clip-path:polygon(0 0,28% 0,28% 5%,5% 5%,5% 28%,0 28%,0 0,100% 0,100% 28%,95% 28%,95% 5%,72% 5%,72% 0,100% 0,100% 100%,72% 100%,72% 95%,95% 95%,95% 72%,100% 72%,100% 100%,0 100%,0 72%,5% 72%,5% 95%,28% 95%,28% 100%,0 100%);pointer-events:none;z-index:4}
   .atmosphere .detail-image{cursor:crosshair}
   .atmosphere .detail-image>img{animation:develop-photo 1.6s cubic-bezier(.16,1,.3,1)}
@@ -479,3 +475,33 @@ h1,h2{font-family:var(--font-display);font-weight:400;letter-spacing:.025em;line
 :root[data-theme=dark] .signature-styles img{filter:brightness(0) invert(1)}
 .signature-text-sample{font-size:18px}
 .signature-editor input[readonly]{color:var(--muted)}
+
+/* A single reel of full-size photographs, with controls at the viewport edges. */
+:root:root[data-theme] .photo-viewer.film-viewer{padding:0}
+:root:root[data-theme] .film-viewer .modal{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-radius:0;background:var(--surface)}
+.film-viewer .photo-detail{position:relative;width:100%;height:100%;overflow:hidden}
+.film-viewer .viewer-main{height:100%;overflow:hidden}
+:root:root[data-theme] .film-viewer .detail-image{padding:0;min-height:0;background:var(--surface);touch-action:none}
+.film-viewer .detail-image::before{display:none}
+.film-stage{position:absolute;inset:0;overflow:hidden;outline:none}
+.film-track{position:absolute;left:0;top:9%;height:82%;display:flex;width:max-content;gap:0;will-change:transform}
+.film-track::before,.film-track::after{content:"";position:absolute;left:0;right:0;height:18px;border-block:6px solid var(--panel);background:repeating-linear-gradient(90deg,var(--panel) 0 14px,var(--surface) 14px 28px,var(--panel) 28px 42px)}
+.film-track::before{top:-30px}.film-track::after{bottom:-30px}
+.film-frame{flex:none;position:relative;height:100%;margin:0;padding:0}
+.film-frame img{display:block;height:100%;width:auto;max-width:none;max-height:none;object-fit:contain;box-shadow:none}
+.film-frame::after{content:attr(data-frame);position:absolute;bottom:-23px;left:34px;font-size:9px;line-height:14px;letter-spacing:.18em;color:var(--muted);pointer-events:none}
+.film-viewer .viewer-caption{display:none}
+.film-viewer .modal>header{position:absolute;left:0;right:0;top:0;height:64px;padding:12px 20px;z-index:7;background:var(--panel);opacity:0;transition:opacity .18s}
+.film-viewer .modal>header h2{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.film-viewer .viewer-toolbar{position:absolute;top:8px;right:64px;z-index:8;padding:4px 8px;border:0;background:var(--panel);opacity:0;transition:opacity .18s}
+.film-viewer .viewer-counter{margin-right:16px}
+.film-viewer .exhibit-controls{position:absolute;bottom:0;left:0;right:0;z-index:7;min-height:64px;background:var(--panel);opacity:0;transition:opacity .18s}
+.film-viewer .modal>header:is(:hover,:has(:focus-visible)),.film-viewer .viewer-toolbar:is(:hover,:has(:focus-visible)),.film-viewer .exhibit-controls:is(:hover,:has(:focus-visible)){opacity:1}
+.film-viewer[data-film-edge=top] .modal>header,.film-viewer[data-film-edge=top] .viewer-toolbar,.film-viewer .modal>header:hover~.photo-detail .viewer-toolbar{opacity:1}
+.film-viewer[data-film-edge=bottom] .exhibit-controls{opacity:1}
+:root:root[data-theme] .film-viewer .detail-image :is(.viewer-prev,.viewer-next){top:calc(50% - 40px);height:80px;width:64px;border-radius:0;border:0;opacity:0;transition:opacity .18s}
+.film-viewer .viewer-prev{left:0}.film-viewer .viewer-next{right:0}
+:root:root[data-theme] .film-viewer .detail-image :is(.viewer-prev,.viewer-next):is(:hover,:focus-visible),:root:root[data-theme] .film-viewer[data-film-edge=left] .viewer-prev,:root:root[data-theme] .film-viewer[data-film-edge=right] .viewer-next{opacity:1}
+:root:root[data-theme] .film-viewer .photo-detail>aside{position:absolute;right:0;top:64px;bottom:64px;z-index:6;width:min(360px,40vw);opacity:0;transition:opacity .18s;box-shadow:0 0 30px #0002}
+:root:root[data-theme] .film-viewer .photo-detail>aside:is(:hover,:has(:focus-visible)),:root:root[data-theme] .film-viewer[data-film-edge=right] .photo-detail.show-info>aside{opacity:1}
+@media(prefers-reduced-motion:reduce){.film-viewer :is(header,.viewer-toolbar,.exhibit-controls,.viewer-prev,.viewer-next,aside){transition:none!important}}
