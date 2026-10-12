@@ -44,6 +44,38 @@ test.describe('Android remote language handoff',()=>{
     expect(errors).toEqual([]);
   });
 });
+for(const [theme,width,lang] of [['light',1440,'zh'],['dark',390,'en']])test(`photo color rings stay distinct and editable ${theme} ${width}`,async({page},info)=>{
+  const {errors,edits}=await synthetic(page,{theme,width,lang});
+  await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
+  await page.getByRole('button',{name:lang==='en'?'Photo information':'照片信息',exact:true}).click();
+  const picker=page.locator('.photo-detail>aside .color-dots');
+  await expect(picker).toBeVisible();
+  const labels=lang==='en'?['Red','Yellow','Green','Blue']:['红色','黄色','绿色','蓝色'];
+  const colors=[];
+  for(const label of labels){
+    const button=picker.getByRole('button',{name:label,exact:true});
+    await expect(button).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+    await expect(button).toHaveAttribute('aria-pressed','false');
+    const ring=button.locator('circle').first();
+    await expect(ring).toHaveCSS('fill','none');
+    colors.push(await ring.evaluate(element=>getComputedStyle(element).stroke));
+  }
+  expect(new Set(colors).size).toBe(4);
+  const blue=picker.getByRole('button',{name:labels[3],exact:true});
+  await blue.click();await expect(blue).toHaveAttribute('aria-pressed','true');
+  expect(edits.at(-1)).toEqual({color_label:'blue'});
+  await picker.screenshot({path:info.outputPath('color-rings.png')});
+  await blue.click();await expect(blue).toHaveAttribute('aria-pressed','false');
+  expect(edits.at(-1)).toEqual({color_label:'none'});
+  await page.keyboard.press('Escape');
+  await page.locator('.select-box').first().click();
+  await page.getByRole('button',{name:lang==='en'?'Batch Edit':'批量编辑',exact:true}).click();
+  const batch=page.locator('.batch-edit-content .color-dots');
+  await batch.getByRole('button',{name:labels[1],exact:true}).click();
+  await expect(batch.getByRole('button',{name:labels[1],exact:true})).toHaveAttribute('aria-pressed','true');
+  await batch.screenshot({path:info.outputPath('batch-color-rings.png')});
+  expect(errors).toEqual([]);
+});
 for(const theme of ['dark','light'])for(const width of [1440,390])test(`rebuilt home and viewer ${theme} ${width}`,async({page},info)=>{
   const {errors,edits}=await synthetic(page,{theme,width});
   await page.goto('/?page=home');await expect(page.locator('.collection-tile')).toHaveCount(5);

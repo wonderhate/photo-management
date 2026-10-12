@@ -46,7 +46,7 @@
 .color-dots button:hover:not(:disabled){transform:scale(1.2);opacity:1}
 .color-dots button:disabled{cursor:default}
 .color-dots button.active{opacity:1;border-color:#d0d5c8;transform:scale(1.15)}
-.color-dot-red{background:#c45c4a}.color-dot-yellow{background:#c8a44e}.color-dot-green{background:#7a9a5e}.color-dot-blue{background:#5e82a8}
+.color-dot-red{background:#c45c4a;--label-color:#c45c4a}.color-dot-yellow{background:#c8a44e;--label-color:#c8a44e}.color-dot-green{background:#7a9a5e;--label-color:#7a9a5e}.color-dot-blue{background:#5e82a8;--label-color:#5e82a8}
 .photo-badges{position:absolute;left:8px;bottom:8px;display:flex;gap:5px;align-items:center;z-index:2}
 .photo-badges .badge-rating{display:flex;align-items:center;gap:2px;background:#101614cc;border-radius:3px;padding:2px 5px;font-size:9px;color:#d4b96a;font-weight:500}
 .photo-badges .badge-color{width:8px;height:8px;border-radius:50%;border:1px solid #ffffff30}

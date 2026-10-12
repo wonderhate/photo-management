@@ -469,3 +469,5 @@ h1,h2{font-family:var(--font-display);font-weight:400;letter-spacing:.025em;line
 .computer-file-row{flex-direction:row}
 :root:root[data-theme=light] .scrim.computer-import{background:#f7f5f0e8}
 .computer-picker .modal-footer{position:sticky;bottom:0;background:var(--panel);padding-bottom:12px}
+:root:root[data-theme] .color-dots button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;min-height:40px;padding:8px;border:0;border-radius:50%;background:transparent;opacity:1;transform:none}
+:root:root[data-theme=light] .color-dots .color-dot-yellow{--label-color:#a97914}
