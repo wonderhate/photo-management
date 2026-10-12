@@ -5,6 +5,49 @@ from backend.app.main import app
 from backend.app import remote
 from test_library import import_paths
 
+def test_phone_browses_computer_files_and_imports_without_native_dialog(client, image_factory, monkeypatch, tmp_path):
+    from backend.app import file_browser
+    monkeypatch.setattr(remote, 'CONFIG', tmp_path / 'remote.json')
+    monkeypatch.setattr(file_browser, 'PAGE_SIZE', 1)
+    remote.attempts.clear()
+    folder = tmp_path / 'Computer Photos #一'
+    folder.mkdir()
+    (folder / 'Trip').mkdir()
+    original = image_factory('phone-select-original.jpg')
+    original = original.rename(folder / original.name)
+    second = folder / 'second.PNG'
+    second.write_bytes(original.read_bytes())
+    (folder / 'private.txt').write_text('not a photo', encoding='utf-8')
+    digest = hashlib.sha256(original.read_bytes()).hexdigest()
+    with TestClient(app, base_url='http://192.168.1.20:8000', client=('192.168.1.21', 4000)) as phone:
+        assert phone.get('/api/files/browse').status_code == 403
+        code = client.put('/api/remote/settings', json={'enabled': True}).json()['pairing_code']
+        assert phone.get('/api/files/browse').status_code == 401
+        assert phone.post('/api/remote/connect', json={'code': code}).status_code == 200
+        assert phone.post('/api/dialog/files').status_code == 403
+        roots = phone.get('/api/files/browse')
+        assert roots.status_code == 200 and roots.json()['entries']
+        listing = phone.get('/api/files/browse', params={'path': str(folder)})
+        assert 'no-store' in listing.headers['Cache-Control']
+        assert listing.json()['entries'][0]['name'] == 'Trip'
+        assert listing.json()['pages'] == 3 and listing.json()['total'] == 3
+        files = [phone.get('/api/files/browse', params={'path': str(folder), 'page': page}).json()['entries'][0] for page in (2, 3)]
+        assert {entry['name'] for entry in files} == {original.name, second.name}
+        assert all('content' not in entry for entry in files)
+        directories = phone.get('/api/files/browse', params={'path': str(folder), 'directories_only': True}).json()
+        assert directories['total'] == 1 and directories['parent'] == str(folder.parent)
+        for value in ['relative/path', str(folder / 'missing'), str(original), '\\\\remote-host\\share']:
+            assert phone.get('/api/files/browse', params={'path': value}).status_code in (400, 404)
+        assert phone.get('/api/files/browse', params={'path': str(folder), 'page': 0}).status_code == 400
+        previous_imports = set((remote.DATA / 'imports').rglob('*'))
+        import_paths(phone, [original])
+        photo = client.get('/api/photos').json()['photos'][0]
+        assert photo['file_path'] == str(original.resolve())
+        assert hashlib.sha256(original.read_bytes()).hexdigest() == digest
+        assert set((remote.DATA / 'imports').rglob('*')) == previous_imports
+        client.put('/api/remote/settings', json={'enabled': False})
+        assert phone.get('/api/files/browse', params={'path': str(folder)}).status_code == 403
+
 
 def test_pairing_addresses_include_private_vpn_and_actual_port(client, monkeypatch, tmp_path):
     monkeypatch.setattr(remote, 'CONFIG', tmp_path / 'remote.json')

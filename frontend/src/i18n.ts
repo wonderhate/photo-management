@@ -1,6 +1,10 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
+  '浏览已配对电脑上的文件。照片将导入电脑照片库，原文件保留在原位置。':'Browse files on the paired computer. Photos are imported into its library; originals stay in place.',
+  '选择电脑上的照片':'Choose Photos on Computer','选择电脑上的文件夹':'Choose a Folder on Computer','选择电脑上的照片或文件夹，仅登记电脑原图路径，自动去重并读取 EXIF。':'Choose photos or folders on the computer. Original paths are registered, duplicates skipped and EXIF read.',
+  '电脑':'Computer','上一级':'Parent Folder','电脑文件夹路径':'Computer Folder Path','例如 C:\\Users\\你的用户名\\Pictures':'For example C:\\Users\\your-name\\Pictures','打开路径':'Open Path','正在读取电脑文件夹…':'Reading computer folder…','电脑文件列表':'Computer Files','用户文件夹':'Home Folder','此文件夹没有子文件夹':'No subfolders in this folder','此文件夹没有支持的照片或子文件夹':'No supported photos or subfolders in this folder','选择这个文件夹':'Use This Folder','使用已选照片（{0}）':'Use Selected Photos ({0})',
+  '电脑路径或分页参数无效':'Invalid computer path or page','请输入电脑上的本地绝对路径':'Enter an absolute local path on the computer','请选择电脑上的文件夹':'Choose a folder on the computer','电脑上的文件夹不存在':'Computer folder does not exist','电脑上的文件夹无法访问':'Computer folder is not accessible','无法读取电脑上的文件夹':'Unable to read the computer folder',
   '在手机连接页面填写以下两项':'Enter these two fields on your phone',
   '电脑地址':'Computer Address','电脑地址 {0}':'Computer Address {0}','八位配对码':'8-Digit Pairing Code','开启手机访问后显示':'Enable phone access to see the code',
   '填写完整地址（含 http:// 和端口）；多个地址时，选择手机能访问的局域网或私有 VPN 地址。':'Enter the full address, including http:// and the port. If several addresses are shown, use the local network or private VPN address your phone can reach.',

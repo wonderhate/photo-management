@@ -17,7 +17,7 @@ if ($LASTEXITCODE) { throw 'Windows 打包失败' }
 $package = Join-Path $PSScriptRoot 'releases\windows\PhotoCollection'
 Copy-Item README.md -Destination $package
 New-Item -ItemType Directory -Force (Join-Path $package 'docs') | Out-Null
-Copy-Item -Path docs/apps-verification.md, docs/apps-security.md, docs/verification.md, docs/android-remote.md, docs/storage-paths.md, docs/ui-design-2026-10-11.md, docs/native-ui-sync-2026-10-11.md -Destination (Join-Path $package 'docs')
+Copy-Item -Path docs/apps-verification.md, docs/apps-security.md, docs/verification.md, docs/android-remote.md, docs/storage-paths.md, docs/ui-design-2026-10-11.md, docs/native-ui-sync-2026-10-11.md, docs/phone-computer-file-picker-2026-10-12.md -Destination (Join-Path $package 'docs')
 # Private library configuration is opt-in and is never included in the distributable ZIP.
 $publicFiles = Get-ChildItem -LiteralPath $package | Where-Object { $_.Name -ne 'library-config.json' } | Select-Object -ExpandProperty FullName
 Compress-Archive -Path $publicFiles -DestinationPath releases/PhotoCollection-Windows.zip -Force

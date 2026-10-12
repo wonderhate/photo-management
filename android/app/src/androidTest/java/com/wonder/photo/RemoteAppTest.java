@@ -51,8 +51,9 @@ public class RemoteAppTest {
         MainActivity activity=(MainActivity)instrumentation.startActivitySync(intent);
         try {
             instrumentation.runOnMainSync(()->{ViewGroup root=activity.findViewById(android.R.id.content);web=(WebView)((ViewGroup)root.getChildAt(0)).getChildAt(0);});
-            await("document.getElementById('pair')");
+            await("document.getElementById('pair') && typeof document.getElementById('language').onclick==='function'");
             evaluate("if(document.documentElement.lang==='en')document.getElementById('language').click()");
+            await("document.documentElement.lang==='zh-CN'");
             screenshot("remote-connect");
             evaluate("document.getElementById('language').click()");
             await("document.documentElement.lang==='en'");
@@ -69,6 +70,22 @@ public class RemoteAppTest {
             assertEquals("5",evaluate("document.querySelectorAll('.mobile-nav button').length"));
             assertEquals("true",evaluate("typeof Connect==='undefined'"));
             screenshot("remote-gallery");
+            evaluate("[...document.querySelectorAll('.topbar-actions button')].find(b=>b.innerText==='导入照片').click()");
+            await("document.querySelector('.import-choices button')");
+            evaluate("document.querySelector('.import-choices button').click()");
+            await("document.querySelector('.computer-file-list button')");
+            evaluate("fetch('/api/health').then(r=>r.json()).then(h=>{window.computerSources=h.data_dir.replace(/\\\\/g,'/').replace(/\\/library$/,'/synthetic-originals');const input=document.querySelector('.computer-picker-path input');const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(input,window.computerSources);input.dispatchEvent(new Event('input',{bubbles:true}));})");
+            await("document.querySelector('.computer-picker-path input').value===window.computerSources");
+            evaluate("document.querySelector('.computer-picker-path button').click()");
+            await("document.querySelector('.computer-file-list input[aria-label=\"Light-01.jpg\"]')");
+            screenshot("remote-computer-file-picker");
+            evaluate("document.querySelector('.computer-file-list input[aria-label=\"Light-01.jpg\"]').click()");
+            await("!document.querySelector('.computer-picker .modal-footer .primary').disabled");
+            evaluate("document.querySelector('.computer-picker .modal-footer .primary').click()");
+            await("document.querySelector('.import-content textarea').value.endsWith('Light-01.jpg')");
+            assertEquals("true",evaluate("document.querySelector('.import-content textarea').value.replace(/\\\\/g,'/').startsWith(window.computerSources+'/')"));
+            evaluate("document.querySelector('.import-content .modal-footer .primary').click()");
+            await("!document.querySelector('.import-content') && document.querySelector('.photo-card')");
             evaluate("document.querySelector('.photo-image').click()");await("document.querySelector('.photo-detail')");
             evaluate("document.querySelector('[aria-label=\"照片信息\"]').click()");
             boolean favorite="true".equals(evaluate("[...document.querySelectorAll('.photo-detail button')].some(b=>b.innerText==='已收藏')"));

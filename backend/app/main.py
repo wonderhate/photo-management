@@ -101,7 +101,8 @@ def scan_library(force: bool = False):
     return scan_service.start(force)
 
 @app.post('/api/dialog/{kind}')
-def picker(kind: Literal['files','directory']):
+def picker(kind: Literal['files','directory'], request: Request):
+    remote.require_local(request)
     creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
     if getattr(sys, 'frozen', False):
         with TemporaryDirectory(prefix='photo-picker-') as directory:
@@ -112,6 +113,11 @@ def picker(kind: Literal['files','directory']):
     result = subprocess.run([sys.executable, '-m', 'backend.app.dialog', kind], cwd=PROJECT, capture_output=True, text=True, timeout=300, creationflags=creationflags)
     if result.returncode: raise HTTPException(503, '系统文件选择器不可用，请粘贴绝对路径')
     return {'paths': json.loads(result.stdout)}
+
+@app.get('/api/files/browse')
+def browse_computer_files(path: str = '', directories_only: bool = False, page: int = 1):
+    from .file_browser import browse
+    return browse(path, directories_only, page)
 
 @app.post('/api/photos/import', status_code=202)
 def import_photos(payload: ImportRequest):
