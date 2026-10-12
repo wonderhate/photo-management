@@ -78,6 +78,7 @@ test('English interface covers pages, dialogs and live language changes',async({
   await checkEnglish('smart album dialog');
   await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
   await page.goto('/?page=settings');
+  await expect(page.locator('.shortcuts-edit')).toBeVisible();
   const language=page.locator('.settings-card').filter({has:page.getByRole('heading',{name:/^(Language|界面语言)$/})}).locator('select');
   const scans=page.getByRole('textbox',{name:'Automatic Scan Folders',exact:true});
   await scans.fill('C:/unsaved-scan-folder');
@@ -93,7 +94,7 @@ test('English interface covers pages, dialogs and live language changes',async({
     await checkEnglish('plugin output');
   }
   await page.goto('/?page=photos');
-  await page.getByRole('button',{name:'Import Photos',exact:true}).click();
+  await page.locator('.topbar-actions').getByRole('button',{name:'Import Photos',exact:true}).click();
   await checkEnglish('import dialog');await page.keyboard.press('Escape');
   await page.keyboard.press('?');await checkEnglish('shortcuts dialog');await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'View 用户的照片.jpg',exact:true}).click();
@@ -129,6 +130,7 @@ test('English interface covers pages, dialogs and live language changes',async({
   await page.setViewportSize({width:390,height:1000});
   for(const path of ['/faces','/?page=settings','/?page=reports','/watermark/gallery','/watermark/workshop?draft='+draftId]){
     await page.goto(path);await page.waitForLoadState('networkidle');await checkEnglish('mobile '+path);
+    if(path==='/?page=settings')await expect(page.locator('.shortcuts-edit')).toHaveCount(0);
   }
   await page.screenshot({path:testInfo.outputPath('english-mobile.png'),fullPage:true});
   expect(digest()).toBe(before);expect(errors).toEqual([]);

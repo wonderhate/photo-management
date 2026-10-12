@@ -136,6 +136,10 @@ test('English home and photo controls remain available on mobile',async({page})=
   await expect(page.locator('.gallery-heading h1')).toContainText('All Photos');
   await page.locator('.photo-image').first().click();
   await expect(page.locator('.viewer-caption b')).toHaveText('FRAME_00.jpg');
+  await expect(page.locator('.photo-detail')).toHaveClass(/exhibit-normal/);
+  await expect(page.locator('.exhibit-controls')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Fullscreen',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Play slideshow',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Next photo',exact:true}).click();
   await expect(page.locator('.viewer-caption b')).toHaveText('FRAME_01.jpg');
   await page.keyboard.press('Escape');
@@ -153,8 +157,9 @@ test('reduced motion, touch swipe and remote navigation remain usable',async({pa
     el.dispatchEvent(new TouchEvent('touchend',{bubbles:true,changedTouches:[new Touch({identifier:1,target:el,clientX:120,clientY:205})]}));
   });
   await expect(page.locator('.viewer-caption b')).toHaveText('FRAME_01.jpg');
-  await page.getByLabel('展映模式',{exact:true}).selectOption('snow');
-  await page.getByLabel('摄影氛围',{exact:true}).check();
+  await expect(page.getByLabel('展映模式',{exact:true})).toHaveCount(0);
+  await expect(page.getByLabel('摄影氛围',{exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'全屏',exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').length)).toBe(0);
   await expect(page.locator('.aperture-intro')).toHaveCount(0);
   await page.keyboard.press('Escape');
@@ -163,6 +168,43 @@ test('reduced motion, touch swipe and remote navigation remain usable',async({pa
   await page.keyboard.press('Escape');await expect(page.locator('.sidebar')).toBeHidden();
   expect(errors).toEqual([]);
 });
+test('remote landscape photos keep standard viewing without fullscreen controls',async({page},info)=>{
+  const {errors}=await synthetic(page,{width:915,lang:'en',remote:true});
+  await page.setViewportSize({width:915,height:430});
+  await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
+  await expect(page.locator('.photo-detail')).toHaveClass(/exhibit-normal/);
+  await expect(page.locator('.exhibit-controls')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Fullscreen',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Play slideshow',exact:true})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
+  await page.getByRole('button',{name:'Next photo',exact:true}).click();
+  await expect(page.locator('.viewer-caption b')).toHaveText('FRAME_01.jpg');
+  await page.screenshot({path:info.outputPath('mobile-landscape-viewer.png')});
+  expect(errors).toEqual([]);
+});
+
+test('switching to mobile stops desktop exhibitions and preserves the photo',async({page})=>{
+  const {errors}=await synthetic(page);
+  await page.clock.install();
+  await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
+  await page.getByLabel('摄影氛围',{exact:true}).check();
+  await page.getByRole('button',{name:'跳过开场',exact:true}).click();
+  await page.getByLabel('展映模式',{exact:true}).selectOption('rail');
+  await page.getByRole('button',{name:'播放展映',exact:true}).click();
+  await page.setViewportSize({width:390,height:1000});
+  await expect(page.locator('.photo-detail')).toHaveClass('photo-detail exhibit-normal');
+  await expect(page.locator('.exhibit-controls')).toHaveCount(0);
+  await expect(page.locator('.aperture-intro,.viewfinder,.snow-layer')).toHaveCount(0);
+  await page.clock.fastForward(6000);
+  await expect(page.locator('.viewer-caption b')).toHaveText('FRAME_00.jpg');
+  await page.setViewportSize({width:1440,height:1000});
+  await expect(page.getByLabel('展映模式',{exact:true})).toHaveValue('normal');
+  await expect(page.getByLabel('摄影氛围',{exact:true})).not.toBeChecked();
+  await expect(page.getByRole('button',{name:'播放展映',exact:true})).toHaveAttribute('aria-pressed','false');
+  await expect(page.getByRole('button',{name:'全屏',exact:true})).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('optional exhibitions can pause, skip and return to standard photo viewing',async({page},info)=>{
   const {errors}=await synthetic(page);
   await page.goto('/?page=home');

@@ -91,6 +91,9 @@ public class RemoteAppTest {
             evaluate("document.querySelector('.import-content .modal-footer .primary').click()");
             await("!document.querySelector('.import-content') && document.querySelector('.photo-card')");
             evaluate("document.querySelector('.photo-image').click()");await("document.querySelector('.photo-detail')");
+            assertEquals("true",evaluate("document.querySelector('.photo-detail').classList.contains('exhibit-normal')"));
+            assertEquals("0",evaluate("document.querySelectorAll('.exhibit-controls').length"));
+            assertEquals("0",evaluate("document.querySelectorAll('.viewer-toolbar button[aria-label=\"全屏\"],.viewer-toolbar button[aria-label=\"播放展映\"]').length"));
             evaluate("document.querySelector('[aria-label=\"照片信息\"]').click()");
             boolean favorite="true".equals(evaluate("[...document.querySelectorAll('.photo-detail button')].some(b=>b.innerText==='已收藏')"));
             evaluate("[...document.querySelectorAll('.photo-detail button')].find(b=>b.innerText==='收藏'||b.innerText==='已收藏').click()");
@@ -114,7 +117,10 @@ public class RemoteAppTest {
                 if(!saved)Thread.sleep(100);
             }
             assertTrue("Explicit export did not create a phone image",saved);
-            evaluate("[...document.querySelectorAll('.mobile-nav button')].find(b=>b.innerText==='我的').click()");await("document.querySelector('.remote-computer')");screenshot("remote-my");
+            evaluate("[...document.querySelectorAll('.mobile-nav button')].find(b=>b.innerText==='我的').click()");await("document.querySelector('.remote-computer')");
+            await("document.querySelector('.settings-page select')");
+            assertEquals("0",evaluate("document.querySelectorAll('.shortcuts-edit').length"));
+            screenshot("remote-my");
             instrumentation.runOnMainSync(()->assertEquals(android.webkit.WebSettings.LOAD_NO_CACHE,web.getSettings().getCacheMode()));
             assertNotNull(CookieManager.getInstance().getCookie("http://10.0.2.2:8012"));
         } finally { instrumentation.runOnMainSync(activity::finish); }
