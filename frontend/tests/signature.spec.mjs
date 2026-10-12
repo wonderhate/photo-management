@@ -20,7 +20,7 @@ for(const [width,theme,lang] of [[1440,'light','zh'],[390,'dark','en']])test.des
     await page.goto('/watermark/workshop?photo='+photo.id);
     const ui=lang==='en'?{show:'Show Signature',original:'Original Script',fine:'Fine Handwriting',brush:'Brush Script',classic:'Classic Calligraphy',text:'Signature Text',save:'Save to Watermark Gallery',export:'Export Current Photo',ambient:'Ambient Light'}:{show:'显示署名',original:'原版连笔',fine:'细线手写',brush:'毛笔笔触',classic:'经典花体',text:'署名内容',save:'保存到水印图库',export:'导出当前照片',ambient:'沉浸光感'};
     const editor=page.locator('.signature-editor');
-    await expect(editor.locator('img')).toHaveCount(4);
+    await expect(editor.locator('img')).toHaveCount(8);
     await expect.poll(()=>editor.locator('img').evaluateAll(images=>images.every(i=>i.complete&&i.naturalWidth>0))).toBe(true);
     await page.getByLabel(ui.show,{exact:true}).check();
     const hashes=[];
@@ -36,13 +36,27 @@ for(const [width,theme,lang] of [[1440,'light','zh'],[390,'dark','en']])test.des
       if(style==='natural')await expect(page.getByLabel(ui.text,{exact:true})).toHaveAttribute('readonly','');
     }
     expect(new Set(hashes).size).toBe(4);
-    await editor.getByRole('button',{name:ui.fine,exact:true}).click();
-    await page.getByLabel(ui.text,{exact:true}).fill('Mira');
+    const chineseStyles=lang==='en'?[['Chinese Brush','chinese_brush'],['Chinese Running Script','chinese_running'],['Chinese Cursive','chinese_cursive'],['Chinese Handwriting','chinese_handwriting']]:[['中文毛笔','chinese_brush'],['中文行书','chinese_running'],['中文草书','chinese_cursive'],['中文手写','chinese_handwriting']];
+    await editor.getByRole('button',{name:chineseStyles[0][0],exact:true}).click();
+    await expect(page.getByLabel(ui.text,{exact:true})).toHaveValue('光影');
+    await page.getByLabel(ui.text,{exact:true}).fill('陈曦 · wonder');
+    const chineseHashes=[];
+    for(const [label,style] of chineseStyles){
+      const previous=await page.locator('.render-stage>img').getAttribute('src');
+      const preview=page.waitForResponse(r=>r.url().endsWith('/api/watermark/preview')&&r.request().postDataJSON()?.options.signature_style===style&&r.request().postDataJSON()?.options.signature==='陈曦 · wonder');
+      await editor.getByRole('button',{name:label,exact:true}).click();
+      expect((await preview).ok()).toBe(true);
+      await expect(page.locator('.render-stage>img')).not.toHaveAttribute('src',previous||'');
+      await expect.poll(()=>page.locator('.render-stage>img').evaluate(img=>img.complete&&img.naturalWidth>0)).toBe(true);
+      chineseHashes.push(await page.evaluate(async()=>{const img=document.querySelector('.render-stage>img'),canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0);return [...new Uint8Array(await crypto.subtle.digest('SHA-256',ctx.getImageData(0,0,canvas.width,canvas.height).data))].join(',')}));
+      await expect(editor.getByRole('button',{name:label,exact:true})).toHaveAttribute('aria-pressed','true');
+    }
+    expect(new Set(chineseHashes).size).toBe(4);
     await page.getByRole('button',{name:ui.save,exact:true}).click();
     await expect(page).toHaveURL(/draft=/);
     const id=new URL(page.url()).searchParams.get('draft');
-    await page.reload();await expect(page.getByLabel(ui.text,{exact:true})).toHaveValue('Mira');
-    await expect(editor.getByRole('button',{name:ui.fine,exact:true})).toHaveAttribute('aria-pressed','true');
+    await page.reload();await expect(page.getByLabel(ui.text,{exact:true})).toHaveValue('陈曦 · wonder');
+    await expect(editor.getByRole('button',{name:chineseStyles[3][0],exact:true})).toHaveAttribute('aria-pressed','true');
     await expect(page.locator('.render-stage>img')).toBeVisible();
     await expect(page.locator('.render-status')).not.toContainText(lang==='en'?'Rendering':'正在渲染');
     await editor.screenshot({path:info.outputPath('signature-styles.png')});
@@ -51,9 +65,9 @@ for(const [width,theme,lang] of [[1440,'light','zh'],[390,'dark','en']])test.des
     await page.getByRole('button',{name:ui.export,exact:true}).click();
     await expect(page.locator('.download-result')).toBeVisible();
     const saved=(await(await request.get('/api/watermark/drafts/'+id)).json()).settings_json;
-    expect(saved.signature).toBe('Mira');expect(saved.signature_style).toBe('fine');expect(saved.template).toBe('ambient');
+    expect(saved.signature).toBe('陈曦 · wonder');expect(saved.signature_style).toBe('chinese_handwriting');expect(saved.template).toBe('ambient');
     await page.getByLabel(ui.show,{exact:true}).uncheck();
-    await expect(editor.getByRole('button',{name:ui.fine,exact:true})).toBeDisabled();
+    await expect(editor.getByRole('button',{name:chineseStyles[3][0],exact:true})).toBeDisabled();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     if(lang==='en')expect(await editor.innerText()).not.toMatch(/[\u3400-\u9fff]/u);
     expect(errors).toEqual([]);

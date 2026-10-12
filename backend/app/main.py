@@ -457,9 +457,9 @@ def watermark_preview(payload: WatermarkRequest):
     return Response(stream.getvalue(), media_type='image/jpeg')
 
 @app.get('/api/watermark/signatures/{style}')
-def watermark_signature(style: Literal['natural', 'fine', 'brush', 'calligraphy']):
+def watermark_signature(style: Literal['natural', 'fine', 'brush', 'calligraphy', 'chinese_brush', 'chinese_running', 'chinese_cursive', 'chinese_handwriting']):
     from .watermark.signatures import signature_image
-    image = signature_image({'fields':['signature'], 'signature':'wonder', 'signature_style':style})
+    image = signature_image({'fields':['signature'], 'signature':'光影' if style.startswith('chinese_') else 'wonder', 'signature_style':style})
     stream = BytesIO()
     image.save(stream, 'PNG')
     return Response(stream.getvalue(), media_type='image/png')
