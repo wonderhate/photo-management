@@ -51,13 +51,15 @@ async def protect_local_requests(request: Request, call_next):
     blocked = remote.guard(request)
     if blocked is not None:
         response = blocked
-    elif request.method not in ('GET','HEAD','OPTIONS') and origin and origin not in allowed and origin != str(request.base_url).rstrip('/'):
+    elif request.method not in ('GET','HEAD','OPTIONS') and origin and origin not in allowed and origin != str(request.base_url).rstrip('/') and not remote.public_origin(request, origin):
         response = JSONResponse({'detail':'禁止来自其他网站的本地操作'}, status_code=403)
     else:
         response = await call_next(request)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'
+    if request.url.hostname not in remote.LOCAL_HOSTS and remote.is_public_host(request):
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
     if request.url.path.startswith('/api/remote/') or not remote.local_request(request) or request.cookies.get(remote.COOKIE) or 'PhotoCollectionRemote/' in request.headers.get('user-agent', ''):
         response.headers['Cache-Control'] = 'no-store, max-age=0'
         response.headers['Pragma'] = 'no-cache'
