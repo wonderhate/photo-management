@@ -6,7 +6,7 @@ from pathlib import Path
 
 ADDITIONS = {
     'photos': {'gps_altitude': 'REAL', 'rating': 'INTEGER', 'color_label': 'TEXT', 'face_data': 'JSON'},
-    'albums': {'cover_photo_id': 'VARCHAR'},
+    'albums': {'cover_photo_id': 'VARCHAR', 'person_id': 'VARCHAR REFERENCES face_persons(id) ON DELETE SET NULL'},
     'album_photos': {'position': 'INTEGER NOT NULL DEFAULT 0'},
 }
 

@@ -69,6 +69,7 @@ class AlbumRequest(BaseModel):
 
 class AlbumUpdate(BaseModel):
     cover_photo_id: str | None = None
+    person_id: str | None = Field(default=None, min_length=1, max_length=120)
 
 class AlbumOrderRequest(BaseModel):
     photo_ids: list[str] = Field(default_factory=list, max_length=10000)

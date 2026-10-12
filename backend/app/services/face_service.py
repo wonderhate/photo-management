@@ -4,10 +4,11 @@ import importlib.util
 import urllib.request
 from pathlib import Path
 from threading import RLock
+from collections import defaultdict
 import numpy as np
 from sqlalchemy import select,func
 from ..config import MODELS,DATA
-from ..models import Session,Photo,CaptureGroup,FacePerson,DetectedFace,now,uid
+from ..models import Session,Photo,CaptureGroup,FacePerson,DetectedFace,Album,AlbumPhoto,now,uid
 from . import jobs
 from .thumbnail_service import open_image
 
@@ -117,7 +118,23 @@ def persons() -> list[dict]:
         people=session.scalars(select(FacePerson).order_by(FacePerson.name)).all()
         counts=dict(session.execute(select(DetectedFace.person_id,func.count(func.distinct(Photo.capture_group_id))).join(Photo,Photo.id==DetectedFace.photo_id).group_by(DetectedFace.person_id)).all())
         pending=dict(session.execute(select(DetectedFace.person_id,func.count()).where(DetectedFace.confirmed.is_(False)).group_by(DetectedFace.person_id)).all())
-        return [{'id':p.id,'name':p.name,'photo_count':counts.get(p.id,0),'pending':pending.get(p.id,0)} for p in people]
+        albums=session.scalars(select(Album).where(Album.type=='normal').order_by(Album.created_at.desc(),Album.id)).all()
+        linked=defaultdict(list)
+        for album in albums:
+            if album.person_id:linked[album.person_id].append(album)
+        # Older releases saved only album members. Match complete capture sets, not names or RAW/JPG IDs.
+        unlinked=[p.id for p in people if not linked[p.id] and not pending.get(p.id,0) and counts.get(p.id,0)]
+        person_groups,album_groups=defaultdict(set),defaultdict(set)
+        legacy=defaultdict(list)
+        if unlinked:
+            for person_id,group_id in session.execute(select(DetectedFace.person_id,Photo.capture_group_id).join(Photo,Photo.id==DetectedFace.photo_id).where(DetectedFace.person_id.in_(unlinked),DetectedFace.confirmed.is_(True))):
+                person_groups[person_id].add(group_id)
+            for album_id,group_id in session.execute(select(AlbumPhoto.album_id,Photo.capture_group_id).join(Photo,Photo.id==AlbumPhoto.photo_id).join(Album,Album.id==AlbumPhoto.album_id).where(Album.type=='normal',Album.person_id.is_(None))):
+                album_groups[album_id].add(group_id)
+            for album in albums:
+                if not album.person_id and album_groups[album.id]:legacy[frozenset(album_groups[album.id])].append(album)
+        return [{'id':p.id,'name':p.name,'photo_count':counts.get(p.id,0),'pending':pending.get(p.id,0),
+            'albums':[{'id':a.id,'name':a.name,'linked':a.person_id==p.id} for a in (linked[p.id] or [a for a in legacy.get(frozenset(person_groups[p.id]),[]) if a.created_at>=p.created_at])]} for p in people]
 
 def thumbnail(face_id: str) -> Path:
     with Session() as session:

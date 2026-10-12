@@ -12,7 +12,7 @@ def test_old_schema_upgrade_is_idempotent_and_backed_up(tmp_path):
         db.execute('CREATE TABLE albums (id TEXT PRIMARY KEY)')
         db.execute('CREATE TABLE album_photos (album_id TEXT,photo_id TEXT)')
         db.execute("INSERT INTO photos VALUES ('preserved')")
-    assert len(migrate_database(path)) == 6
+    assert len(migrate_database(path)) == 7
     assert migrate_database(path) == []
     backups = list((tmp_path / 'backups').glob('*.db'))
     assert len(backups) == 1
@@ -42,6 +42,7 @@ def test_library_merge_preserves_records_draft_and_originals(client, image_facto
         session.add(DetectedFace(photo_id=first_id, person_id=person.id, face_index=0,
             encoding=b'feature', location={'left':0,'top':0,'right':1,'bottom':1}, confirmed=True))
         session.commit()
+    album=client.post('/api/albums',json={'name':'关联人物影集','person_id':person.id}).json()
     source = backup_database(DATA/'library.db', tmp_path/'source.db')
     before = {p: p.read_bytes() for p in (first,second)}
     stage = tmp_path/'stage.db'
@@ -53,6 +54,7 @@ def test_library_merge_preserves_records_draft_and_originals(client, image_facto
     with sqlite3.connect(stage) as db:
         assert db.execute('SELECT name FROM watermark_drafts').fetchone()[0] == '保留草稿'
         assert db.execute('SELECT name, confirmed FROM detected_faces JOIN face_persons ON person_id=face_persons.id').fetchone() == ('保留人物', 1)
+        assert db.execute('SELECT a.name,p.name FROM albums a JOIN face_persons p ON a.person_id=p.id WHERE a.id=?',(album['id'],)).fetchone()==('关联人物影集','保留人物')
         import json
         assert json.loads(db.execute('SELECT face_data FROM photos WHERE id=?', (first_id,)).fetchone()[0])['count'] == 1
     with sqlite3.connect(target) as db:

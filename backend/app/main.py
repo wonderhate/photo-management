@@ -358,7 +358,7 @@ def create_album(payload: AlbumRequest):
             if not members: raise ValueError('该人物没有已确认的照片')
         else:
             members = session.scalars(select(Photo).where(Photo.id.in_(payload.photo_ids))).all()
-        album = Album(**payload.model_dump(exclude={'photo_ids','scores','person_id'}), ai_model=ai.model_name if payload.type=='smart' else None)
+        album = Album(**payload.model_dump(exclude={'photo_ids','scores'}), ai_model=ai.model_name if payload.type=='smart' else None)
         session.add(album)
         session.flush()
         seen = set()
@@ -410,6 +410,11 @@ def update_album(album_id: str, payload: AlbumUpdate):
     with Session() as session:
         album = session.get(Album,album_id)
         if not album: raise HTTPException(404,'影集不存在')
+        if payload.person_id is not None:
+            if album.type!='normal':raise ValueError('人物影集请使用普通影集')
+            if not session.get(FacePerson,payload.person_id):raise HTTPException(404,'人物不存在')
+            if album.person_id not in (None,payload.person_id):raise HTTPException(409,'影集已关联其他人物')
+            album.person_id=payload.person_id
         if payload.cover_photo_id is not None:
             if payload.cover_photo_id and not session.get(Photo,payload.cover_photo_id): raise ValueError('封面照片不存在')
             album.cover_photo_id = payload.cover_photo_id or None

@@ -122,7 +122,7 @@ test('confirmed person can create and open a named album',async({page})=>{
       submitted.push(request.postDataJSON());
       if(submitted.length===1)return route.fulfill({status:409,json:{detail:'测试创建失败，请重试'}});
       const album={id:'person-album',name:submitted.at(-1).name,type:'normal',count:81,keywords:[],cover_id:null};
-      albums.push(album);return route.fulfill({json:album});
+      albums.push(album);person.albums=[{id:album.id,name:album.name,linked:true}];return route.fulfill({json:album});
     }
     if(key==='/albums')return route.fulfill({json:albums});
     if(key==='/albums/person-album')return route.fulfill({json:albums[0]});
@@ -152,7 +152,66 @@ test('confirmed person can create and open a named album',async({page})=>{
   await page.locator('.sidebar nav').getByRole('button',{name:'影集',exact:true}).click();
   await expect(page.locator('.album-card h3')).toHaveText('家人影集');
   await expect(page.locator('.album-card p')).toContainText('81 次拍摄');
+  await page.goto('/faces');await expect(create).toHaveCount(0);
+  const open=card.getByRole('button',{name:'打开人物影集',exact:true});
+  await expect(open).toBeEnabled();await page.reload();await expect(open).toBeEnabled();
+  await open.click();await expect(page).toHaveURL(/page=photos/);
+  expect(submitted).toHaveLength(2);
   expect(errors).toEqual([]);
+});
+
+test('mobile English person card opens existing albums without recreating them',async({page})=>{
+  await page.setViewportSize({width:390,height:1000});
+  await page.addInitScript(()=>{localStorage.setItem('lang','en');localStorage.setItem('onboarded','1')});
+  const albums=[{id:'portrait-1',name:'Portrait One',type:'normal',count:2,keywords:[],cover_id:null},{id:'portrait-2',name:'Portrait Two',type:'normal',count:2,keywords:[],cover_id:null}],errors=[];
+  let creates=0;const opened=[],linked=[];
+  await page.route('**/api/**',async route=>{
+    const key=new URL(route.request().url()).pathname.slice(4);
+    if(key==='/albums'&&route.request().method()==='POST')creates++;
+    if(key==='/photos/ids')opened.push(new URL(route.request().url()).searchParams.get('album_id'));
+    if(key==='/albums/portrait-2'&&route.request().method()==='PATCH'){linked.push(route.request().postDataJSON());return route.fulfill({json:albums[1]})}
+    const values={'/remote/session':{remote:true},'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},'/library/scan':{job:null},'/jobs':[],'/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[]},'/faces/status':{available:true,dependency:true,cached:true},'/faces/persons':[{id:'person',name:'Mira',photo_count:2,pending:0,albums:albums.map(({id,name})=>({id,name}))}],'/albums':albums,'/albums/portrait-2':albums[1]};
+    if(!(key in values))errors.push(key);
+    await route.fulfill({json:values[key]??{}});
+  });
+  await page.goto('/faces');
+  await expect(page.getByRole('button',{name:'Create Person Album',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Open Person Album',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Choose Person Album'})).toBeVisible();
+  await page.getByRole('button',{name:'Portrait Two',exact:true}).click();
+  await expect(page).toHaveURL(/page=photos/);
+  await expect.poll(()=>opened.at(-1)).toBe('portrait-2');
+  await expect(page.locator('.gallery-heading h1')).toContainText('Album Photos');
+  expect(creates).toBe(0);expect(linked).toEqual([{person_id:'person'}]);expect(errors).toEqual([]);
+});
+
+test('real person album association persists across refresh and deletion',async({page,request},info)=>{
+  const health=await(await request.get('/api/health')).json();
+  expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');
+  const source=join(health.data_dir,'person-album-regression.jpg'),python=process.env.PHOTO_TEST_PYTHON||'python';
+  execFileSync(python,['-c',"from PIL import Image; import sys; Image.new('RGB',(322,242),(17,89,143)).save(sys.argv[1])",source]);
+  const job=await(await request.post('/api/photos/import',{data:{paths:[source]}})).json();
+  await expect.poll(async()=> (await(await request.get('/api/jobs/'+job.id)).json()).status).toBe('completed');
+  const photo=(await(await request.get('/api/photos')).json()).photos.find(p=>p.file_name==='person-album-regression.jpg');
+  const person=await(await request.post('/api/faces/persons',{data:{name:'人物打开回归'}})).json();
+  execFileSync(python,['-c',"import sqlite3,sys,uuid; db=sqlite3.connect(sys.argv[1]); db.execute('PRAGMA foreign_keys=ON'); db.execute('INSERT INTO detected_faces (id,photo_id,person_id,face_index,encoding,location,confirmed) VALUES (?,?,?,?,?,?,?)',(str(uuid.uuid4()),sys.argv[2],sys.argv[3],0,b'', '{}',1)); db.commit(); db.close()",join(health.data_dir,'library.db'),photo.id,person.id]);
+  const album=await(await request.post('/api/albums',{data:{name:'已有自定义人物影集',photo_ids:[photo.id]}})).json();
+  await page.addInitScript(()=>{localStorage.setItem('lang','zh');localStorage.setItem('theme','light');localStorage.setItem('onboarded','1')});
+  await page.goto('/faces');
+  const card=page.locator('.face-card').filter({has:page.getByRole('heading',{name:'人物打开回归',exact:true})});
+  await expect(card.getByRole('button',{name:'新建人物影集',exact:true})).toHaveCount(0);
+  await card.screenshot({path:info.outputPath('open-person-album.png')});
+  await card.getByRole('button',{name:'打开人物影集',exact:true}).click();
+  await expect(page).toHaveURL(/page=photos/);
+  await expect(page.locator('.photo-image').first()).toBeVisible();
+  expect((await(await request.get('/api/albums/'+album.id)).json()).person_id).toBe(person.id);
+  await request.patch('/api/faces/persons/'+person.id,{data:{name:'改名后的人物'}});
+  await page.goto('/faces');await page.reload();
+  const renamed=page.locator('.face-card').filter({has:page.getByRole('heading',{name:'改名后的人物',exact:true})});
+  await expect(renamed.getByRole('button',{name:'打开人物影集',exact:true})).toBeEnabled();
+  await request.delete('/api/albums/'+album.id);await page.reload();
+  await expect(renamed.getByRole('button',{name:'新建人物影集',exact:true})).toBeEnabled();
+  await expect(renamed.getByRole('button',{name:'打开人物影集',exact:true})).toHaveCount(0);
 });
 
 test('storage directories can be selected, saved for restart and cancelled',async({page},testInfo)=>{

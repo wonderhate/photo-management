@@ -83,6 +83,7 @@ class Album(Base):
     __tablename__ = 'albums'
     id: Mapped[str] = mapped_column(primary_key=True, default=uid)
     name: Mapped[str]
+    person_id: Mapped[str | None] = mapped_column(ForeignKey('face_persons.id', ondelete='SET NULL'), index=True)
     type: Mapped[str] = mapped_column(default='normal')
     keywords: Mapped[list] = mapped_column(JSON, default=list)
     match_mode: Mapped[str] = mapped_column(default='any')

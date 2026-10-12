@@ -77,7 +77,7 @@ def merge_libraries(target: Path, source: Path, stage: Path, old: Path, new: Pat
             insert(destination, 'photos', photo | {'id': photo_ids[photo['id']], 'capture_group_id': group_ids[photo['capture_group_id']]})
             added += 1
         mappings = {'photo_id': photo_ids, 'capture_group_id': group_ids}
-        for table, unique in [('tags','name'), ('albums',None), ('watermark_drafts',None), ('face_persons','name')]:
+        for table, unique in [('tags','name'), ('face_persons','name'), ('albums',None), ('watermark_drafts',None)]:
             current = records(destination, table)
             if not destination.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
                 if records(incoming, table):
