@@ -155,3 +155,28 @@ test('optional exhibitions can pause, skip and return to standard photo viewing'
   await page.keyboard.press('Escape');await expect(page.locator('.photo-viewer')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+for(const [width,height] of [[1920,540],[900,1200]])test(`aurora covers the viewer through its full movement ${width} ${height}`,async({page},info)=>{
+  const {errors}=await synthetic(page,{width});await page.setViewportSize({width,height});
+  await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
+  await page.getByLabel('展映模式',{exact:true}).selectOption('aurora');
+  const stage=page.locator('.detail-image');
+  await expect.poll(()=>stage.evaluate(element=>getComputedStyle(element,'::after').animationName)).toBe('aurora-breathe');
+  for(const time of [0,2250,4500,6750,8999]){
+    const covered=await stage.evaluate((element,time)=>{
+      const animation=element.getAnimations({subtree:true}).find(item=>item.animationName==='aurora-breathe');
+      if(!animation)throw new Error('Aurora animation missing');
+      animation.pause();animation.currentTime=time;
+      const style=getComputedStyle(element,'::after'),[ox,oy]=style.transformOrigin.split(' ').map(parseFloat);
+      const left=parseFloat(style.left),top=parseFloat(style.top),w=parseFloat(style.width),h=parseFloat(style.height);
+      const inverse=new DOMMatrix(style.transform).inverse();
+      return [[0,0],[element.clientWidth,0],[0,element.clientHeight],[element.clientWidth,element.clientHeight]].map(([x,y])=>{
+        const point=inverse.transformPoint(new DOMPoint(x-left-ox,y-top-oy));
+        return point.x+ox>=0&&point.x+ox<=w&&point.y+oy>=0&&point.y+oy<=h;
+      });
+    },time);
+    expect(covered,`Viewer corners covered at ${time}ms`).toEqual([true,true,true,true]);
+    if(time===4500)await page.screenshot({path:info.outputPath('aurora-mid-movement.png')});
+  }
+  await page.keyboard.press('Escape');expect(errors).toEqual([]);
+});
