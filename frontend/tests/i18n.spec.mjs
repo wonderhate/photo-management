@@ -86,9 +86,12 @@ test('English interface covers pages, dialogs and live language changes',async({
   await language.selectOption('en');
   await expect(scans).toHaveValue('C:/unsaved-scan-folder');
   await checkEnglish('live language change');
-  await page.locator('.plugin-row button').first().click();
-  await expect(page.locator('.plugin-output')).toBeVisible();
-  await checkEnglish('plugin output');
+  // Installed plugins are optional in the frozen Windows package.
+  const plugin=page.locator('.plugin-row button').first();
+  if(await plugin.count()){
+    await plugin.click();await expect(page.locator('.plugin-output')).toBeVisible();
+    await checkEnglish('plugin output');
+  }
   await page.goto('/?page=photos');
   await page.getByRole('button',{name:'Import Photos',exact:true}).click();
   await checkEnglish('import dialog');await page.keyboard.press('Escape');

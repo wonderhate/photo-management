@@ -97,6 +97,10 @@ public class RemoteAppTest {
             await("[...document.querySelectorAll('.photo-detail button')].some(b=>b.innerText==='"+(favorite?"收藏":"已收藏")+"')");
             evaluate("[...document.querySelectorAll('.photo-detail button')].find(b=>b.innerText==='制作水印').click()");
             await("document.querySelector('.render-stage img') && !document.querySelector('.render-status').innerText.includes('正在')");
+            evaluate("document.querySelector('.signature-editor input[type=checkbox]').click()");
+            evaluate("[...document.querySelectorAll('.signature-styles button')].find(b=>b.innerText==='原版连笔').click()");
+            await("document.querySelector('.signature-editor input[readonly]').value==='wonder' && !document.querySelector('.render-status').innerText.includes('正在')");
+            screenshot("remote-signature");
             evaluate("document.querySelector('[aria-label=\"水印作品名称\"]').value='Remote emulator draft';document.querySelector('[aria-label=\"水印作品名称\"]').dispatchEvent(new Event('input',{bubbles:true}))");
             evaluate("[...document.querySelectorAll('button')].find(b=>b.innerText==='保存到水印图库').click()");
             await("location.search.includes('draft=')");screenshot("remote-editor");

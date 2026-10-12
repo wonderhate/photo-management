@@ -1,6 +1,7 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
+  '艺术字署名':'Artistic Signature','显示署名':'Show Signature','署名风格':'Signature Style','署名内容':'Signature Text','普通文字':'Plain Text','原版连笔':'Original Script','细线手写':'Fine Handwriting','毛笔笔触':'Brush Script','经典花体':'Classic Calligraphy','原版署名字样固定为 wonder。':'The original artwork reads wonder.','手写风格支持英文署名；中文署名使用常规字体。':'Handwriting styles support English signatures; Chinese uses the standard typeface.',
   '浏览已配对电脑上的文件。照片将导入电脑照片库，原文件保留在原位置。':'Browse files on the paired computer. Photos are imported into its library; originals stay in place.',
   '选择电脑上的照片':'Choose Photos on Computer','选择电脑上的文件夹':'Choose a Folder on Computer','选择电脑上的照片或文件夹，仅登记电脑原图路径，自动去重并读取 EXIF。':'Choose photos or folders on the computer. Original paths are registered, duplicates skipped and EXIF read.',
   '电脑':'Computer','上一级':'Parent Folder','电脑文件夹路径':'Computer Folder Path','例如 C:\\Users\\你的用户名\\Pictures':'For example C:\\Users\\your-name\\Pictures','打开路径':'Open Path','正在读取电脑文件夹…':'Reading computer folder…','电脑文件列表':'Computer Files','用户文件夹':'Home Folder','此文件夹没有子文件夹':'No subfolders in this folder','此文件夹没有支持的照片或子文件夹':'No supported photos or subfolders in this folder','选择这个文件夹':'Use This Folder','使用已选照片（{0}）':'Use Selected Photos ({0})',

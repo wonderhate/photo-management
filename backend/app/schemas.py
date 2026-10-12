@@ -87,6 +87,7 @@ class WatermarkOptions(BaseModel):
     font_scale: float = Field(default=1, ge=.5, le=2)
     fields: list[str] = Field(default_factory=lambda: ['camera_make','camera_model','focal_length','f_number','exposure_time','iso','date_taken'])
     signature: str = Field(default='', max_length=120)
+    signature_style: Literal['text', 'natural', 'fine', 'brush', 'calligraphy'] = 'text'
     theme: Literal['white', 'black', 'auto'] = 'white'
     border: float = Field(default=.035, ge=.005, le=.2)
     info_height: float = Field(default=.16, ge=.04, le=.4)

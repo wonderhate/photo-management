@@ -451,6 +451,14 @@ def watermark_preview(payload: WatermarkRequest):
     image.save(stream, 'JPEG', quality=88)
     return Response(stream.getvalue(), media_type='image/jpeg')
 
+@app.get('/api/watermark/signatures/{style}')
+def watermark_signature(style: Literal['natural', 'fine', 'brush', 'calligraphy']):
+    from .watermark.signatures import signature_image
+    image = signature_image({'fields':['signature'], 'signature':'wonder', 'signature_style':style})
+    stream = BytesIO()
+    image.save(stream, 'PNG')
+    return Response(stream.getvalue(), media_type='image/png')
+
 @app.post('/api/watermark/export')
 def watermark_export(payload: WatermarkRequest):
     return watermark_service.export_one(payload.photo_id, payload.options.model_dump())

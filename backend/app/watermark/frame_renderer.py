@@ -2,6 +2,7 @@ from pathlib import Path
 from PIL import Image, ImageStat, ImageDraw
 from .common import lines, rounded_paste, text_block, font
 from .brand_logos import display_name, load_logo
+from .signatures import signature_image, paste_signature
 
 def classic_frame(image: Image.Image, photo: dict, options: dict) -> Image.Image:
     width, height = image.size
@@ -9,8 +10,10 @@ def classic_frame(image: Image.Image, photo: dict, options: dict) -> Image.Image
     border = max(1, round(unit * options['border']))
     headings, params = lines(photo, options)
     texts = headings + (['  ·  '.join(params)] if params else [])
+    signature = signature_image(options)
+    signature_height = round(unit*.09) if signature is not None else 0
     size = max(10, int(unit * .023 * options['font_size']))
-    info = max(int(unit * options['info_height']), int(len(texts) * size * 1.65) + border) if texts else border
+    info = max(int(unit * options['info_height']), int(len(texts) * size * 1.65) + border + signature_height) if texts or signature is not None else border
     theme = options['theme']
     if theme == 'auto':
         theme = 'black' if sum(ImageStat.Stat(image.resize((1,1))).mean) / 3 < 130 else 'white'
@@ -18,7 +21,8 @@ def classic_frame(image: Image.Image, photo: dict, options: dict) -> Image.Image
     canvas = Image.new('RGB', (width+border*2, height+border+info), background)
     rounded_paste(canvas, image, (border, border), int(unit * options['radius']))
     if texts:
-        text_block(canvas, texts, (border, height+border, width, info-int(border*.25)), foreground, size, options['align'])
+        text_block(canvas, texts, (border, height+border, width, info-signature_height-int(border*.25)), foreground, size, options['align'])
+    paste_signature(canvas, signature, (border, height+border+info-signature_height-border*.25, width, signature_height), foreground, options['align'])
     return canvas
 
 def info_lines(photo: dict, options: dict) -> tuple[list[str], list[str]]:
@@ -35,7 +39,7 @@ def info_lines(photo: dict, options: dict) -> tuple[list[str], list[str]]:
         left = []  # Explicitly unchecked camera fields stay hidden.
     if 'lens_model' in fields and photo.get('lens_model') and make:
         left.append(str(photo['lens_model']))
-    if 'signature' in fields and options.get('signature', '').strip():
+    if 'signature' in fields and options.get('signature_style', 'text') == 'text' and options.get('signature', '').strip():
         left.append(options['signature'].strip())
     params = []
     for key, format_value in [('focal_length', lambda v:f'{v:g}mm'), ('f_number', lambda v:f'F{v:g}'),
@@ -84,7 +88,12 @@ def render(image: Image.Image, photo: dict, options: dict) -> Image.Image:
     pad = width * .04
     left, right = info_lines(photo, options)
     size = width * .022 * options.get('font_scale', 1)
-    info_block(draw, left, (pad, height+bar*.18, width*.52-pad*1.5, bar*.64), size, .45, 'left')
+    signature = signature_image(options)
+    if signature is not None:
+        info_block(draw, left, (pad, height+bar*.12, width*.52-pad*1.5, bar*.42), size, .45, 'left')
+        paste_signature(canvas, signature, (pad, height+bar*(.61 if left else .18), width*.52-pad*1.5, bar*(.28 if left else .64)), '#111111')
+    else:
+        info_block(draw, left, (pad, height+bar*.18, width*.52-pad*1.5, bar*.64), size, .45, 'left')
     info_block(draw, right, (width*.64+pad*.5, height+bar*.18, width*.36-pad*1.5, bar*.64), size*.72, .62, 'right')
     logo = load_logo(photo.get('camera_make')) if options.get('show_brand_logo', True) else None
     if logo:
