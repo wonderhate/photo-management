@@ -60,9 +60,13 @@ public class RemoteAppTest {
             assertEquals("false",evaluate("/[\\u3400-\\u9fff]/u.test(document.body.innerText)"));
             screenshot("remote-connect-en");
             evaluate("document.getElementById('address').value='http://10.0.2.2:8012';document.getElementById('code').value='12345678';document.getElementById('pair').click()");
-            await("document.querySelectorAll('.photo-card').length>0 && document.documentElement.dataset.remote==='true'");
+            await("document.querySelector('.archive-hero h1') && document.documentElement.dataset.remote==='true'");
+            assertEquals("\"home\"",evaluate("new URL(location.href).searchParams.get('page')"));
             assertEquals("\"en\"",evaluate("document.documentElement.lang"));
             assertEquals("false",evaluate("new URL(location.href).searchParams.has('lang')"));
+            screenshot("remote-home-en");
+            evaluate("document.querySelector('.hero-primary').click()");
+            await("document.querySelectorAll('.photo-card').length>0");
             screenshot("remote-gallery-en");
             evaluate("localStorage.setItem('lang','zh');location.reload()");
             await("document.documentElement.lang==='zh' && document.querySelectorAll('.photo-card').length>0");

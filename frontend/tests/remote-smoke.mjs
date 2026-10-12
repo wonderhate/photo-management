@@ -13,6 +13,8 @@ page.on('pageerror',error=>errors.push(String(error)));
 try{
   await context.request.post(base+'/api/remote/connect',{data:{code:'12345678'}});
   await page.goto(base,{waitUntil:'networkidle'});
+  await page.locator('.archive-hero h1').waitFor();
+  await page.getByRole('button',{name:'进入照片库',exact:true}).click();
   await page.locator('.photo-card').first().waitFor();
   assert.equal(await page.locator('.mobile-nav button').count(),5);
   assert.equal(await page.locator('.sidebar').isVisible(),false);
@@ -28,7 +30,7 @@ try{
   await page.screenshot({path:path.join(out,'my.png')});
   for(const width of [360,430]){
     await page.setViewportSize({width,height:844});
-    await page.goto(base,{waitUntil:'networkidle'});
+    await page.goto(base+'/?page=photos',{waitUntil:'networkidle'});
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Gallery overflow at '+width);
   }
   await page.locator('.photo-image').first().click();

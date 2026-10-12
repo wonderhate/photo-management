@@ -119,7 +119,7 @@ public class MainActivity extends Activity {
 
     private String libraryUrl() {
         String lang = getSharedPreferences("remote", MODE_PRIVATE).getString("lang", "zh");
-        return server + "/?page=photos&lang=" + ("en".equals(lang) ? "en" : "zh");
+        return server + "/?page=home&lang=" + ("en".equals(lang) ? "en" : "zh");
     }
 
     private final class Connect {

@@ -33,9 +33,11 @@ test.describe('Android remote language handoff',()=>{
   test.use({userAgent:'PhotoCollectionRemote/2 Chrome'});
   test('native language reaches the library without locking later preferences',async({page})=>{
     const {errors}=await synthetic(page,{width:390,theme:'light',remote:true});
-    await page.goto('/?page=photos&lang=en');
+    await page.goto('/?page=home&lang=en');
     await expect(page.locator('html')).toHaveAttribute('lang','en');
     await expect(page.locator('.mobile-nav')).toBeVisible();
+    await expect(page.locator('.archive-hero h1')).toBeVisible();
+    await page.getByRole('button',{name:'Open Library',exact:true}).click();
     await expect(page.locator('.gallery-heading h1')).toContainText('All Photos');
     expect(new URL(page.url()).searchParams.has('lang')).toBe(false);
     expect(await page.evaluate(()=>localStorage.getItem('lang'))).toBe('en');
@@ -78,7 +80,7 @@ for(const [theme,width,lang] of [['light',1440,'zh'],['dark',390,'en']])test(`ph
 });
 for(const theme of ['dark','light'])for(const width of [1440,390])test(`rebuilt home and viewer ${theme} ${width}`,async({page},info)=>{
   const {errors,edits}=await synthetic(page,{theme,width});
-  await page.goto('/?page=home');await expect(page.locator('.collection-tile')).toHaveCount(5);
+  await page.goto('/');await expect(page.locator('.collection-tile')).toHaveCount(5);
   await expect(page.locator('.archive-hero h1')).toBeVisible();
   await expect(page.locator('.hero-primary')).toHaveCSS('background-color','rgb(255, 255, 255)');
   await expect(page.locator('.hero-primary')).toHaveCSS('color','rgb(17, 17, 17)');
@@ -91,6 +93,9 @@ for(const theme of ['dark','light'])for(const width of [1440,390])test(`rebuilt 
   await expect(page.locator('.menu-close')).toBeFocused();
   await page.locator('.sidebar nav').getByRole('button',{name:'照片',exact:true}).click();
   await expect(page).toHaveURL(/page=photos/);await expect(page.locator('.photo-image').first()).toBeVisible();
+  await page.reload();await expect(page.locator('.photo-image').first()).toBeVisible();
+  await page.goBack();await expect(page.locator('.archive-hero h1')).toBeVisible();
+  await page.getByRole('button',{name:'进入照片库',exact:true}).click();
   await page.getByRole('button',{name:'筛选',exact:true}).click();
   await page.getByLabel('相机',{exact:true}).selectOption('TEST CAMERA');
   await expect(page.locator('.filter-chips')).toContainText('TEST CAMERA');
