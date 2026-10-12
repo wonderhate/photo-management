@@ -34,13 +34,14 @@ def render(image: Image.Image, photo: dict, options: dict) -> Image.Image:
         draw = ImageDraw.Draw(glass)
         draw.rounded_rectangle((x,y,x+w,y+h), radius=max(8,h//2), fill=(18,24,28,145), outline=(255,255,255,155), width=max(1,round(unit*.002)))
         canvas = Image.alpha_composite(canvas.convert('RGBA'), glass).convert('RGB')
-        if (headings or signature is not None) and params:
+        if signature is not None:
+            text_block(canvas, headings, (x+padding,y,w*.3-padding,h), '#f4f4ee', size, 'left')
+            text_block(canvas, ['  '.join(params)] if params else [], (x+w*.7,y,w*.3-padding,h), '#f4f4ee', size, 'right')
+            paste_signature(canvas, signature, (x+w*.34,y+h*.15,w*.32,h*.7), '#f4f4ee', 'center')
+        elif headings and params:
             split = round(w*.49)
-            ImageDraw.Draw(canvas).line((x+split,y+h*.2,x+split,y+h*.8), fill='#9ba3a5', width=max(1,round(unit*.001)))
-            text_block(canvas, headings, (x+padding,y,split-padding*2,h*.58 if signature is not None else h), '#f4f4ee', size, 'left')
-            paste_signature(canvas, signature, (x+padding,y+h*(.65 if headings else .15),split-padding*2,h*(.25 if headings else .7)), '#f4f4ee')
+            text_block(canvas, headings, (x+padding,y,split-padding*2,h), '#f4f4ee', size, 'left')
             text_block(canvas, ['  '.join(params)], (x+split+padding,y,w-split-padding*2,h), '#f4f4ee', size)
         else:
-            text_block(canvas, headings or (['  '.join(params)] if params else []), (x+padding,y,w-padding*2,h*.58 if signature is not None else h), '#f4f4ee', size)
-            paste_signature(canvas, signature, (x+padding,y+h*(.65 if headings else .15),w-padding*2,h*(.25 if headings else .7)), '#f4f4ee', 'center')
+            text_block(canvas, headings or (['  '.join(params)] if params else []), (x+padding,y,w-padding*2,h), '#f4f4ee', size)
     return canvas

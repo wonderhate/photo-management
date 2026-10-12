@@ -20,9 +20,12 @@ def classic_frame(image: Image.Image, photo: dict, options: dict) -> Image.Image
     background, foreground = ('#151719', '#f2f0e9') if theme == 'black' else ('#f7f5f0', '#25282b')
     canvas = Image.new('RGB', (width+border*2, height+border+info), background)
     rounded_paste(canvas, image, (border, border), int(unit * options['radius']))
-    if texts:
-        text_block(canvas, texts, (border, height+border, width, info-signature_height-int(border*.25)), foreground, size, options['align'])
-    paste_signature(canvas, signature, (border, height+border+info-signature_height-border*.25, width, signature_height), foreground, options['align'])
+    if signature is not None:
+        text_block(canvas, headings, (border, height+border, width*.3, info), foreground, size, 'left')
+        text_block(canvas, ['  ·  '.join(params)] if params else [], (border+width*.7, height+border, width*.3, info), foreground, size, 'right')
+        paste_signature(canvas, signature, (border+width*.34, height+border+info*.15, width*.32, info*.7), foreground, 'center')
+    elif texts:
+        text_block(canvas, texts, (border, height+border, width, info-int(border*.25)), foreground, size, options['align'])
     return canvas
 
 def info_lines(photo: dict, options: dict) -> tuple[list[str], list[str]]:
@@ -39,8 +42,6 @@ def info_lines(photo: dict, options: dict) -> tuple[list[str], list[str]]:
         left = []  # Explicitly unchecked camera fields stay hidden.
     if 'lens_model' in fields and photo.get('lens_model') and make:
         left.append(str(photo['lens_model']))
-    if 'signature' in fields and options.get('signature_style', 'text') == 'text' and options.get('signature', '').strip():
-        left.append(options['signature'].strip())
     params = []
     for key, format_value in [('focal_length', lambda v:f'{v:g}mm'), ('f_number', lambda v:f'F{v:g}'),
             ('exposure_time', lambda v:f'{v}s'), ('iso', lambda v:f'ISO{v:g}')]:
@@ -89,17 +90,20 @@ def render(image: Image.Image, photo: dict, options: dict) -> Image.Image:
     left, right = info_lines(photo, options)
     size = width * .022 * options.get('font_scale', 1)
     signature = signature_image(options)
-    if signature is not None:
-        info_block(draw, left, (pad, height+bar*.12, width*.52-pad*1.5, bar*.42), size, .45, 'left')
-        paste_signature(canvas, signature, (pad, height+bar*(.61 if left else .18), width*.52-pad*1.5, bar*(.28 if left else .64)), '#111111')
-    else:
-        info_block(draw, left, (pad, height+bar*.18, width*.52-pad*1.5, bar*.64), size, .45, 'left')
-    info_block(draw, right, (width*.64+pad*.5, height+bar*.18, width*.36-pad*1.5, bar*.64), size*.72, .62, 'right')
     logo = load_logo(photo.get('camera_make')) if options.get('show_brand_logo', True) else None
+    logo_center, divider = (width*.65, width*.71) if signature is not None else (width*.58, width*.64)
     if logo:
         box = max(1, round(min(bar*.46, width*.085)))
         logo.thumbnail((box,box), Image.Resampling.LANCZOS)
-        canvas.paste(logo, (round(width*.58-logo.width/2), round(height+(bar-logo.height)/2)), logo)
+    if signature is not None:
+        info_block(draw, left, (pad, height+bar*.18, width*.36-pad*1.5, bar*.64), size, .45, 'left')
+        signature_width = min(width*.28, 2*(logo_center-logo.width/2-pad*.3-width/2)) if logo else width*.28
+        paste_signature(canvas, signature, ((width-signature_width)/2, height+bar*.18, signature_width, bar*.64), '#111111', 'center')
+    else:
+        info_block(draw, left, (pad, height+bar*.18, width*.52-pad*1.5, bar*.64), size, .45, 'left')
+    info_block(draw, right, (divider+pad*.5, height+bar*.18, width-divider-pad*1.5, bar*.64), size*.72, .62, 'right')
+    if logo:
+        canvas.paste(logo, (round(logo_center-logo.width/2), round(height+(bar-logo.height)/2)), logo)
     # A single quiet divider, matching the reference's separation before the EXIF block.
-    draw.line((round(width*.64),height+bar*.25,round(width*.64),height+bar*.75), fill='#E6E6E6', width=max(1,round(width/1920)))
+    draw.line((round(divider),height+bar*.25,round(divider),height+bar*.75), fill='#E6E6E6', width=max(1,round(width/1920)))
     return canvas
