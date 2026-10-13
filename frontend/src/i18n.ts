@@ -1,6 +1,9 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
+  '反向代理必须保留已登记的公网 Host':'The reverse proxy must preserve the registered public Host.',
+  '公网 HTTP 请求仅允许通过本机 HTTPS 反向代理转发':'Public HTTP requests must pass through an HTTPS reverse proxy on this computer.',
+  '公网地址端口无效':'Invalid public address port.',
   '打开人物影集':'Open Person Album','选择人物影集':'Choose Person Album',
   '艺术字署名':'Artistic Signature','显示署名':'Show Signature','署名风格':'Signature Style','署名内容':'Signature Text','普通文字':'Plain Text','原版连笔':'Original Script','细线手写':'Fine Handwriting','毛笔笔触':'Brush Script','经典花体':'Classic Calligraphy','原版署名字样固定为 wonder。':'The original artwork reads wonder.','中文毛笔':'Chinese Brush','中文行书':'Chinese Running Script','中文草书':'Chinese Cursive','中文手写':'Chinese Handwriting','中文书法风格支持常用中文，可修改署名内容。':'Chinese calligraphy supports common Chinese characters and editable signature text.','英文手写风格适合英文署名；中文请选中文书法风格。':'English handwriting styles suit Latin signatures. Choose a Chinese calligraphy style for Chinese text.',
   '浏览已配对电脑上的文件。照片将导入电脑照片库，原文件保留在原位置。':'Browse files on the paired computer. Photos are imported into its library; originals stay in place.',

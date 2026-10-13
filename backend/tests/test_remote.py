@@ -109,7 +109,8 @@ def test_pair_expiry_rate_limit_and_rebinding(client, monkeypatch, tmp_path):
         config = remote.read_config();config['pairing_expires'] = time.time() - 1;remote.write_config(config)
         assert phone.post('/api/remote/connect', json={'code': code}).status_code == 401
     assert client.get('/api/health', headers={'Host': 'evil.example'}).status_code == 400
-    assert client.get('/api/health', headers={'Host': '192.168.1.20', 'X-Forwarded-For': '127.0.0.1'}).status_code == 401
+    with TestClient(app, base_url='http://192.168.1.20', client=('192.168.1.21', 4000)) as forwarded:
+        assert forwarded.get('/api/health', headers={'X-Forwarded-For': '127.0.0.1'}).status_code == 401
 
 
 def test_public_address_registration_is_local_only_and_validated(client, monkeypatch, tmp_path):
@@ -119,7 +120,7 @@ def test_public_address_registration_is_local_only_and_validated(client, monkeyp
         assert phone.delete('/api/remote/public-addresses', params={'address': 'https://photos.example.com'}).status_code == 403
     for invalid in ['http://photos.example.com', 'https://photos.example.com/gallery', 'https://user@photos.example.com',
                     'https://192.168.1.20', 'https://100.64.1.20', 'https://localhost', 'ftp://photos.example.com',
-                    'photos.example.com', 'https://4444::1', '']:
+                    'photos.example.com', 'https://4444::1', 'https://224.0.0.1', 'https://photos.example.com:0', '']:
         assert client.post('/api/remote/public-addresses', json={'address': invalid}).status_code == 400, invalid
     access = client.post('/api/remote/public-addresses', json={'address': 'https://Photos.Example.COM:8443'}).json()
     assert access['public_addresses'] == ['https://photos.example.com:8443']
@@ -135,7 +136,7 @@ def test_registered_public_host_pairs_over_reverse_proxy(client, monkeypatch, tm
     remote.attempts.clear()
     assert client.post('/api/remote/public-addresses', json={'address': 'https://photos.example.com'}).status_code == 200
     # base_url http 模拟反向代理终结 TLS 后 uvicorn 看到的请求；Secure cookie 由已登记主机推导。
-    with TestClient(app, base_url='http://photos.example.com', client=('203.0.113.7', 5000)) as phone:
+    with TestClient(app, base_url='http://photos.example.com', client=('127.0.0.1', 5000), headers={'X-Forwarded-For': '8.8.4.4', 'X-Forwarded-Proto': 'https'}) as phone:
         assert phone.get('/api/photos').status_code == 403
         code = client.put('/api/remote/settings', json={'enabled': True}).json()['pairing_code']
         assert phone.get('/api/photos').status_code == 401
@@ -157,14 +158,62 @@ def test_public_origin_allowed_for_registered_host_writes(client, image_factory,
     code = client.put('/api/remote/settings', json={'enabled': True}).json()['pairing_code']
     import_paths(client, [image_factory('public-origin.jpg')])
     photo = client.get('/api/photos').json()['photos'][0]
-    with TestClient(app, base_url='http://photos.example.com:8000', client=('203.0.113.7', 5000)) as phone:
+    with TestClient(app, base_url='http://photos.example.com:8000', client=('127.0.0.1', 5000)) as phone:
         paired = phone.post('/api/remote/connect', json={'code': code})
         assert paired.status_code == 200
         cookie = paired.headers['set-cookie'].split(';')[0]
+        for origin in ['https://photos.example.com', 'https://photos.example.com:443']:
+            assert phone.post('/api/watermark/preview', json={'photo_id': photo['id'], 'options': {}},
+                              headers={'Origin': origin, 'Cookie': cookie}).status_code == 200
+        for origin in ['https://evil.example', 'https://photos.example.com:8443', 'https://photos.example.com:65536',
+                       'http://photos.example.com', 'http://photos.example.com:8000', 'http://localhost:8000']:
+            assert phone.post('/api/backup', headers={'Origin': origin, 'Cookie': cookie}).status_code == 403, origin
+        client.post('/api/remote/public-addresses', json={'address': 'https://photos.example.com:8443'})
         assert phone.post('/api/watermark/preview', json={'photo_id': photo['id'], 'options': {}},
-                          headers={'Origin': 'https://photos.example.com', 'Cookie': cookie}).status_code == 200
-        assert phone.post('/api/backup', headers={'Origin': 'https://evil.example', 'Cookie': cookie}).status_code == 403
-        assert phone.post('/api/backup', headers={'Origin': 'http://photos.example.com', 'Cookie': cookie}).status_code == 403
+                          headers={'Origin': 'https://photos.example.com:8443', 'Cookie': cookie}).status_code == 200
+
+
+def test_registered_public_ips_pair_and_revoke(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(remote, 'CONFIG', tmp_path / 'remote.json')
+    remote.attempts.clear()
+    for address in ['https://8.8.8.8', 'https://[2606:4700:4700::1111]']:
+        assert client.post('/api/remote/public-addresses', json={'address': address}).status_code == 200
+        code = client.put('/api/remote/settings', json={'enabled': True}).json()['pairing_code']
+        with TestClient(app, base_url=address, client=('8.8.4.4', 5000)) as phone:
+            assert phone.get('/api/photos').status_code == 401
+            paired = phone.post('/api/remote/connect', json={'code': code})
+            assert paired.status_code == 200 and 'secure' in paired.headers['set-cookie'].lower()
+            assert phone.get('/api/photos').status_code == 200
+            client.delete('/api/remote/public-addresses', params={'address': address})
+            assert phone.get('/api/photos').status_code == 400
+
+
+def test_forwarding_headers_cannot_grant_local_access(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(remote, 'CONFIG', tmp_path / 'remote.json')
+    client.put('/api/remote/settings', json={'enabled': True})
+    with TestClient(app, base_url='http://localhost:8000', client=('127.0.0.1', 5000)) as proxy:
+        for marker in ['Forwarded', 'X-Forwarded-For', 'X-Forwarded-Host', 'X-Forwarded-Proto', 'X-Real-IP', 'CF-Connecting-IP', 'Tailscale-Funnel-Request']:
+            headers = {marker: '127.0.0.1'}
+            assert proxy.get('/api/photos', headers=headers).status_code == 400, marker
+            assert proxy.get('/api/remote/settings', headers=headers).status_code == 400, marker
+            assert proxy.post('/api/remote/connect', json={'code': '00000000'}, headers=headers).status_code == 400, marker
+    assert client.get('/api/remote/settings').status_code == 200
+
+
+def test_internet_http_cannot_bypass_https_with_host_or_forwarded_headers(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(remote, 'CONFIG', tmp_path / 'remote.json')
+    remote.attempts.clear()
+    client.post('/api/remote/public-addresses', json={'address': 'https://photos.example.com'})
+    code = client.put('/api/remote/settings', json={'enabled': True}).json()['pairing_code']
+    with TestClient(app, base_url='https://photos.example.com', client=('8.8.4.4', 5000)) as phone:
+        paired = phone.post('/api/remote/connect', json={'code': code})
+        assert paired.status_code == 200
+        cookie = paired.headers['set-cookie'].split(';')[0]
+    for host in ['photos.example.com', '192.168.1.20:8000']:
+        with TestClient(app, base_url='http://' + host, client=('8.8.4.4', 5000)) as direct:
+            headers = {'Cookie': cookie, 'X-Forwarded-For': '127.0.0.1', 'X-Forwarded-Proto': 'https'}
+            assert direct.get('/api/photos', headers=headers).status_code == 400
+            assert direct.post('/api/remote/connect', json={'code': code}, headers=headers).status_code == 400
 
 
 def test_pairing_code_global_lockout_persists(client, monkeypatch, tmp_path):

@@ -34,8 +34,9 @@ def write_config(value: dict) -> None:
 
 
 def local_request(request: Request) -> bool:
-    # Never trust forwarded IPs. Both launchers disable proxy headers.
-    return request.url.hostname in LOCAL_HOSTS and (request.client.host if request.client else '') in {'127.0.0.1', '::1', 'testclient', 'testserver'}
+    # Forwarding headers can remove local trust, never grant it. Proxy headers stay disabled.
+    forwarded = any(name == 'forwarded' or name.startswith('x-forwarded-') or name in {'x-real-ip', 'cf-connecting-ip', 'cf-connecting-ipv6', 'tailscale-funnel-request'} for name in request.headers)
+    return not forwarded and request.url.hostname in LOCAL_HOSTS and (request.client.host if request.client else '') in {'127.0.0.1', '::1', 'testclient', 'testserver'}
 
 
 def authenticated(request: Request, config: dict) -> bool:
@@ -52,8 +53,11 @@ def is_public_host(request: Request, config: dict | None = None) -> bool:
 
 
 def public_origin(request: Request, origin: str) -> bool:
-    parts = urlsplit(origin or '')
-    return parts.scheme == 'https' and bool(parts.hostname) and parts.hostname == request.url.hostname and is_public_host(request)
+    try:
+        address = normalize_public_address(origin)
+    except ValueError:
+        return False
+    return address in read_config().get('public_addresses', []) and urlsplit(address).hostname == request.url.hostname
 
 
 def normalize_public_address(raw: str) -> str:
@@ -65,8 +69,10 @@ def normalize_public_address(raw: str) -> str:
         address = ip_address(host)
     except ValueError:
         address = None
-    if host in LOCAL_HOSTS or (address is not None and (address.is_private or address in ip_network('100.64.0.0/10'))):
+    if host in LOCAL_HOSTS or (address is not None and (not address.is_global or address.is_multicast)):
         raise ValueError('公网地址须为公网可访问的域名或 IP')
+    if parts.port == 0:
+        raise ValueError('公网地址端口无效')
     literal = f'[{host}]' if ':' in host else host
     return f'https://{literal}' + (f':{parts.port}' if parts.port and parts.port != 443 else '')
 
@@ -76,7 +82,7 @@ def guard(request: Request) -> Response | None:
     config = None
     try:
         address = ip_address(host or '')
-        valid_host = (address.is_private or address in ip_network('100.64.0.0/10')) and not address.is_unspecified and not address.is_multicast
+        valid_host = (address.is_private or address in ip_network('100.64.0.0/10') or is_public_host(request)) and not address.is_unspecified and not address.is_multicast
     except ValueError:
         config = read_config()
         valid_host = host in LOCAL_HOSTS or host in public_hosts(config)
@@ -84,7 +90,17 @@ def guard(request: Request) -> Response | None:
         return JSONResponse({'detail': '无效的电脑访问地址'}, status_code=400)
     if local_request(request):
         return None
+    if host in LOCAL_HOSTS:
+        return JSONResponse({'detail': '反向代理必须保留已登记的公网 Host'}, status_code=400)
     config = config if config is not None else read_config()
+    if request.url.scheme != 'https':
+        try:
+            peer = ip_address(request.client.host if request.client else '')
+        except ValueError:
+            return JSONResponse({'detail': '公网 HTTP 请求仅允许通过本机 HTTPS 反向代理转发'}, status_code=400)
+        private_peer = (peer.is_private or peer in ip_network('100.64.0.0/10')) and not peer.is_unspecified and not peer.is_multicast
+        if not private_peer or (is_public_host(request, config) and not peer.is_loopback):
+            return JSONResponse({'detail': '公网 HTTP 请求仅允许通过本机 HTTPS 反向代理转发'}, status_code=400)
     if not config.get('enabled'):
         return JSONResponse({'detail': '电脑尚未开启手机远程访问'}, status_code=403)
     if request.url.path == '/api/remote/connect' and request.method == 'POST':
