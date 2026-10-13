@@ -168,13 +168,13 @@ test('reduced motion, touch swipe and narrow navigation remain usable',async({pa
   expect(errors).toEqual([]);
 });
 
-test('switching to mobile stops desktop exhibitions and preserves the photo',async({page})=>{
+test('switching to a narrow viewport stops desktop exhibitions and preserves the photo',async({page})=>{
   const {errors}=await synthetic(page);
   await page.clock.install();
   await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
   await page.getByLabel('摄影氛围',{exact:true}).check();
   await page.getByRole('button',{name:'跳过开场',exact:true}).click();
-  await page.getByLabel('展映模式',{exact:true}).selectOption('rail');
+  await page.getByLabel('展映模式',{exact:true}).selectOption('snow');
   await page.getByRole('button',{name:'播放展映',exact:true}).click();
   await page.setViewportSize({width:390,height:1000});
   await expect(page.locator('.photo-detail')).toHaveClass('photo-detail exhibit-normal');
