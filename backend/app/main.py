@@ -40,6 +40,8 @@ from .watermark_drafts import router as draft_router
 app.include_router(draft_router)
 from .face_routes import router as face_router
 app.include_router(face_router)
+from .art_routes import router as art_router
+app.include_router(art_router)
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'], allow_methods=['GET','POST','PATCH','DELETE','PUT'], allow_headers=['Content-Type'])
 
 @app.middleware('http')
@@ -65,6 +67,16 @@ async def protect_local_requests(request: Request, call_next):
 @app.exception_handler(ValueError)
 async def value_error(_request: Request, error: ValueError):
     return JSONResponse({'detail': str(error)}, status_code=400)
+
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, error: RequestValidationError):
+    if request.url.path == '/api/art/settings':
+        # Pydantic error inputs can contain submitted credentials; never echo them to the UI.
+        return JSONResponse({'detail': 'Invalid AI settings; check model names and API key format'}, status_code=422)
+    return await request_validation_exception_handler(request, error)
 
 def photo_or_404(session, photo_id: str) -> Photo:
     photo = session.get(Photo, photo_id)
@@ -580,6 +592,7 @@ if dist.exists():
     @app.get('/watermark')
     @app.get('/watermark/workshop')
     @app.get('/watermark/gallery')
+    @app.get('/watercolor')
     @app.get('/timeline')
     @app.get('/compare')
     @app.get('/faces')

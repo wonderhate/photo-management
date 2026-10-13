@@ -79,6 +79,18 @@ class Photo(Base):
     created_at: Mapped[str] = mapped_column(default=now)
     updated_at: Mapped[str] = mapped_column(default=now, onupdate=now)
 
+class Artwork(Base):
+    __tablename__ = 'artworks'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    photo_id: Mapped[str | None] = mapped_column(ForeignKey('photos.id', ondelete='SET NULL'), index=True)
+    source_json: Mapped[dict] = mapped_column(JSON)
+    settings_json: Mapped[dict] = mapped_column(JSON)
+    generation_json: Mapped[dict] = mapped_column(JSON)
+    width: Mapped[int]
+    height: Mapped[int]
+    revision: Mapped[int] = mapped_column(default=1)
+    created_at: Mapped[str] = mapped_column(default=now, index=True)
+
 class Album(Base):
     __tablename__ = 'albums'
     id: Mapped[str] = mapped_column(primary_key=True, default=uid)

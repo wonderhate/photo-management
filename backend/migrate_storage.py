@@ -6,9 +6,16 @@ Run with the application stopped before changing library-config.json.
 import argparse
 from contextlib import closing
 import json
+import os
 from pathlib import Path
 import shutil
 import sqlite3
+
+def native_path(path: Path) -> Path:
+    value = str(path.resolve())
+    if os.name != 'nt' or value.startswith('\\\\?\\'):
+        return Path(value)
+    return Path('\\\\?\\UNC\\' + value[2:] if value.startswith('\\\\') else '\\\\?\\' + value)
 
 def migrate(source: Path, destination: Path, relocate_to: Path | None = None) -> dict:
     source, destination = source.resolve(strict=True), destination.resolve()
@@ -24,7 +31,7 @@ def migrate(source: Path, destination: Path, relocate_to: Path | None = None) ->
     if target_db.exists():
         raise FileExistsError(f'Refusing to overwrite an existing library: {target_db}')
     copied = 0
-    for name in ('thumbnails','previews','watermark_previews','embeddings','exports','export-records','faces','imports','plugins','backups'):
+    for name in ('thumbnails','previews','watermark_previews','embeddings','exports','export-records','faces','imports','plugins','backups','artworks'):
         folder = source / name
         if not folder.is_dir(): continue
         for original in folder.rglob('*'):
@@ -33,11 +40,11 @@ def migrate(source: Path, destination: Path, relocate_to: Path | None = None) ->
             if target.exists():
                 raise FileExistsError(f'Refusing to overwrite an existing file: {target}')
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(original, target)
+            shutil.copy2(native_path(original), native_path(target))
             copied += 1
-    for name in ('settings.json',):
+    for name in ('settings.json', 'art-key.dpapi'):
         if (source/name).is_file() and not (destination/name).exists():
-            shutil.copy2(source/name, destination/name)
+            shutil.copy2(native_path(source/name), native_path(destination/name))
     def relocate(value, root=source):
         try: return str(final / root.relative_to(source) / Path(value).relative_to(root))
         except (ValueError, TypeError): return value

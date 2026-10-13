@@ -5,7 +5,7 @@ from pathlib import Path
 import sqlite3
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from threading import Lock
-from backend.migrate_storage import migrate
+from backend.migrate_storage import migrate, native_path
 
 lock = Lock()
 FIELDS = ('data_dir','models_dir','exports_dir','scan_paths')
@@ -76,7 +76,8 @@ def apply_pending(path: Path, config: dict, locked: list[str]) -> tuple[dict,str
         source, target = Path(current['data_dir']), Path(requested['data_dir'])
         if source != target:
             target.parent.mkdir(parents=True,exist_ok=True)
-            with TemporaryDirectory(prefix='.photo-library-copy-',dir=target.parent) as folder:
+            # Include the staging root in Windows long-path handling, including rollback cleanup.
+            with TemporaryDirectory(prefix='.photo-library-copy-',dir=native_path(target.parent)) as folder:
                 stage = Path(folder)
                 migrate(source,stage,relocate_to=target)
                 # Recheck before publishing; never replace another library or user's files.

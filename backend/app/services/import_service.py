@@ -98,11 +98,11 @@ def import_paths(job_id: str, paths: list[str], recursive: bool, exclude_derived
     files: dict[str, Path] = {}
     errors = []
     failed = 0
-    excluded = [(DATA / name).resolve() for name in ('thumbnails', 'watermark_previews', 'previews', 'embeddings', 'exports', 'export-records')]
+    excluded = [(DATA / name).resolve() for name in ('thumbnails', 'watermark_previews', 'previews', 'embeddings', 'exports', 'export-records', 'artworks')]
     excluded.extend([EXPORTS.resolve(), MODELS.resolve()])
     # A source directory may contain caches from a previous library location.
     for root in SCAN_PATHS:
-        excluded.extend((Path(root) / name).resolve() for name in ('thumbnails','watermark_previews','previews','embeddings','exports','export-records','imports','backups'))
+        excluded.extend((Path(root) / name).resolve() for name in ('thumbnails','watermark_previews','previews','embeddings','exports','export-records','imports','backups','artworks'))
     from .export_registry import registered_files
     generated = registered_files() if exclude_derived else set()
     def derived(path: Path) -> bool:

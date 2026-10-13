@@ -22,7 +22,7 @@ SCAN_PATHS = [str(Path(value).resolve()) for value in LOCAL_CONFIG.get('scan_pat
 MODELS = Path(os.environ.get('PHOTO_MODELS_DIR', LOCAL_CONFIG.get('models_dir', USER_ROOT / 'models' if USE_LOCAL_CONFIG else DATA / 'models'))).resolve()
 EXPORT_ROOTS = [EXPORTS] + [Path(value).resolve() for value in LOCAL_CONFIG.get('previous_exports_dirs',[])]
 AUTOLOAD_AI = os.environ.get('PHOTO_AUTOLOAD_AI', '1') == '1'
-for folder in ('thumbnails', 'watermark_previews', 'previews', 'embeddings', 'exports', 'imports'):
+for folder in ('thumbnails', 'watermark_previews', 'previews', 'embeddings', 'exports', 'imports', 'artworks'):
     (DATA / folder).mkdir(parents=True, exist_ok=True)
 MODELS.mkdir(parents=True, exist_ok=True)
 EXPORTS.mkdir(parents=True, exist_ok=True)
@@ -32,6 +32,7 @@ DEFAULTS = {
     'ai_model': 'OFA-Sys/chinese-clip-vit-base-patch16',
     'export_format': 'jpg', 'export_quality': 95, 'export_long_edge': 4096,
     'focal_bands': [24, 35, 60, 100, 200],
+    'art_image_model': 'gpt-image-2', 'art_title_model': 'gpt-4.1-mini',
 }
 
 def settings() -> dict:

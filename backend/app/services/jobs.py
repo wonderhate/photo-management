@@ -68,7 +68,7 @@ def check(job_id: str) -> None:
     if cancelled:
         raise JobCancelled()
 
-def submit(kind: str, function: Callable, *args) -> dict:
+def submit(kind: str, function: Callable, *args, executor=None) -> dict:
     job_id = str(uuid4())
     with _lock:
         _jobs[job_id] = dict(id=job_id, kind=kind, status='queued', total=0, processed=0,
@@ -92,5 +92,5 @@ def submit(kind: str, function: Callable, *args) -> dict:
             update(job_id, status='cancelled', current='')
         except Exception as error:
             update(job_id, status='failed', error=str(error))
-    pool.submit(run)
+    (executor or pool).submit(run)
     return get(job_id)

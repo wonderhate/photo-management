@@ -77,9 +77,9 @@ import json,sys
 from pathlib import Path
 from fastapi.testclient import TestClient
 from backend.app.main import app
-from backend.app.config import DATA
+from backend.app.config import DATA, STORAGE_ERROR
 photo_id,browser_id,draft_id,album_id,url,expected=sys.argv[1:]
-assert str(DATA)==expected
+assert str(DATA)==expected, STORAGE_ERROR
 with TestClient(app) as client:
     assert client.get('/api/photos').json()['total']==2
     assert client.get('/api/photos/'+photo_id).json()['favorite'] is True
