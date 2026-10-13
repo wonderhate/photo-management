@@ -20,4 +20,4 @@ Windows 打包版将个人配置保存在 `%LOCALAPPDATA%\PhotoCollection\librar
 
 本机使用已安装的 Chrome，通过 Git 忽略的 `.test-artifacts/storage-chrome.config.mjs` 运行既有测试配置；CI 继续使用默认 Chromium。原生文件夹选择器此次由合成接口响应验证，未声称覆盖所有桌面原生对话框或实体手机。
 
-本次不操作私人照片库、不推送主分支，也未重建 Windows 安装包或 Android APK。并行任务正在修改共享工作区，因此目录设置使用独立 Git 工作目录提交。
+本次不操作私人照片库、不推送主分支，也未重建 Windows 安装包。并行任务正在修改共享工作区，因此目录设置使用独立 Git 工作目录提交。

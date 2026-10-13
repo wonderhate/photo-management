@@ -1,43 +1,5 @@
 import {test,expect} from '@playwright/test';
 
-test('desktop pairing shows the phone fields, complete addresses and current code in both languages',async({page},info)=>{
-  await page.setViewportSize({width:1440,height:1000});
-  await page.addInitScript(()=>{localStorage.setItem('theme','light');localStorage.setItem('onboarded','1');localStorage.setItem('lang','zh')});
-  let access={enabled:false,pairing_code:'',pairing_expires:0,addresses:['http://192.168.1.20:8123','http://100.64.1.20:8123'],devices:0};
-  const codes=['01234567','98765432'];
-  await page.route('**/api/remote/settings',async route=>{
-    if(route.request().method()==='PUT'){
-      const {enabled}=route.request().postDataJSON();
-      access={...access,enabled,pairing_code:enabled?codes.shift():'',pairing_expires:enabled?Date.now()/1000+600:0,devices:0};
-    }
-    await route.fulfill({json:access});
-  });
-  await page.goto('/?page=settings');
-  const card=page.locator('.remote-settings');
-  await expect(card.getByRole('textbox',{name:'电脑地址 1',exact:true})).toHaveValue(access.addresses[0]);
-  await expect(card.getByRole('textbox',{name:'电脑地址 2',exact:true})).toHaveValue(access.addresses[1]);
-  const code=card.getByRole('textbox',{name:'八位配对码',exact:true});
-  await expect(code).toHaveValue('');
-  await expect(code).toHaveAttribute('placeholder','开启手机访问后显示');
-  await card.getByRole('button',{name:'开启手机访问',exact:true}).click();
-  await expect(code).toHaveValue('01234567');
-  await expect(code).toHaveAttribute('readonly','');
-  await expect(card).toContainText('配对码有效至');
-  await card.screenshot({path:info.outputPath('pairing-zh.png')});
-  await card.getByRole('button',{name:'生成新配对码 / 撤销旧设备',exact:true}).click();
-  await expect(code).toHaveValue('98765432');
-  const language=page.locator('.settings-card').filter({has:page.getByRole('heading',{name:'界面语言',exact:true})}).locator('select');
-  await language.selectOption('en');
-  await expect(card.getByRole('textbox',{name:'Computer Address 1',exact:true})).toHaveValue(access.addresses[0]);
-  await expect(card.getByRole('textbox',{name:'8-Digit Pairing Code',exact:true})).toHaveValue('98765432');
-  expect(await card.innerText()).not.toMatch(/[\u3400-\u9fff]/u);
-  await page.setViewportSize({width:390,height:1000});
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await card.screenshot({path:info.outputPath('pairing-en.png')});
-  await card.getByRole('button',{name:'Disable Phone Access',exact:true}).click();
-  await expect(card.getByRole('textbox',{name:'8-Digit Pairing Code',exact:true})).toHaveValue('');
-  await expect(card.getByRole('textbox',{name:'Computer Address 1',exact:true})).toHaveValue(access.addresses[0]);
-});
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -61,7 +23,6 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     };
     await page.route('**/api/**',async route=>{
       const key=new URL(route.request().url()).pathname.slice(4);
-      if(key==='/remote/session')return route.fulfill({json:{remote:false}});
       if(!(key in responses))errors.push(`Unexpected API request: ${key}`);
       await route.fulfill({json:responses[key]??{}});
     });
@@ -115,7 +76,6 @@ test('confirmed person can create and open a named album',async({page})=>{
   };
   await page.route('**/api/**',async route=>{
     const request=route.request(),key=new URL(request.url()).pathname.slice(4);
-      if(key==='/remote/session')return route.fulfill({json:{remote:false}});
     if(key==='/faces/persons')return route.fulfill({json:[person,{id:'empty',name:'空人物',photo_count:0,pending:0}]});
     if(key==='/faces/persons/test-person/confirm'){person.pending=0;return route.fulfill({json:{ok:true}})}
     if(key==='/albums'&&request.method()==='POST'){
@@ -170,7 +130,7 @@ test('mobile English person card opens existing albums without recreating them',
     if(key==='/albums'&&route.request().method()==='POST')creates++;
     if(key==='/photos/ids')opened.push(new URL(route.request().url()).searchParams.get('album_id'));
     if(key==='/albums/portrait-2'&&route.request().method()==='PATCH'){linked.push(route.request().postDataJSON());return route.fulfill({json:albums[1]})}
-    const values={'/remote/session':{remote:true},'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},'/library/scan':{job:null},'/jobs':[],'/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[]},'/faces/status':{available:true,dependency:true,cached:true},'/faces/persons':[{id:'person',name:'Mira',photo_count:2,pending:0,albums:albums.map(({id,name})=>({id,name}))}],'/albums':albums,'/albums/portrait-2':albums[1]};
+    const values={'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},'/library/scan':{job:null},'/jobs':[],'/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[]},'/faces/status':{available:true,dependency:true,cached:true},'/faces/persons':[{id:'person',name:'Mira',photo_count:2,pending:0,albums:albums.map(({id,name})=>({id,name}))}],'/albums':albums,'/albums/portrait-2':albums[1]};
     if(!(key in values))errors.push(key);
     await route.fulfill({json:values[key]??{}});
   });
@@ -224,11 +184,10 @@ test('storage directories can be selected, saved for restart and cancelled',asyn
     '/settings':{...current,focal_bands:[24,35,60,100,200],count_mode:'capture',preview_preference:'jpeg',thumbnail_quality:85,export_format:'jpg',export_quality:95,export_long_edge:4096},
     '/filter-options':{},'/plugins':[], '/library/scan':{job:null},'/jobs':[],
     '/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[],total:0},
-    '/dialog/directory':{paths:['D:/New Photo Library']},'/remote/settings':{enabled:false,paired:false},
+    '/dialog/directory':{paths:['D:/New Photo Library']},
   };
   await page.route('**/api/**',async route=>{
     const request=route.request(),key=new URL(request.url()).pathname.slice(4);
-      if(key==='/remote/session')return route.fulfill({json:{remote:false}});
     if(key==='/library/paths'){
       if(request.method()==='PUT'){
         submitted.push(request.postDataJSON());

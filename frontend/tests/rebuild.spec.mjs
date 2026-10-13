@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 // Synthetic landscapes and metadata only; no user's library is read by these tests.
 const photos=Array.from({length:7},(_,i)=>({id:'frame-'+i,file_name:'FRAME_0'+i+'.jpg',capture_group_id:'capture-'+i,file_format:'JPG',file_size:400000,width:i===1?600:i===2?1800:1200,height:i===1?900:i===2?500:800,date_taken:'2026-10-01T18:30:00',camera_model:'TEST CAMERA',camera_make:'TEST',lens_model:'50mm F1.8',focal_length:50,f_number:2.8,exposure_time:'1/125',iso:400,thumbnail_path:'synthetic',thumbnail_url:'/api/photos/frame-'+i+'/thumbnail',preview_url:'/api/photos/frame-'+i+'/preview',favorite:false,rating:null,color_label:null,tags:[],gps_latitude:null,gps_longitude:null,raw_exif:{Model:'TEST CAMERA'},files:[{id:'frame-'+i,file_name:'FRAME_0'+i+'.jpg',file_format:'JPG',is_raw:false,file_path:'synthetic'}]}));
 const albums=Array.from({length:5},(_,i)=>({id:'collection-'+i,name:['山的回声','暮色之间','沿海散步','雪境','城市片刻'][i],type:'normal',count:7,keywords:[],cover_id:photos[i].id}));
-async function synthetic(page,{theme='dark',width=1440,reducedMotion='no-preference',lang='zh',remote=false}={}){
+async function synthetic(page,{theme='dark',width=1440,reducedMotion='no-preference',lang='zh'}={}){
   await page.setViewportSize({width,height:1000});await page.emulateMedia({reducedMotion});
   await page.addInitScript(({theme,lang})=>{localStorage.setItem('theme',theme);localStorage.setItem('lang',lang);localStorage.setItem('onboarded','1')},{theme,lang});
   const errors=[],edits=[];
@@ -23,19 +23,18 @@ async function synthetic(page,{theme='dark',width=1440,reducedMotion='no-prefere
     }
     if(key==='/compare')return route.fulfill({json:{photos:photos.filter(p=>url.searchParams.get('ids').includes(p.id))}});
     if(key.startsWith('/albums/'))return route.fulfill({json:albums.find(a=>key.endsWith(a.id))});
-    const responses={'/remote/session':{remote},'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{camera_model:['TEST CAMERA'],tags:[]},'/library/scan':{job:null},'/jobs':[],'/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:photos.map(p=>p.id)},'/photos':{photos:photos.slice(0,5),total:7},'/albums':albums};
+    const responses={'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{camera_model:['TEST CAMERA'],tags:[]},'/library/scan':{job:null},'/jobs':[],'/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:photos.map(p=>p.id)},'/photos':{photos:photos.slice(0,5),total:7},'/albums':albums};
     if(!(key in responses))errors.push('Unexpected API '+key);
     return route.fulfill({json:responses[key]??{}});
   });
   return{errors,edits};
 }
-test.describe('Android remote language handoff',()=>{
-  test.use({userAgent:'PhotoCollectionRemote/2 Chrome'});
-  test('native language reaches the library without locking later preferences',async({page})=>{
-    const {errors}=await synthetic(page,{width:390,theme:'light',remote:true});
+test.describe('URL language preferences',()=>{
+  test('URL language reaches the library without locking later preferences',async({page})=>{
+    const {errors}=await synthetic(page,{width:390,theme:'light'});
     await page.goto('/?page=home&lang=en');
     await expect(page.locator('html')).toHaveAttribute('lang','en');
-    await expect(page.locator('.mobile-nav')).toBeVisible();
+    await expect(page.locator('.menu-toggle')).toBeVisible();
     await expect(page.locator('.archive-hero h1')).toBeVisible();
     await page.getByRole('button',{name:'Open Library',exact:true}).click();
     await expect(page.locator('.gallery-heading h1')).toContainText('All Photos');
@@ -145,7 +144,7 @@ test('English home and photo controls remain available on mobile',async({page})=
   await page.keyboard.press('Escape');
   expect(errors).toEqual([]);
 });
-test('reduced motion, touch swipe and remote navigation remain usable',async({page})=>{
+test('reduced motion, touch swipe and narrow navigation remain usable',async({page})=>{
   const {errors}=await synthetic(page,{width:390,reducedMotion:'reduce',remote:true});
   await page.goto('/?page=home');await expect(page.locator('.collection-tile')).toHaveCount(5);
   expect(await page.locator('.home-collections').evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
@@ -166,20 +165,6 @@ test('reduced motion, touch swipe and remote navigation remain usable',async({pa
   await page.getByRole('button',{name:'打开导航',exact:true}).click();
   await expect(page.locator('.sidebar nav').getByRole('button',{name:'人物',exact:true})).toBeVisible();
   await page.keyboard.press('Escape');await expect(page.locator('.sidebar')).toBeHidden();
-  expect(errors).toEqual([]);
-});
-test('remote landscape photos keep standard viewing without fullscreen controls',async({page},info)=>{
-  const {errors}=await synthetic(page,{width:915,lang:'en',remote:true});
-  await page.setViewportSize({width:915,height:430});
-  await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
-  await expect(page.locator('.photo-detail')).toHaveClass(/exhibit-normal/);
-  await expect(page.locator('.exhibit-controls')).toHaveCount(0);
-  await expect(page.getByRole('button',{name:'Fullscreen',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('button',{name:'Play slideshow',exact:true})).toHaveCount(0);
-  expect(await page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
-  await page.getByRole('button',{name:'Next photo',exact:true}).click();
-  await expect(page.locator('.viewer-caption b')).toHaveText('FRAME_01.jpg');
-  await page.screenshot({path:info.outputPath('mobile-landscape-viewer.png')});
   expect(errors).toEqual([]);
 });
 

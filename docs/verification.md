@@ -7,7 +7,7 @@
 - 前端 Node：3 项通过；TypeScript / Vite 生产构建通过。
 - 独立 Playwright：6 项通过，包含新增人物影集交互、明暗主题及 1440 / 390px 人物卡片布局、既有页面和水印回归。新增交互验证确认后启用、刷新后可用、人物名预填、取消、空名称、创建失败重试、保存后打开和影集列表显示。
 - 本机未缓存匹配的 Playwright Chromium，下载因连接重置失败；使用本机 Chrome 和 Git 忽略的 `.test-artifacts/person-albums-playwright.config.mjs` 执行同一套测试。默认 CI 配置继续使用 Chromium。
-- 测试仅访问隔离数据库、合成照片和合成 API 数据，不访问私人照片库。当前为源码功能更新，未重建 Windows 安装包、Android APK 或现有 v2.1.1 发布附件。
+- 测试仅访问隔离数据库、合成照片和合成 API 数据，不访问私人照片库。当前为源码功能更新，未重建 Windows 安装包 或现有 v2.1.1 发布附件。
 
 ## 分节完成情况
 
@@ -81,10 +81,6 @@ Codex 内置浏览器返回“saved browser permissions could not be verified”
 
 ## 2026-10-11 Windows 2.2.1 合并
 
-将独立 UI 分支合入 Windows/远程分支 `codex/android-remote-desktop`，解决共用界面文件冲突并保留远程会话、编辑、草稿及导出逻辑。合并后前端生产构建、45 项后端测试、14 项 Playwright 浏览器测试、6 项前端逻辑测试及 1 项网页版图标一致性测试通过。测试覆盖英文界面、深浅主题、桌面/窄屏、新版首页、照片详情、人物影集、目录设置和水印流程。
 
-合成库与截图使用忽略的 `.test-artifacts/`、`verification/windows-merge/`，未连接用户照片库。Windows 版本更新为 2.2.1；Android 版本和签名保持原状。
 
-本机 Windows 2.2.1 EXE、便携 ZIP 与安装器均构建成功。实际 EXE 使用隔离库验证版本和 build_id、网页版图标全部尺寸、远程配对、收藏/标签编辑、电脑草稿与导出、图片 no-store、原图 SHA-256 一致、关闭远程访问和 ZIP 私人数据排除。原生 WebView 使用独立用户配置成功加载并关闭。安装器包含同源七种尺寸图标；ZIP CRC 全部通过。
-
-真实合成库的远程浏览器验证覆盖图库和另外 8 个页面、360 / 390 / 430 px 无溢出、草稿保存与重载、索引不含图片、断网修改拒绝。交付文件在 `releases/PhotoCollection-Setup-2.2.1-x64.exe`、`releases/PhotoCollection-Windows.zip`，SHA-256 写入 `releases/SHA256SUMS.txt`。Android APK 哈希仍与 2.0.0 原包一致。GitHub 下载入口见 README；未在用户正式安装位置覆盖安装。
+本机 Windows 2.2.1 EXE、便携 ZIP 与安装器均构建成功。实际 EXE 使用隔离库验证版本和 build_id、网页版图标全部尺寸、收藏/标签编辑、电脑草稿与导出、图片 no-store、原图 SHA-256 一致和 ZIP 私人数据排除。原生 WebView 使用独立用户配置成功加载并关闭。安装器包含同源七种尺寸图标；ZIP CRC 全部通过。

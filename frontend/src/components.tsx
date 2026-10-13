@@ -113,7 +113,7 @@ export function VirtualGallery({ids,cache,grid,gap,dense,layout='grid',onNeed,on
   const [size,setSize]=useState({width:0,height:600});
   const listRef=useRef<VariableSizeList|null>(null);
   useEffect(()=>{const el=wrapRef.current;if(!el)return;const measure=()=>setSize({width:el.clientWidth,height:el.clientHeight});measure();const observer=new ResizeObserver(measure);observer.observe(el);return()=>observer.disconnect()},[]);
-  const mobile=document.documentElement.dataset.remote==='true'&&size.width<=760;
+  const mobile=size.width<=760;
   const cols=mobile?2:Math.max(1,Math.floor((size.width+gap)/(grid+gap)));
   const colWidth=size.width/cols;
   const rows=Math.ceil(ids.length/cols);

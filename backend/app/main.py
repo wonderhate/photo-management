@@ -40,30 +40,24 @@ from .watermark_drafts import router as draft_router
 app.include_router(draft_router)
 from .face_routes import router as face_router
 app.include_router(face_router)
-from . import remote
-app.include_router(remote.router)
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'], allow_methods=['GET','POST','PATCH','DELETE','PUT'], allow_headers=['Content-Type'])
 
 @app.middleware('http')
 async def protect_local_requests(request: Request, call_next):
     origin = request.headers.get('origin')
     allowed = {'http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'}
-    blocked = remote.guard(request)
-    public_host = remote.is_public_host(request)
-    if blocked is not None:
-        response = blocked
-    elif request.method not in ('GET','HEAD','OPTIONS') and origin and not (remote.public_origin(request, origin) if public_host else origin in allowed or origin == str(request.base_url).rstrip('/')):
+    forwarded = any(name == 'forwarded' or name.startswith('x-forwarded-') or name in {'x-real-ip', 'cf-connecting-ip', 'cf-connecting-ipv6', 'tailscale-funnel-request'} for name in request.headers)
+    if request.url.hostname not in {'localhost', '127.0.0.1', '::1', 'testserver'}:
+        response = JSONResponse({'detail':'仅支持本机访问'}, status_code=400)
+    elif forwarded:
+        response = JSONResponse({'detail':'本机照片服务不接受代理转发'}, status_code=403)
+    elif request.method not in ('GET','HEAD','OPTIONS') and origin and origin not in allowed and origin != str(request.base_url).rstrip('/'):
         response = JSONResponse({'detail':'禁止来自其他网站的本地操作'}, status_code=403)
     else:
         response = await call_next(request)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'
-    if public_host:
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
-    if request.url.path.startswith('/api/remote/') or not remote.local_request(request) or request.cookies.get(remote.COOKIE) or 'PhotoCollectionRemote/' in request.headers.get('user-agent', ''):
-        response.headers['Cache-Control'] = 'no-store, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
     if response.headers.get('content-type', '').startswith('text/html') and request.url.path not in ('/docs', '/redoc', '/docs/oauth2-redirect'):
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
     return response
@@ -104,8 +98,7 @@ def scan_library(force: bool = False):
     return scan_service.start(force)
 
 @app.post('/api/dialog/{kind}')
-def picker(kind: Literal['files','directory'], request: Request):
-    remote.require_local(request)
+def picker(kind: Literal['files','directory']):
     creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
     if getattr(sys, 'frozen', False):
         with TemporaryDirectory(prefix='photo-picker-') as directory:
@@ -116,11 +109,6 @@ def picker(kind: Literal['files','directory'], request: Request):
     result = subprocess.run([sys.executable, '-m', 'backend.app.dialog', kind], cwd=PROJECT, capture_output=True, text=True, timeout=300, creationflags=creationflags)
     if result.returncode: raise HTTPException(503, '系统文件选择器不可用，请粘贴绝对路径')
     return {'paths': json.loads(result.stdout)}
-
-@app.get('/api/files/browse')
-def browse_computer_files(path: str = '', directories_only: bool = False, page: int = 1):
-    from .file_browser import browse
-    return browse(path, directories_only, page)
 
 @app.post('/api/photos/import', status_code=202)
 def import_photos(payload: ImportRequest):

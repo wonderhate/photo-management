@@ -3,7 +3,7 @@ from hashlib import sha256
 from pathlib import Path
 import sys
 
-VERSION='2.3.1'
+VERSION='2.4.0'
 
 def build_id() -> str:
     root=Path(__file__).resolve().parents[1]

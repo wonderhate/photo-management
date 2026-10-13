@@ -3,13 +3,12 @@ import {execFileSync} from 'node:child_process';
 import {join} from 'node:path';
 
 for(const [width,theme,lang] of [[1440,'light','zh'],[390,'dark','en']])test.describe(`signature styles ${width}`,()=>{
-  test.use({viewport:{width,height:1000},...(width===390?{userAgent:'PhotoCollectionRemote/2 Chrome'}:{})});
+  test.use({viewport:{width,height:1000}});
   test('artwork choices survive saved drafts and export',async({page,request},info)=>{
     test.setTimeout(120000);
     page.setDefaultTimeout(10000);
     const errors=[];page.on('pageerror',e=>errors.push(String(e)));
     await page.addInitScript(({theme,lang})=>{localStorage.setItem('theme',theme);localStorage.setItem('lang',lang);localStorage.setItem('onboarded','1')},{theme,lang});
-    if(width===390)await page.route('**/api/remote/session',route=>route.fulfill({json:{remote:true}}));
     const health=await(await request.get('/api/health')).json();
     expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');
     const source=join(health.data_dir,`signature-${width}.jpg`);

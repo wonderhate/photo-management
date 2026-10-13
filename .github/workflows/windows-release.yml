@@ -48,20 +48,16 @@ jobs:
         run: |
           ./build-windows.ps1 -SkipDependencies
           if ($LASTEXITCODE) { throw 'Windows package failed.' }
-          New-Item -ItemType Directory -Force .test-artifacts/remote-client/synthetic-originals | Out-Null
-          ./.venv/Scripts/python.exe -c "from PIL import Image; Image.new('RGB',(640,480),'orange').save('.test-artifacts/remote-client/synthetic-originals/Light-01.jpg')"
           ./.venv/Scripts/python.exe -m unittest desktop.test_icon
           if ($LASTEXITCODE) { throw 'Web icon verification failed.' }
-          ./.venv/Scripts/python.exe -m desktop.verify_remote_package
-          if ($LASTEXITCODE) { throw 'Packaged remote access verification failed.' }
+          ./.venv/Scripts/python.exe -m desktop.verify_package releases/windows/PhotoCollection/PhotoCollection.exe
+          if ($LASTEXITCODE) { throw 'Packaged local application verification failed.' }
           ./build-installer.ps1
       - name: Upload the verified files to the draft
         shell: pwsh
         run: |
-          gh release download $env:RELEASE_TAG -p PhotoCollection-Android.apk -D releases
-          if ($LASTEXITCODE) { throw 'Existing signed APK download failed.' }
           $version=./.venv/Scripts/python.exe -c "from backend.version import VERSION; print(VERSION)"
-          $files=@('PhotoCollection-Android.apk','PhotoCollection-Windows.zip',"PhotoCollection-Setup-$version-x64.exe")
+          $files=@('PhotoCollection-Windows.zip',"PhotoCollection-Setup-$version-x64.exe")
           $hashes=$files | ForEach-Object { $hash=Get-FileHash -LiteralPath "releases/$_" -Algorithm SHA256; "$($hash.Hash.ToLower())  $_" }
           [IO.File]::WriteAllText((Join-Path $PWD 'releases/SHA256SUMS.txt'),($hashes -join "`n")+"`n",[Text.UTF8Encoding]::new($false))
           gh release upload $env:RELEASE_TAG "releases/PhotoCollection-Setup-$version-x64.exe" releases/PhotoCollection-Windows.zip releases/SHA256SUMS.txt --clobber

@@ -1,31 +1,30 @@
 # 光影集 · 本地摄影照片管理
 
-Windows 本地优先照片管理系统，Windows **2.2.11**，Android 远程客户端 **2.0.2**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
+Windows 本地优先照片管理系统，当前源码版本 **2.4.0**。React / TypeScript / Vite，FastAPI / SQLAlchemy / SQLite，Pillow / HEIF / rawpy，本地 Chinese-CLIP 与可选 OpenCV 人物识别。
 
-**原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。桌面服务监听局域网接口，远程访问默认关闭；开启后必须配对才能访问。手机只缓存 JSON 索引，图片预览不落盘。
+**原始照片只读。** 导入登记绝对路径与 SHA-256；删除图库记录、水印草稿或人物分组均不删除原始 JPG / RAW。照片与关键词不上传第三方。桌面服务仅监听本机回环地址，不提供手机配对、远程访问或公网转发。
 
-新版默认进入摄影空间，包含人物影集创建与直接打开、自定义照片库和存储目录、与网页版统一的界面与图标、中文艺术字署名、完整英文界面及手机端界面精简。Android 2.0.2 连接电脑端，手机仅保留索引，正式水印导出可保存到手机相册。用法及验证记录见 [手机远程客户端](docs/android-remote.md)。
+新版默认进入摄影空间，包含人物影集创建与直接打开、自定义照片库和存储目录、与网页版统一的界面与图标、中文艺术字署名、署名居中、全屏胶片列车及完整英文界面。当前仅提供 Windows 和本机网页版。
 
 | 当前公开下载 | 用途 |
 | --- | --- |
 | [Windows 安装程序（推荐）](https://github.com/wonderhate/photo-management/releases/download/v2.2.11/PhotoCollection-Setup-2.2.11-x64.exe) | Windows 10 / 11 x64，中文向导、快捷方式、卸载入口 |
 | [Windows 便携 ZIP](https://github.com/wonderhate/photo-management/releases/download/v2.2.11/PhotoCollection-Windows.zip) | 解压即用，保留 `_internal` 文件夹 |
-| [Android APK](https://github.com/wonderhate/photo-management/releases/download/v2.2.11/PhotoCollection-Android.apk) | Android 10+，电脑照片库的远程客户端，实际版本 2.0.2 |
 | [SHA-256 校验文件](https://github.com/wonderhate/photo-management/releases/download/v2.2.11/SHA256SUMS.txt) | 核对下载完整性；不是发布者签名 |
 
 ## 1. 安装与手动启动
 
 ### Windows 独立应用
 
-[下载 Windows 2.2.11 与 Android 安装包](https://github.com/wonderhate/photo-management/releases/tag/v2.2.11)。Windows 包已经构建，不需要先从源码安装依赖；Android 附件的实际版本为 **2.0.2**，与桌面版本分别编号。
+当前 2.4.0 安装包由本机构建生成：`releases/PhotoCollection-Setup-2.4.0-x64.exe`。下表及 [v2.2.11 发布页](https://github.com/wonderhate/photo-management/releases/tag/v2.2.11) 是历史已发布的 Windows 包，尚未包含本次移除功能。
 
-**下载安全提示**：Windows 当前没有受信任的代码签名，SmartScreen / 未知发布者提示仍可能出现；Android APK 已使用原发布密钥签名，侧载许可和 Play Protect 扫描提示仍可能出现。防病毒扫描与发布者信誉是不同的检查，不建议关闭防护。检查结果、文件校验方法及仍需的账号/证书见 [下载与安全检查](docs/apps-security.md)。iOS 应用开发已取消，相关代码与构建文件已移除；目前提供 Windows、Android 和网页版本。
+**下载安全提示**：Windows 当前没有受信任的代码签名，SmartScreen / 未知发布者提示仍可能出现。防病毒扫描与发布者信誉是不同的检查，不建议关闭防护。检查结果、文件校验方法及仍需的账号/证书见 [下载与安全检查](docs/apps-security.md)。目前提供 Windows 和本机网页版本。
 
 下载并打开 `PhotoCollection-Setup-2.2.11-x64.exe`，按中文向导安装。默认安装在当前用户的 `%LOCALAPPDATA%\Programs\PhotoCollection`，不要求管理员权限；可选桌面快捷方式，开始菜单提供启动与卸载入口。缺少 WebView2 时，安装器运行经过 Microsoft 发布者签名验证的官方引导程序，需要联网；安装失败会明确提示并停止。关闭旧应用后再运行安装程序即可覆盖升级。卸载保留照片库、模型缓存、导出文件及用户创建的配置。
 
 也可以解压 `PhotoCollection-Windows.zip` 到可写文件夹，双击 `PhotoCollection.exe`。必须保留同目录 `_internal`；两种 Windows 包都无需安装 Python 或 Node.js。窗口使用 Windows WebView2，Windows 11 通常已自带。
 
-新版独立应用优先使用 8000 端口，被占用时使用其他空闲端口，手机地址以设置页为准。远程访问默认关闭，开启后须配对。关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
+新版独立应用仅监听 `127.0.0.1`，优先使用 8000 端口，被占用时使用其他空闲端口。关闭窗口会停止该实例的 HTTP 服务，正在执行的后台任务完成后进程退出。默认数据库和缓存放在 `%LOCALAPPDATA%\PhotoCollection\data`，模型放在同级 `models`，导出到用户 Downloads。可以在 EXE 同目录放 `library-config.json` 指定已有库；不能在不同应用实例中同时执行库迁移或移动数据库。
 
 开发者打包：安装原有后端及 AI 依赖后执行 `./build-windows.ps1`。`-UseCurrentLibrary` 只为本机解压目录写入现有库配置，**分发 ZIP 不包含该配置、数据库、模型权重或照片**。无界面诊断可运行 `PhotoCollection.exe --serve --duration 60 --status-file status.json`，日志在 `%LOCALAPPDATA%\PhotoCollection\logs\desktop.log`。
 
@@ -35,28 +34,11 @@ Windows 本地优先照片管理系统，Windows **2.2.11**，Android 远程客�
 
 中文 PowerShell 打包脚本使用 UTF-8 带 BOM，兼容 Windows PowerShell 5.1。若旧版脚本出现中文乱码或解析错误，更新仓库；无需手工创建另一个 `build-windows.utf8.ps1`。
 
-测试记录见 [应用验证说明](docs/apps-verification.md)。Windows 原生窗口启动、Android 模拟器实际编辑/恢复/导出与原图保护已检查；不同实体手机的相册权限和格式兼容性仍需安装后确认。
-
-### Android 远程客户端
-
-Android 2.0.2 访问电脑照片库，推荐搭配本次 Windows 2.2.11 或对应源码服务；历史 Windows 2.1.1 包不支持配对。支持 Android 10+ 和较新的 Android System WebView。
-
-1. 电脑「设置 → 手机远程访问」开启访问，查看电脑地址和八位配对码。
-2. 手机和电脑连接同一 Wi-Fi 或私有 VPN，安装 `releases/PhotoCollection-Android.apk`，填写地址和配对码；不在同一网络时，在电脑设置页「公网地址（可选）」登记自备通道的 https 地址后，手机改填该地址。再次使用可选择「连接已配对的电脑」。
-3. 手机底部提供照片、影集、创作、报告、我的。智能影集、人物、时间线与统计在「我的」中进入；筛选、评分、标签、多选、对比、删除记录等复用电脑端功能。
-4. 整理、AI、水印渲染和草稿都保存在电脑。手机仅保存索引、连接信息和界面偏好，不缓存原图、缩略图、水印预览或离线编辑队列。
-5. 单张导出后，电脑生成成品并自动保存到手机相册 `Pictures/PhotoCollection`。批量任务完成后逐个点击作品链接保存到手机。下载失败会报错，可从电脑水印图库再次导出。
-6. 手机导入可直接浏览并选择电脑上的照片或文件夹，也可填写电脑绝对路径。手机隐藏原图下载，预览和正式水印导出复用电脑服务。
-
-电脑需要保持运行。配对码有效 10 分钟，设备会话有效 30 天；电脑生成新码会撤销旧设备，也可立即关闭访问。连接方式支持局域网 / 私有 VPN 的 IP 地址，以及自备 HTTPS 通道（Tailscale Funnel、Cloudflare Tunnel、frp、端口转发 + 反向代理）登记的公网地址；应用不内置公网穿透与云中转，公网配对码连续输错 10 次锁定 15 分钟。
-
-覆盖升级继续使用原签名，保留旧独立库及已有相册导出；新客户端不再打开旧库，只清理旧派生预览。清除应用数据不会影响电脑库或已导出的相册作品。
-
-开发者运行 `./build-android.ps1` 完成构建、Lint、单元测试和签名验证；保留私有 `.runtime/signing/` 密钥用于覆盖升级。完整用法与实际验证边界见 [远程客户端说明](docs/android-remote.md)。
+测试记录见 [应用验证说明](docs/apps-verification.md)。Windows 原生窗口、编辑、草稿恢复、导出与原图保护保留。
 
 ### 网页容器包（GitHub Packages）
 
-[容器包页面](https://github.com/users/wonderhate/packages/container/package/photo-management)：`ghcr.io/wonderhate/photo-management:2.1.1`，同时提供 `latest`。手动运行主分支的 Web package 工作流时，GitHub Actions 构建实际镜像、检查导入/草稿/导出和原图哈希后才发布；Windows / Android Release 不自动更新容器，镜像使用非 root 用户；不包含任何私人库或照片。首次发布的包默认为私有，仓库所有者需在 Package settings → Change visibility 设为 Public 后，其他用户才能匿名拉取；仓库公开不等于容器包自动公开。
+[容器包页面](https://github.com/users/wonderhate/packages/container/package/photo-management)：`ghcr.io/wonderhate/photo-management:2.1.1`，同时提供 `latest`。手动运行主分支的 Web package 工作流时，GitHub Actions 构建实际镜像、检查导入/草稿/导出和原图哈希后才发布；Windows Release 不自动更新容器，镜像使用非 root 用户；不包含任何私人库或照片。首次发布的包默认为私有，仓库所有者需在 Package settings → Change visibility 设为 Public 后，其他用户才能匿名拉取；仓库公开不等于容器包自动公开。
 
 已安装 Docker 的电脑可运行以下 PowerShell 命令。将 `D:\Photos` 换成自己的照片目录，该目录**只读挂载**；数据库和派生导出保存在独立 Docker volume 中，卸载容器不删除 volume。打开 <http://127.0.0.1:8000>，导入框填写容器里的 `/photos` 路径。
 
@@ -64,7 +46,7 @@ Android 2.0.2 访问电脑照片库，推荐搭配本次 Windows 2.2.11 或对�
 docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" ghcr.io/wonderhate/photo-management:2.1.1
 ```
 
-这是图库、EXIF、影集、统计、报告与水印的基础网页版。镜像不安装桌面 Chinese-CLIP / 人物识别依赖，也不提供 Windows 原生文件选择器；智能功能使用 Windows 应用或源码版。不要把端口公开到互联网，历史 2.1.1 容器没有配对认证；本次源码支持受控配对，但未重新发布容器。使用新版前备份数据卷中的 `library.db` 和派生文件，不要运行删除数据卷的命令。开发者也可用 `docker build -t photo-management .` 构建；工作流位于 `.github/workflows/package.yml`。
+这是图库、EXIF、影集、统计、报告与水印的基础网页版。镜像不安装桌面 Chinese-CLIP / 人物识别依赖，也不提供 Windows 原生文件选择器；智能功能使用 Windows 应用或源码版。不要把端口公开到互联网，容器仅用于本机访问，本次源码不再提供配对认证或远程访问，尚未重新发布容器。使用新版前备份数据卷中的 `library.db` 和派生文件，不要运行删除数据卷的命令。开发者也可用 `docker build -t photo-management .` 构建；工作流位于 `.github/workflows/package.yml`。
 
 ### 源码启动
 
@@ -192,7 +174,7 @@ Downloads 中其他私人文件不会被开放为下载链接。同名导出自�
 
 流程：本地检测 → SFace 相似度分组建议 → 命名／确认分组 → 检查局部人脸图并重新关联 → 查看人物照片。相似度可调，建议默认 0.45；自动分组需要人工确认，不能保证身份识别准确率。删除人物保留照片，把相关人脸放回待确认列表。
 
-人物卡片提供「新建人物影集」：分组全部确认且有照片后可用，默认以人物名称命名，可改名或取消；保存后直接打开新影集，并可在「影集」页找到。已有对应影集时，卡片改为「打开人物影集」，刷新、人物改名或调整影集成员后仍保留关联；有多个对应影集时可选择。一次收入该人物当前分组的全部照片，不受人物页分页限制，RAW + JPG 和同次拍摄的重复人脸只计一次。创建的是普通影集；后续人物改名、重新分类或删除人物不会自动改动该影集，删除影集也保留原图。这项更新已包含在 Windows 2.2.11 安装包、源码版和使用该后端的网页版中，Android 连接新版电脑服务也可使用。
+人物卡片提供「新建人物影集」：分组全部确认且有照片后可用，默认以人物名称命名，可改名或取消；保存后直接打开新影集，并可在「影集」页找到。已有对应影集时，卡片改为「打开人物影集」，刷新、人物改名或调整影集成员后仍保留关联；有多个对应影集时可选择。一次收入该人物当前分组的全部照片，不受人物页分页限制，RAW + JPG 和同次拍摄的重复人脸只计一次。创建的是普通影集；后续人物改名、重新分类或删除人物不会自动改动该影集，删除影集也保留原图。这项更新已包含在 Windows 2.2.11 安装包、源码版和使用该后端的网页版中。
 
 未安装依赖或模型时显示安装／下载入口；解码失败与“没有人脸”分开报告。人脸向量只保存在本机 SQLite。
 
@@ -277,7 +259,7 @@ npx playwright install chromium
 npx playwright test
 ```
 
-最终实测通过：39 项后端、3 项前端逻辑、5 项 Chromium 回归（含 11 个主要页面及真实水印保存/恢复/导出流程）；新 EXE 的 16 项 HTTP 流程、721 个合成源文件哈希保护、WebView2 窗口与升级后的离线 Chinese-CLIP。Android 正式 APK 覆盖安装和完整设备测试通过。详见 [2.1.1 应用验证](docs/apps-verification.md#最终安全修订与发布包)与 [安全检查](docs/apps-security.md)。
+最终实测通过：39 项后端、3 项前端逻辑、5 项 Chromium 回归（含 11 个主要页面及真实水印保存/恢复/导出流程）；新 EXE 的 16 项 HTTP 流程、721 个合成源文件哈希保护、WebView2 窗口与升级后的离线 Chinese-CLIP。详见 [2.1.1 应用验证](docs/apps-verification.md#最终安全修订与发布包)与 [安全检查](docs/apps-security.md)。
 
 如果模型下载遇到代理 502 或证书错误，先检查代理和 Windows 信任的证书链，保留 TLS 校验。已有模型时可在设置中指定本地模型目录并离线加载。另一台电脑使用了 `HF_ENDPOINT` 镜像与 `pip-system-certs`；这是该机器的网络配置，不是应用必需依赖，也不会写入分发包。使用镜像前自行确认来源，环境变量只在启动应用前设置才生效。
 

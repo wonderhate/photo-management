@@ -1,4 +1,4 @@
-const CACHE='photo-archive-v3';
+const CACHE='photo-archive-v4';
 const MAX_ENTRIES=250;
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'])).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
@@ -11,7 +11,7 @@ async function remember(request,response){
 self.addEventListener('fetch',event=>{
   const request=event.request,url=new URL(request.url);
   if(request.method!=='GET'||url.origin!==location.origin)return;
-  // Never persist photo bytes, even if this worker predates the Android connection.
+  // Never persist API responses or photo bytes in the service worker.
   if(url.pathname.startsWith('/api/'))return;
   // HTML always checks the server for the current build. Hashed assets are immutable.
   const immutable=/\/assets\/[^/]+-[^/]+\.(js|css)$/.test(url.pathname);

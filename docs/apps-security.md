@@ -1,6 +1,5 @@
 # 下载、安装与安全检查（2026-10-11）
 
-范围：Windows 2.1.1、Android 独立版 1.0.0、localhost 网页。iOS 应用开发已取消，相关代码与构建文件已移除。所有可写验证使用专用模拟器及合成照片，不修改用户原图。这里区分程序检查与系统的发布者身份、信誉判断；通过扫描不代表所有电脑或手机都不会提示。
 
 ## 本次修复
 
@@ -14,7 +13,6 @@
 
 ## Windows 下载和启动
 
-Release 提供 Windows 中文安装程序、便携 ZIP、Android APK 与 `SHA256SUMS.txt`。安装程序按当前用户安装，提供快捷方式、覆盖升级和卸载；不要求管理员权限。公开包不含本机照片库配置、数据库、模型权重、签名密钥或用户照片。便携版解压后运行 `PhotoCollection.exe`，须保留同目录 `_internal`。
 
 安装器与应用 EXE 都仍未签名。安装器内的 Microsoft WebView2 引导程序来自微软官方地址，打包前检查 Authenticode 为 `Valid`、发布者为 Microsoft Corporation；这不等于整个安装器获得微软签名。已有运行库时跳过安装，缺少时联网安装，失败则中止并提示。测试电脑已有 WebView2，未卸载系统运行库来模拟缺失环境。
 
@@ -30,31 +28,21 @@ Release 提供 Windows 中文安装程序、便携 ZIP、Android APK 与 `SHA256
 
 收到明确的恶意软件告警时，保留文件哈希、截图与产品名称，并向相应厂商提交误报复核；不要按“未知发布者”的步骤处理恶意软件告警。
 
-## Android 下载和安装
 
-实际发布 APK：`com.wonder.photo`，版本 **1.0.0 / versionCode 1**，min SDK 29，target SDK 35；release 不含 DEBUGGABLE 标志。APK v2 签名验证通过。发布证书 SHA-256：
 
 ```text
 71b13ac9dfb9555d3ff0412df1b2585b620b4573e043f0b78f0c8e9c4c7d7c33
 ```
 
-Android 使用应用自身的发布密钥属于正常分发机制，与 Windows 自签证书的信任机制不同。后续 APK 必须保留这一密钥；密钥和密码只保存在 Git 忽略的 `.runtime/signing` 中，需安全备份，绝不能上传 GitHub。开发者验证需要证明包名/证书归属，不能上传私钥。
 
-权限只有相册读取和 Android 14 部分相册授权，以及 AndroidX 的应用内部接收器权限。无 INTERNET、网络状态、相册写入、全盘管理、短信、无障碍或通知监听权限；不启用云备份和明文网络。签名、16KB 对齐、Lint、单元测试，以及正式 APK 在 Android 15 AOSP 专用模拟器上的覆盖安装、启动和完整编辑/导出测试通过；测试只处理自己生成的相册素材。
 
-侧载时系统通常要求用户允许该下载来源安装 APK；Google Play Protect 可能要求扫描此前未识别的应用。这不是 APK 缺少签名，也不能通过代码保证消失。专用 AOSP 模拟器没有 Play Protect，因此本次**没有测得** Google 云端信誉判定或各手机厂商的实际拦截结果。依据 [Google 的提示说明](https://developers.google.com/android/play-protect/warning-dev-guidance)，不添加所谓安装助手，不关闭安全扫描。
 
-后续仍需 Android Developer Console 或 Play Console 的开发者验证账号、身份验证、包名与当前发布证书登记；截至本次检查，Google 的验证要求在首批地区推行，后续扩展，不能说全球所有设备都已经强制拦截。商店发布还需满足当时的 target SDK 与审核要求。见 [Android 开发者验证](https://developer.android.com/developer-verification)。实体手机、Play Protect 和厂商商店的安装验收需要具备这些环境后完成。
 
-## 公网配对安全边界
+## 本机访问边界
 
-2.3.0 起手机可通过用户自备的公网 HTTPS 通道配对。公网域名和公网 IPv4 / IPv6 只有在电脑本机设置页登记后才会被接受：登记端点要求本机请求（`require_local`），地址必须为完整 `https://` 且不含路径，非公网 IP、组播地址、localhost 和无效端口不允许登记，最多 8 条。后端 guard 对已登记主机按远程访问规则放行（未开启访问 403、未配对 401、配对接口免鉴权），管理端点仍仅本机可调。来自公网客户端的 HTTP 请求拒绝访问，即使伪造私网 Host 或 `X-Forwarded-Proto: https`；已登记公网主机的内部 HTTP 请求仅允许本机回环代理转发。公网入口的有效 TLS、正确 Host 转发与后端 HTTP 端口不对公网开放仍由部署保证；HSTS 不能替代 TLS 配置。
+2.4.0 起仅提供 Windows 与本机网页版。桌面启动器和源码启动脚本监听 `127.0.0.1`；手机客户端、配对码、公网地址登记、设备会话、手机索引缓存和相册导出桥接均已移除。旧设备会话不再被读取或用于授权，已有照片库和原图不受影响。
 
-转发头的值不参与来源身份或协议判断。转发标记的存在只能取消本机信任；带 `Forwarded`、`X-Forwarded-*`、`X-Real-IP`、Cloudflare 或 Funnel 标记的 localhost 请求会被拒绝。代理必须保留公网 Host；同时重写成 localhost 且不带任何标记的代理无法与真实本机请求区分，是不支持的部署配置。实际通道必须验证未配对请求无法访问照片与本机管理接口。
-
-配对与会话：八位数字配对码保持原格式（旧 Android 客户端硬约束），在原有按实际连接来源 IP 限速之上叠加持久化全局锁定——同一码连续输错 10 次锁定 15 分钟，生成新配对码即解锁并清空失败计数；锁定状态写入照片库 `remote-access.json`，重启不失效。已登记公网主机的会话 Cookie 强制 Secure 标志；公网写操作的 Origin 按登记的完整 HTTPS 地址匹配，包含端口并规范化默认 443，来源的主机须与请求 Host 一致。未登记端口、HTTP Origin 或本机开发来源均不能绕过此校验。全局锁定可能被恶意触发；反代后的按 IP 限速集中在代理地址，公网入口应同时限制异常尝试。
-
-Android 客户端保留 `usesCleartextTraffic="true"` 以兼容局域网 HTTP 配对；客户端地址规范化限制公网使用 HTTPS，服务端按实际连接来源拒绝来自公网的直接 HTTP 请求，并将公网入口的内部 HTTP 转发限制到本机代理。所有公网域名或 IP 都必须具备有效证书，不关闭证书校验。
+服务只接受 localhost、回环地址和测试主机名；私网或公网 Host 被拒绝，带转发标记的请求也被拒绝，跨站写操作继续检查 Origin。保留 CSP、nosniff、禁止嵌入页面和关闭 Referrer。不要通过代理、隧道或端口转发将本机服务发布到网络。Docker 必须用 `127.0.0.1:8000:8000` 发布端口，容器内部监听全部接口仅用于容器网络转发，不代表提供远程访问。
 
 ## 用户可重复检查
 
@@ -62,7 +50,6 @@ Android 客户端保留 `usesCleartextTraffic="true"` 以兼容局域网 HTTP �
 # 下载包完整性：与同一 Release 的 SHA256SUMS.txt 比较
 Get-FileHash .\PhotoCollection-Windows.zip -Algorithm SHA256
 Get-FileHash .\PhotoCollection-Setup-2.1.1-x64.exe -Algorithm SHA256
-Get-FileHash .\PhotoCollection-Android.apk -Algorithm SHA256
 # Windows 当前应显示 NotSigned，未来可信签名后应为 Valid
 Get-AuthenticodeSignature .\PhotoCollection.exe
 Get-AuthenticodeSignature .\PhotoCollection-Setup-2.1.1-x64.exe

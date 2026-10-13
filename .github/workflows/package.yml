@@ -54,7 +54,7 @@ jobs:
           PY
           docker exec photo-test test -z "$(docker exec photo-test find /app -name library-config.json -o -name library.db -o -name '*.p12')"
       - uses: docker/login-action@v3
-        # Windows/Android releases do not replace the existing public web image.
+        # Windows releases do not replace the existing public web image.
         if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         with:
           registry: ghcr.io

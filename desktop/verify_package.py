@@ -8,6 +8,8 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.error
+from urllib.parse import urlsplit
 from PIL import Image, TiffImagePlugin
 
 def main() -> None:
@@ -34,7 +36,7 @@ def main() -> None:
         digest=hashlib.sha256(original.read_bytes()).digest()
         status=work/'status.json'
         check_ai='--ai' in sys.argv
-        env=os.environ | {'PHOTO_DATA_DIR':str(work/'data'), 'PHOTO_EXPORT_DIR':str(work/'exports'), 'PHOTO_MODELS_DIR':str(root/'models' if check_ai else work/'models'), 'PHOTO_AUTOLOAD_AI':'0'}
+        env=os.environ | {'PHOTO_DATA_DIR':str(work/'data'), 'PHOTO_LIBRARY_CONFIG':str(work/'config.json'), 'LOCALAPPDATA':str(work/'profile'), 'PHOTO_EXPORT_DIR':str(work/'exports'), 'PHOTO_MODELS_DIR':str(root/'models' if check_ai else work/'models'), 'PHOTO_AUTOLOAD_AI':'0'}
         process=subprocess.Popen([str(exe),'--serve','--status-file',str(status)], env=env, creationflags=subprocess.CREATE_NO_WINDOW)
         try:
             for _ in range(300):
@@ -56,6 +58,21 @@ def main() -> None:
                 raise TimeoutError('Frozen background job timed out')
             assert Path(health['data_dir'])==work/'data'
             assert len(health['build_id'])==16
+            endpoint=urlsplit(url)
+            listeners={parts[1] for line in subprocess.check_output(['netstat','-ano','-p','tcp'],text=True).splitlines() if len(parts:=line.split())==5 and parts[3]=='LISTENING' and parts[1].endswith(f':{endpoint.port}')}
+            assert listeners=={endpoint.netloc}, ('Server must listen on loopback only',listeners)
+            assert not any(p.startswith(('/api/remote', '/api/files/browse')) for p in api('/openapi.json')['paths'])
+            for path,headers,expected in [
+                ('/api/remote/settings',{},404),('/api/remote/session',{},404),('/api/files/browse',{},404),
+                ('/api/health',{'Host':'192.168.1.2','Cookie':'photo_remote=retired'},400),
+                ('/api/health',{'Host':'public.example'},400),('/api/health',{'X-Forwarded-For':'127.0.0.1'},403),
+            ]:
+                try:
+                    opener.open(urllib.request.Request(url+path,headers=headers),timeout=10)
+                except urllib.error.HTTPError as error:
+                    assert error.code==expected, (path,error.code)
+                else:
+                    raise AssertionError(f'Retired or remote request accepted: {path}')
             with opener.open(url) as response:
                 assert b'<html' in response.read()
                 assert response.headers['X-Content-Type-Options'] == 'nosniff'
