@@ -26,8 +26,6 @@ def lines(photo: dict, options: dict) -> tuple[list[str], list[str]]:
             params.append(render(photo[name]))
     if 'date_taken' in fields and photo.get('date_taken'):
         heading.append(str(photo['date_taken']).replace('T', ' ')[:19])
-    if 'signature' in fields and options.get('signature_style', 'text') == 'text' and options.get('signature', '').strip():
-        heading.append(options['signature'].strip())
     return heading, params
 
 def rounded_paste(canvas: Image.Image, image: Image.Image, xy: tuple[int, int], radius: int) -> None:

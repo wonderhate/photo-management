@@ -219,11 +219,12 @@ test('optional exhibitions can pause, skip and return to standard photo viewing'
   await expect(page.locator('.detail-image')).toHaveClass(/torch-on/);
   await page.getByRole('button',{name:'关闭手电筒',exact:true}).click();
   await page.getByLabel('展映模式',{exact:true}).selectOption('rail');
-  await expect(page.locator('.viewer-filmstrip')).toHaveCSS('animation-play-state','paused');
+  await expect(page.locator('.viewer-filmstrip')).toHaveCount(0);
+  await expect(page.locator('.film-stage')).toHaveAttribute('data-motion','paused');
   await page.getByRole('button',{name:'播放展映',exact:true}).click();
-  await expect(page.locator('.viewer-filmstrip')).toHaveCSS('animation-play-state','running');
+  await expect(page.locator('.film-stage')).toHaveAttribute('data-motion','playing');
   await page.getByRole('button',{name:'暂停展映',exact:true}).click();
-  await expect(page.locator('.viewer-filmstrip')).toHaveCSS('animation-play-state','paused');
+  await expect(page.locator('.film-stage')).toHaveAttribute('data-motion','paused');
   await page.getByLabel('展映模式',{exact:true}).selectOption('snow');
   await expect(page.locator('.snow-layer')).toBeVisible();
   await page.getByLabel('展映模式',{exact:true}).selectOption('aurora');
@@ -232,6 +233,68 @@ test('optional exhibitions can pause, skip and return to standard photo viewing'
   await page.getByLabel('摄影氛围',{exact:true}).uncheck();
   await expect(page.locator('.viewfinder')).toBeHidden();
   await page.keyboard.press('Escape');await expect(page.locator('.photo-viewer')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+for(const theme of ['light','dark'])test(`film reel preserves ratios, moves continuously and reveals edge controls ${theme}`,async({page},info)=>{
+  const {errors}=await synthetic(page,{theme,width:1440});
+  await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
+  await page.getByLabel('展映模式',{exact:true}).selectOption('rail');
+  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.classList.contains('modal'))).toBe(true);
+  await expect(page.locator('.film-frame')).toHaveCount(7);
+  await expect.poll(()=>page.locator('.film-frame img').evaluateAll(images=>images.every(img=>img.complete&&img.naturalWidth>0))).toBe(true);
+  await expect(page.locator('.viewer-filmstrip,.detail-image>img')).toHaveCount(0);
+  const geometry=await page.locator('.film-frame img').evaluateAll(images=>images.map(img=>{const rect=img.getBoundingClientRect();return {width:rect.width,height:rect.height,left:rect.left,right:rect.right,ratio:img.naturalWidth/img.naturalHeight}}));
+  for(let i=0;i<geometry.length;i++){
+    expect(geometry[i].width/geometry[i].height).toBeCloseTo(geometry[i].ratio,2);
+    expect(geometry[i].height).toBeCloseTo(geometry[0].height,1);
+    if(i)expect(geometry[i].left-geometry[i-1].right).toBeCloseTo(0,1);
+  }
+  const modal=await page.locator('.photo-viewer .modal').boundingBox();
+  expect(modal.x).toBeCloseTo(0,1);expect(modal.y).toBeCloseTo(0,1);
+  expect(modal.width).toBe(1440);expect(modal.height).toBe(1000);
+  await page.mouse.move(720,500);
+  await expect(page.locator('.viewer-toolbar')).toHaveCSS('opacity','0');
+  await expect(page.locator('.exhibit-controls')).toHaveCSS('opacity','0');
+  await expect(page.locator('.photo-viewer .modal>header')).toHaveCSS('opacity','0');
+  await page.screenshot({path:info.outputPath('film-reel.png')});
+  await page.mouse.move(720,20);await expect(page.locator('.viewer-toolbar')).toHaveCSS('opacity','1');
+  await page.getByRole('button',{name:'播放展映',exact:true}).click();
+  await expect.poll(()=>page.locator('.film-track').evaluate(el=>el.getAnimations()[0]?.playState)).toBe('running');
+  const x1=await page.locator('.film-track').evaluate(el=>new DOMMatrix(getComputedStyle(el).transform).m41);
+  await expect.poll(()=>page.locator('.film-track').evaluate(el=>new DOMMatrix(getComputedStyle(el).transform).m41)).toBeLessThan(x1-3);
+  await page.mouse.move(720,20);await page.getByRole('button',{name:'暂停展映',exact:true}).click();
+  await expect.poll(()=>page.locator('.film-track').evaluate(el=>el.getAnimations()[0]?.playState)).toBe('paused');
+  await page.mouse.move(720,500);await expect(page.locator('.viewer-toolbar')).toHaveCSS('opacity','0');
+  await page.keyboard.press('Tab');await expect(page.locator('.viewer-toolbar')).toHaveCSS('opacity','1');
+  await page.mouse.move(720,980);await expect(page.locator('.exhibit-controls')).toHaveCSS('opacity','1');
+  await page.getByLabel('列车速度',{exact:true}).fill('100');
+  expect(await page.locator('.film-track').evaluate(el=>el.getAnimations()[0]?.playbackRate)).toBeCloseTo(100/75,3);
+  await page.mouse.move(720,20);await page.getByRole('button',{name:'播放展映',exact:true}).click();
+  await page.locator('.film-track').evaluate(el=>el.getAnimations()[0].finish());
+  await expect(page.locator('.film-stage')).toHaveAttribute('data-photo-id','frame-1');
+  await page.mouse.move(720,20);await page.getByRole('button',{name:'暂停展映',exact:true}).click();
+  await page.mouse.move(10,500);await expect(page.locator('.viewer-prev')).toHaveCSS('opacity','1');
+  await page.getByRole('button',{name:'上一张',exact:true}).click();await expect(page.locator('.film-stage')).toHaveAttribute('data-photo-id','frame-0');
+  await page.keyboard.press('ArrowLeft');await expect(page.locator('.film-stage')).toHaveAttribute('data-photo-id','frame-6');
+  await page.mouse.move(720,980);await page.getByLabel('展映模式',{exact:true}).selectOption('normal');
+  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
+  await expect(page.locator('.film-stage')).toHaveCount(0);await expect(page.locator('.viewer-filmstrip')).toBeVisible();
+  await expect(page.locator('.viewer-caption b')).toHaveText('FRAME_06.jpg');
+  await page.keyboard.press('Escape');expect(errors).toEqual([]);
+});
+
+test('reduced motion film reel stays still and can close fullscreen',async({page})=>{
+  const {errors}=await synthetic(page,{width:1440,reducedMotion:'reduce',lang:'en'});
+  await page.goto('/?page=photos');await page.locator('.photo-image').first().click();
+  await page.getByLabel('Presentation',{exact:true}).selectOption('rail');
+  await expect(page.locator('.film-stage')).toHaveAttribute('data-motion','paused');
+  await page.mouse.move(720,20);await page.getByRole('button',{name:'Play slideshow',exact:true}).click();
+  await expect(page.locator('.film-stage')).toHaveAttribute('data-motion','paused');
+  expect(await page.locator('.film-track').evaluate(el=>el.getAnimations().length)).toBe(0);
+  await page.keyboard.press('ArrowRight');await expect(page.locator('.film-stage')).toHaveAttribute('data-photo-id','frame-1');
+  await page.keyboard.press('Escape');await expect(page.locator('.photo-viewer')).toHaveCount(0);
+  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===null)).toBe(true);
   expect(errors).toEqual([]);
 });
 

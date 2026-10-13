@@ -114,7 +114,8 @@ def duplicate(draft_id: str):
         # Copy the cached preview without expensive rendering, including offline originals.
         if original.preview_path and Path(original.preview_path).is_file():
             import shutil
-            target = Path(original.preview_path).parent / f'{draft.id}.webp'
+            suffix = '-'+service.PREVIEW_LAYOUT if service.PREVIEW_LAYOUT in Path(original.preview_path).name else ''
+            target = Path(original.preview_path).parent / f'{draft.id}{suffix}.webp'
             shutil.copyfile(original.preview_path, target)
             draft.preview_path = str(target)
         session.commit()
@@ -133,8 +134,7 @@ def status(draft_id: str, payload: DraftStatus):
 def preview_file(draft_id: str):
     with service.lock, Session() as session:
         draft = service.get_draft(session, draft_id)
-        if draft.watermark_type == 'frame' and draft.settings_json.get('style', 'modern_info_bar') == 'modern_info_bar' and (
-                not draft.preview_path or '-modern_info_bar-' not in Path(draft.preview_path).name):
+        if not draft.preview_path or service.PREVIEW_LAYOUT not in Path(draft.preview_path).name:
             service.save_preview_commit(session, draft, True)
         if not draft.preview_path or not Path(draft.preview_path).is_file():
             raise HTTPException(404, '预览尚不可用')

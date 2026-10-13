@@ -11,6 +11,7 @@ from . import watermark_service, jobs
 
 # Serializes draft writes, preview replacement, and export snapshots in this local process.
 lock = RLock()
+PREVIEW_LAYOUT = 'centered-signature'
 
 def get_draft(session, draft_id: str) -> WatermarkDraft:
     draft = session.get(WatermarkDraft, draft_id)
@@ -39,7 +40,7 @@ def preview(session, draft: WatermarkDraft) -> None:
     folder = DATA / 'watermark_previews'
     folder.mkdir(parents=True, exist_ok=True)
     style = WatermarkOptions.model_validate(draft.settings_json).style if draft.watermark_type == 'frame' else 'ambient'
-    target = folder / f'{draft.id}-{style}-{uuid4().hex}.webp'
+    target = folder / f'{draft.id}-{style}-{PREVIEW_LAYOUT}-{uuid4().hex}.webp'
     image.save(target, 'WEBP', quality=82)
     draft.preview_path = str(target)
 

@@ -13,14 +13,14 @@ FONTS = {'fine': 'Sacramento-Regular.ttf', 'brush': 'KaushanScript-Regular.ttf',
 def signature_image(options: dict) -> Image.Image | None:
     style = options.get('signature_style', 'text')
     text = options.get('signature', '').strip()
-    if 'signature' not in options.get('fields', []) or style == 'text' or not text:
+    if 'signature' not in options.get('fields', []) or not text:
         return None
     if style == 'natural':
         with Image.open(ASSETS / 'natural.png') as source:
             image = source.convert('RGBA')
     else:
         chinese = style.startswith('chinese_')
-        typeface = font(160) if not chinese and any(ord(c) > 0x024F for c in text) else ImageFont.truetype(ASSETS / FONTS[style], 160)
+        typeface = font(160) if style == 'text' or not chinese and any(ord(c) > 0x024F for c in text) else ImageFont.truetype(ASSETS / FONTS[style], 160)
         runs = [(text, typeface)]
         if chinese:
             # Keep the chosen calligraphy; only uncovered characters use the system font.

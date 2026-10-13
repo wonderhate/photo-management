@@ -1,7 +1,7 @@
 {
   "name": "photo-library-ui",
   "private": true,
-  "version": "2.2.11",
+  "version": "2.3.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
