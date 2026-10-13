@@ -46,6 +46,14 @@ Android 使用应用自身的发布密钥属于正常分发机制，与 Windows 
 
 后续仍需 Android Developer Console 或 Play Console 的开发者验证账号、身份验证、包名与当前发布证书登记；截至本次检查，Google 的验证要求在首批地区推行，后续扩展，不能说全球所有设备都已经强制拦截。商店发布还需满足当时的 target SDK 与审核要求。见 [Android 开发者验证](https://developer.android.com/developer-verification)。实体手机、Play Protect 和厂商商店的安装验收需要具备这些环境后完成。
 
+## 公网配对安全边界
+
+2.3.0 起手机可通过用户自备的公网 HTTPS 通道配对。公网主机名只有在电脑本机设置页登记后才会被接受：登记端点要求本机请求（`require_local`），地址必须为完整 `https://` 且不含路径，私网 IP 与 localhost 不允许登记，最多 8 条。后端 guard 对已登记主机名按远程访问规则放行（未开启访问 403、未配对 401、配对接口免鉴权），管理端点仍仅本机可调；未登记域名与公网 HTTP 一律拒绝。应用不读取 `X-Forwarded-*` 头，反代是否终结 TLS 由用户通道负责，公网主机响应附带 HSTS。
+
+配对与会话：八位数字配对码保持原格式（旧 Android 客户端硬约束），在原有按来源 IP 限速之上叠加持久化全局锁定——同一码连续输错 10 次锁定 15 分钟，生成新配对码即解锁并清空失败计数；锁定状态写入照片库 `remote-access.json`，重启不失效。已登记公网主机的会话 Cookie 强制 Secure 标志；跨站写操作检查对"Origin 为 https 且主机名与已登记 Host 一致"的来源放行，其余非白名单 Origin 的写请求仍返回 403。
+
+Android 客户端保留 `usesCleartextTraffic="true"`：networkSecurityConfig 无法表达"仅私网 IP 段允许明文"，收紧会破坏局域网 HTTP 配对；公网明文已在应用层双重拦截（地址规范化要求 https 或私网，后端拒绝公网 HTTP 登记）。
+
 ## 用户可重复检查
 
 ```powershell
