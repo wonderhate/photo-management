@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ADDITIONS = {
+    'watermark_drafts': {'artwork_id': 'VARCHAR REFERENCES artworks(id) ON DELETE RESTRICT'},
     'photos': {'gps_altitude': 'REAL', 'rating': 'INTEGER', 'color_label': 'TEXT', 'face_data': 'JSON'},
     'albums': {'cover_photo_id': 'VARCHAR', 'person_id': 'VARCHAR REFERENCES face_persons(id) ON DELETE SET NULL'},
     'album_photos': {'position': 'INTEGER NOT NULL DEFAULT 0'},

@@ -34,6 +34,10 @@ def export_one(photo_id: str, options: dict, index: int = 1, output_directory: s
         photo = session.get(Photo, photo_id)
         if not photo:
             raise ValueError('照片记录不存在')
+    return export_source(photo, options, index, output_directory)
+
+
+def export_source(photo, options: dict, index: int = 1, output_directory: str | None = None) -> dict:
     image = render(photo, options)
     extension = options['format']
     values = dict(original=Path(photo.file_name).stem, date=(photo.date_taken or photo.created_at)[:10],

@@ -7,7 +7,7 @@ from PIL import Image
 from sqlalchemy import select, func
 from .art_schemas import ArtGenerate, ArtTitleRequest, ArtSettings, ArtUpdate, ArtExport, ArtLayout
 from .config import settings, save_settings, EXPORTS
-from .models import Session, Artwork
+from .models import Session, Artwork, WatermarkDraft, Photo
 from .services import art_service as art, art_credentials, jobs
 
 router = APIRouter(prefix='/api/art')
@@ -137,6 +137,8 @@ def export(art_id: str, payload: ArtExport):
 def delete_work(art_id: str):
     with art.lock, Session() as session:
         item = artwork(session, art_id)
+        if session.scalar(select(WatermarkDraft.id).where(WatermarkDraft.artwork_id == item.id).limit(1)):
+            raise HTTPException(409, '这幅水彩仍被水印作品使用，请先删除关联水印作品')
         folder = art.folder_for(item.id)
         # Delete only this generated artwork's files. Originals and exports remain intact.
         for path in folder.glob('*'):
@@ -147,3 +149,24 @@ def delete_work(art_id: str):
         session.delete(item)
         session.commit()
         return {'ok': True}
+
+
+@router.post('/works/{art_id}/watermark', status_code=201)
+def create_watermark(art_id: str):
+    from .schemas import WatermarkOptions
+    from .services import watermark_draft_service as drafts
+    with art.lock, drafts.lock, Session() as session:
+        item = artwork(session, art_id)
+        photo = session.get(Photo, item.photo_id) if item.photo_id else None
+        options = WatermarkOptions().model_dump()
+        # Pin the saved poster revision so later layout edits cannot silently alter this draft.
+        snapshot = item.source_json | {'artwork_revision': item.revision,
+                    'file_name': 'watercolor_' + item.source_json['file_name']}
+        draft = WatermarkDraft(photo_id=item.photo_id, artwork_id=item.id,
+            capture_group_id=photo.capture_group_id if photo else None,
+            name=(item.settings_json['title'] or item.source_json['file_name'])[:180],
+            watermark_type=options['template'], template_id=options['template'],
+            settings_json=options, source_json=snapshot)
+        session.add(draft)
+        session.flush()
+        return drafts.save_preview_commit(session, draft, True)

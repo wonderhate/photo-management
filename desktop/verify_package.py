@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import sqlite3
+from uuid import uuid4
 import time
 import urllib.request
 import urllib.error
@@ -37,6 +39,7 @@ def main() -> None:
         status=work/'status.json'
         check_ai='--ai' in sys.argv
         env=os.environ | {'PHOTO_DATA_DIR':str(work/'data'), 'PHOTO_LIBRARY_CONFIG':str(work/'config.json'), 'LOCALAPPDATA':str(work/'profile'), 'PHOTO_EXPORT_DIR':str(work/'exports'), 'PHOTO_MODELS_DIR':str(root/'models' if check_ai else work/'models'), 'PHOTO_AUTOLOAD_AI':'0'}
+        env.pop('OPENAI_API_KEY', None)
         process=subprocess.Popen([str(exe),'--serve','--status-file',str(status)], env=env, creationflags=subprocess.CREATE_NO_WINDOW)
         try:
             for _ in range(300):
@@ -59,7 +62,7 @@ def main() -> None:
             assert Path(health['data_dir'])==work/'data'
             assert len(health['build_id'])==16
             endpoint=urlsplit(url)
-            listeners={parts[1] for line in subprocess.check_output(['netstat','-ano','-p','tcp'],text=True).splitlines() if len(parts:=line.split())==5 and parts[3]=='LISTENING' and parts[1].endswith(f':{endpoint.port}')}
+            listeners={parts[1] for line in subprocess.check_output(['netstat','-ano','-p','tcp'],text=True,encoding='oem').splitlines() if len(parts:=line.split())==5 and parts[3]=='LISTENING' and parts[1].endswith(f':{endpoint.port}')}
             assert listeners=={endpoint.netloc}, ('Server must listen on loopback only',listeners)
             assert not any(p.startswith(('/api/remote', '/api/files/browse')) for p in api('/openapi.json')['paths'])
             for path,headers,expected in [
@@ -86,6 +89,33 @@ def main() -> None:
             exported=api('/api/watermark/drafts/'+draft['id']+'/export',{})
             assert exported,exported
             assert list((work/'exports').glob('*.jpg'))
+            with opener.open(url+'/watercolor') as response:
+                assert b'<html' in response.read()
+            configured=api('/api/art/settings',{'api_key':'package-test-key-not-real'},'PUT')
+            assert configured['configured'] and 'package-test-key-not-real' not in json.dumps(configured)
+            assert b'package-test-key-not-real' not in (work/'data'/'art-key.dpapi').read_bytes()
+            api('/api/art/settings',{'clear_key':True},'PUT')
+            assert not api('/api/art/settings')['configured']
+            # Seed a clearly synthetic scene to test frozen layout/fonts without a cloud request.
+            aid=str(uuid4());folder=work/'data'/'artworks'/aid;folder.mkdir(parents=True)
+            scene=Image.new('RGB',(640,480),'cornflowerblue')
+            scene.save(folder/'scene.png');scene.save(folder/'poster-1.png');scene.save(folder/'preview-1.webp')
+            source={'file_name':'package-watercolor.png','width':640,'height':480,'date_taken':photo['date_taken'],'camera_model':'Package Test','iso':100}
+            layout={'title':'包测试','title_source':'manual','title_evidence':'','layout':'airy','font':'chinese_handwriting','paper':.35}
+            with sqlite3.connect(work/'data'/'library.db') as db:
+                db.execute('INSERT INTO artworks (id,photo_id,source_json,settings_json,generation_json,width,height,revision,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+                           (aid,photo['id'],json.dumps(source),json.dumps(layout),'{}',640,480,1,'2026-10-13T00:00:00Z'))
+            db.close()
+            artwork=api('/api/art/works/'+aid,{'revision':1,'layout':layout|{'title':'旅行 · wonder','layout':'reference'}},'PUT')
+            assert artwork['revision']==2 and artwork['layout']['title']=='旅行 · wonder'
+            art_export=api('/api/art/works/'+aid+'/export',{'format':'png'})
+            assert Path(art_export['path']).is_file()
+            art_draft=api('/api/art/works/'+aid+'/watermark',{})
+            assert art_draft['artwork_id']==aid and art_draft['source']['artwork_revision']==2
+            assert api('/api/watermark/drafts/'+art_draft['id']+'/export',{})['width']>0
+            api('/api/watermark/drafts/'+art_draft['id'],method='DELETE')
+            api('/api/art/works/'+aid,method='DELETE')
+            print('Frozen EXE: watercolor route, Windows credential encryption, Chinese layout, export and watermark handoff PASS')
             if check_ai:
                 api('/api/ai/load?download=false',{})
                 for _ in range(1200):

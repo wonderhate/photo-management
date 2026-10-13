@@ -177,3 +177,57 @@ def test_invalid_result_fails_without_artwork(client, image_factory, provider, m
     assert client.get('/api/art/works/not-an-id/scene').status_code == 404
     with pytest.raises(ValueError):
         art.folder_for('../../settings')
+
+
+def test_watermark_uses_pinned_poster_and_survives_original_removal(client, image_factory, provider, tmp_path):
+    from backend.app.services import watermark_draft_service, watermark_service
+    path, p = photo(client, image_factory)
+    work = generate(client, p['id'], title='旅途水彩')
+    response = client.post('/api/art/works/' + work['id'] + '/watermark')
+    assert response.status_code == 201, response.text
+    draft = response.json()
+    assert draft['artwork_id'] == work['id'] and draft['source']['artwork_revision'] == 1
+    assert draft['source']['iso'] == p['iso']
+    assert not draft['source_missing']
+    assert client.get(draft['preview_url']).status_code == 200
+    options = draft['settings_json'] | {'format': 'png', 'long_edge': 0, 'signature': '旅行', 'fields': ['signature']}
+    assert client.post('/api/watermark/drafts/' + draft['id'] + '/render', json=options).status_code == 200
+    update = client.put('/api/watermark/drafts/' + draft['id'], json={'revision': draft['revision'], 'settings_json': options})
+    assert update.status_code == 200, update.text
+    copy = client.post('/api/watermark/drafts/' + draft['id'] + '/duplicate').json()
+    assert copy['artwork_id'] == work['id']
+    assert client.delete('/api/art/works/' + work['id']).status_code == 409
+    assert client.put('/api/art/works/' + work['id'], json={'revision': 1, 'layout': work['layout'] | {'title': '修改之后', 'layout': 'reference'}}).status_code == 200
+    assert client.delete('/api/photos/' + p['id']).status_code == 200
+    assert client.get('/api/watermark/drafts/' + draft['id']).json()['source_missing'] is False
+    with Session() as session:
+        record = watermark_draft_service.get_draft(session, draft['id'])
+        source = watermark_draft_service.draft_source(session, record)
+        assert source.file_path.endswith('poster-1.png')
+        expected = watermark_service.render(source, options)
+    exported = client.post('/api/watermark/drafts/' + draft['id'] + '/export', json={}).json()
+    with Image.open(exported['path']) as image:
+        assert image.size == expected.size and image.tobytes() == expected.tobytes()
+    moved = tmp_path / 'watercolor-moved'
+    migrate(DATA, moved)
+    assert (moved / 'artworks' / work['id'] / 'poster-1.png').is_file()
+    assert client.post('/api/watermark/drafts/' + draft['id'] + '/relocate', json={'path': str(path)}).status_code == 409
+    assert client.delete('/api/watermark/drafts/' + copy['id']).status_code == 200
+    assert client.delete('/api/watermark/drafts/' + draft['id']).status_code == 200
+    assert client.delete('/api/art/works/' + work['id']).status_code == 200
+    assert path.exists() and client.get(exported['url']).status_code == 200
+
+
+def test_legacy_drafts_gain_nullable_artwork_reference_with_backup(tmp_path):
+    import sqlite3
+    from backend.app.migrations import migrate_database
+    path = tmp_path / 'legacy.db'
+    with sqlite3.connect(path) as db:
+        db.execute('CREATE TABLE watermark_drafts (id TEXT PRIMARY KEY, name TEXT)')
+        db.execute("INSERT INTO watermark_drafts VALUES ('old', 'Keep my design')")
+    assert migrate_database(path) == ['watermark_drafts.artwork_id']
+    assert migrate_database(path) == []
+    assert len(list((tmp_path / 'backups').glob('*.db'))) == 1
+    with sqlite3.connect(path) as db:
+        assert db.execute('SELECT name, artwork_id FROM watermark_drafts').fetchone() == ('Keep my design', None)
+        assert db.execute('PRAGMA foreign_key_list(watermark_drafts)').fetchone()[2] == 'artworks'

@@ -39,7 +39,7 @@ def test_album_order_cover_compare_settings_and_routes(client,image_factory):
     assert client.put('/api/settings',json=settings|{'count_mode':'file','export_quality':92}).status_code==200
     assert client.get('/api/settings').json()['count_mode']=='file'
     assert client.put('/api/settings',json=settings|{'focal_bands':[100,24,35,60,200]}).status_code==422
-    for path in ['/','/watermark/workshop','/watermark/gallery','/timeline','/compare','/faces']:
+    for path in ['/','/watermark/workshop','/watermark/gallery','/watercolor','/timeline','/compare','/faces']:
         assert client.get(path).status_code==200
     assert client.get('/api/health').json()['build_id']
     assert all(p.is_file() for p in paths)

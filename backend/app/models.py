@@ -25,6 +25,7 @@ class WatermarkDraft(Base):
     __tablename__ = 'watermark_drafts'
     id: Mapped[str] = mapped_column(primary_key=True, default=uid)
     photo_id: Mapped[str | None] = mapped_column(ForeignKey('photos.id', ondelete='SET NULL'), index=True)
+    artwork_id: Mapped[str | None] = mapped_column(ForeignKey('artworks.id', ondelete='RESTRICT'), index=True)
     capture_group_id: Mapped[str | None] = mapped_column(index=True)
     name: Mapped[str]
     watermark_type: Mapped[str] = mapped_column(index=True)

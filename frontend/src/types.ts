@@ -25,6 +25,7 @@ export interface ScanStatus {paths:string[];job:Job|null}
 export interface WatermarkOptions {template:'frame'|'ambient';style:'modern_info_bar'|'classic_frame';show_brand_logo:boolean;info_bar_ratio:number;font_scale:number;fields:string[];signature:string;signature_style:'text'|'natural'|'fine'|'brush'|'calligraphy'|'chinese_brush'|'chinese_running'|'chinese_cursive'|'chinese_handwriting';theme:'white'|'black'|'auto';border:number;info_height:number;font_size:number;align:'left'|'center'|'right';radius:number;blur:number;intensity:number;brightness:number;saturation:number;photo_scale:number;shadow:boolean;format:'jpg'|'png';quality:number;long_edge:number;filename_template:string}
 
 export interface WatermarkDraft {
+  artwork_id?:string|null;
   id:string;photo_id:string|null;capture_group_id:string|null;name:string;
   watermark_type:string;template_id:string;settings_json:WatermarkOptions;preview_url:string|null;
   status:'draft'|'ready'|'exported';revision:number;created_at:string;updated_at:string;

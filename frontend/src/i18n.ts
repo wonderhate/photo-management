@@ -1,6 +1,12 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
+  '送入水印工坊':'Send to Watermark Studio',
+  '水彩海报快照 · 拍摄信息来自原照片':'Saved watercolor poster · Metadata from the original photo',
+  '水彩来源文件不可用，请恢复照片库中的作品文件。':'The watercolor source is missing. Restore the artwork files in the library.',
+  '预览图 · 导出使用保存的水彩海报':'Preview · Export uses the saved watercolor poster',
+  '这幅水彩仍被水印作品使用，请先删除关联水印作品':'This watercolor is used by watermark drafts. Remove those drafts first.',
+  '水彩来源固定为创建水印时的版本，请恢复对应作品文件':'The source is the saved watercolor revision. Restore the corresponding artwork file.',
   "水彩转绘":"Watercolor",
   "水彩 AI 按需连接云端":"Watercolor AI connects to the cloud on request",
   "本地优先的照片库：原图保留在原位置，检索与整理在本机完成。使用水彩 AI 时，仅在你点击后上传选中的照片。":"Your originals stay in place; search and organization run locally. Watercolor AI uploads the selected photo only when you request it.",

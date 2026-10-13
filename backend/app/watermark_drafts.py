@@ -2,6 +2,9 @@ from pathlib import Path
 import hashlib
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
+from fastapi.responses import Response
+from io import BytesIO
+from .schemas import WatermarkOptions
 from sqlalchemy import select, func, or_, cast, String
 from .models import Session, Photo, WatermarkDraft, now
 from .draft_schemas import DraftCreate, DraftUpdate, DraftStatus, DraftExport, DraftBatchExport, DraftRelocate
@@ -106,7 +109,7 @@ def delete(draft_id: str):
 def duplicate(draft_id: str):
     with service.lock, Session() as session:
         original = service.get_draft(session, draft_id)
-        draft = WatermarkDraft(photo_id=original.photo_id, capture_group_id=original.capture_group_id,
+        draft = WatermarkDraft(photo_id=original.photo_id, artwork_id=original.artwork_id, capture_group_id=original.capture_group_id,
             name=(original.name[:176]+' 副本'), watermark_type=original.watermark_type,
             template_id=original.template_id, settings_json=original.settings_json.copy(), source_json=original.source_json.copy())
         session.add(draft)
@@ -149,6 +152,18 @@ def regenerate(draft_id: str):
 def export(draft_id: str, payload: DraftExport):
     return service.export_draft(draft_id, payload.model_dump(exclude_none=True))
 
+
+@router.post('/{draft_id}/render')
+def render_options(draft_id: str, payload: WatermarkOptions):
+    with service.lock, Session() as session:
+        source = service.draft_source(session, service.get_draft(session, draft_id))
+        if not source:
+            raise HTTPException(404, '原始照片不可用，请重新定位原始照片')
+        image = service.watermark_service.render(source, payload.model_dump(), True)
+        output = BytesIO()
+        image.save(output, 'WEBP', quality=85)
+        return Response(output.getvalue(), media_type='image/webp')
+
 @router.post('/{draft_id}/relocate')
 def relocate(draft_id: str, payload: DraftRelocate):
     from .services.import_service import import_one
@@ -158,6 +173,8 @@ def relocate(draft_id: str, payload: DraftRelocate):
     with service.lock, Session() as session:
         draft = service.get_draft(session, draft_id)
         with path.open('rb') as stream:
+            if draft.artwork_id:
+                raise HTTPException(409, '水彩来源固定为创建水印时的版本，请恢复对应作品文件')
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         if digest != draft.source_json.get('file_hash'):
             raise ValueError('所选文件与原始照片内容不一致，请选择同一张原图的新位置')

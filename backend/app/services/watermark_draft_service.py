@@ -2,6 +2,7 @@
 from pathlib import Path
 from threading import RLock
 from uuid import uuid4
+from types import SimpleNamespace
 from fastapi import HTTPException
 from sqlalchemy import select
 from ..config import DATA
@@ -23,17 +24,31 @@ def source_snapshot(photo: Photo) -> dict:
     return {key: getattr(photo, key) for key in ('file_path','file_name','file_hash','camera_make',
         'camera_model','lens_model','date_taken')}
 
+def draft_source(session, draft: WatermarkDraft):
+    if not draft.artwork_id:
+        return session.get(Photo, draft.photo_id) if draft.photo_id else None
+    from .art_service import folder_for
+    source = draft.source_json
+    revision = int(source['artwork_revision'])
+    path = folder_for(draft.artwork_id) / f'poster-{revision}.png'
+    values = {key: source.get(key) for key in ('file_name', 'camera_make', 'camera_model', 'lens_model',
+              'focal_length', 'f_number', 'exposure_time', 'iso', 'date_taken')}
+    return SimpleNamespace(**values, file_path=str(path), preview_path=None, created_at=draft.created_at)
+
+
 def serialize(draft: WatermarkDraft, photo: Photo | None) -> dict:
     result = {c.name: getattr(draft, c.name) for c in WatermarkDraft.__table__.columns}
     result['settings_json'] = WatermarkOptions.model_validate(draft.settings_json).model_dump()
-    source = source_snapshot(photo) if photo else draft.source_json
+    source = source_snapshot(photo) if photo and not draft.artwork_id else draft.source_json
+    if draft.artwork_id:
+        photo = draft_source(None, draft)
     result.update(source=source, source_missing=not photo or not Path(photo.file_path).is_file(),
         preview_url=f'/api/watermark/drafts/{draft.id}/preview?v={Path(draft.preview_path).stem}' if draft.preview_path else None,
         modified_since_export=draft.exported_revision is not None and draft.revision > draft.exported_revision)
     return result
 
 def preview(session, draft: WatermarkDraft) -> None:
-    photo = session.get(Photo, draft.photo_id) if draft.photo_id else None
+    photo = draft_source(session, draft)
     if not photo or not Path(photo.file_path).is_file():
         return  # Retain the last good preview if the original has moved.
     image = watermark_service.render(photo, draft.settings_json, True)
@@ -68,12 +83,13 @@ def save_preview_commit(session, draft: WatermarkDraft, render: bool) -> dict:
 def export_draft(draft_id: str, overrides: dict, index: int = 1) -> dict:
     with lock, Session() as session:
         draft = get_draft(session, draft_id)
-        if not draft.photo_id:
+        photo = draft_source(session, draft)
+        if not photo:
             raise ValueError('原始照片不可用，请重新定位原始照片')
         overrides = overrides.copy()
         output_directory = overrides.pop('output_directory', None)
         options = draft.settings_json | overrides
-        result = watermark_service.export_one(draft.photo_id, options, index, output_directory)
+        result = watermark_service.export_source(photo, options, index, output_directory)
         draft.last_exported_at = now()
         draft.exported_revision = draft.revision
         draft.status = 'exported'

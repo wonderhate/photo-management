@@ -167,8 +167,9 @@ def generate(job_id: str, payload: ArtGenerate, image_model: str) -> None:
         jobs.check(job_id)
         with lock, Session() as session:
             art = Artwork(id=art_id, photo_id=photo.id if session.get(Photo, photo.id) else None,
-                source_json={'file_name': photo.file_name, 'width': original_size[0], 'height': original_size[1],
-                             'date_taken': photo.date_taken}, settings_json=payload.layout.model_dump(),
+                source_json={key: getattr(photo, key) for key in ('file_name', 'date_taken', 'camera_make',
+                             'camera_model', 'lens_model', 'focal_length', 'f_number', 'exposure_time', 'iso')}
+                             | {'width': original_size[0], 'height': original_size[1]}, settings_json=payload.layout.model_dump(),
                 generation_json={'model': image_model, 'prompt_version': PROMPT_VERSION, 'prompt': prompt,
                                  'quality': payload.quality, 'seconds': round(monotonic() - started, 1),
                                  'usage': response.get('usage')}, width=image.width, height=image.height)

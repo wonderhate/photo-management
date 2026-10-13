@@ -69,5 +69,18 @@ for(const [width,theme,lang] of [[1440,'light','zh'],[1440,'dark','en'],[390,'li
   await page.getByRole('button',{name:en?/Watercolor Works/:/水彩作品/}).click();
   await page.locator('.art-work-open').filter({hasText:'Quiet Water'}).first().click();
   await expect(page.getByLabel(en?'Poster Title':'海报标题',{exact:true})).toHaveValue('Quiet Water');
+  await page.getByRole('button',{name:en?'Send to Watermark Studio':'送入水印工坊',exact:true}).click();
+  await expect(page).toHaveURL(/\/watermark\/workshop\?draft=/);
+  const draftId=new URL(page.url()).searchParams.get('draft');
+  await expect(page.locator('.render-stage>img')).toBeVisible();
+  await expect(page.locator('.watermark-caption')).toContainText(en?'Saved watercolor poster':'水彩海报快照');
+  await page.getByRole('button',{name:en?'Ambient Light':'沉浸光感',exact:true}).click();
+  await page.getByRole('button',{name:en?'Export Current Photo':'导出当前照片',exact:true}).click();
+  await expect(page.locator('.download-result')).toBeVisible();
+  const draft=await(await request.get('/api/watermark/drafts/'+draftId)).json();
+  expect(draft.artwork_id).toBe(fixture);expect(draft.settings_json.template).toBe('ambient');
+  await page.reload();
+  await expect(page.locator('.render-stage>img')).toBeVisible();
+  await expect(page.locator('.watermark-caption')).toContainText(en?'Saved watercolor poster':'水彩海报快照');
   expect(errors).toEqual([]);
 });
