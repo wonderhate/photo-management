@@ -1,11 +1,14 @@
 node_modules/
 npm-debug.log*
 .env
+.env.*
+!.env.example
 .DS_Store
 Thumbs.db
 .venv/
 .cache/
 .runtime/
+.local-notes/
 .test-artifacts/
 __pycache__/
 .pytest_cache/

@@ -8,7 +8,7 @@
     "build": "npm run build --prefix frontend",
     "test": ".venv\\Scripts\\python.exe -m pytest backend/tests -q",
     "test:frontend": "node --experimental-strip-types --test frontend/tests/*.test.*",
-    "test:legacy": "node --test legacy/test/server.test.js",
+    "test:browser": "npx --prefix frontend playwright test --config frontend/playwright.config.ts",
     "test:http": ".venv\\Scripts\\python.exe -m backend.verify_live"
   }
 }

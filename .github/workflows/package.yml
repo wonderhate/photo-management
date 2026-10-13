@@ -45,6 +45,9 @@ jobs:
               time.sleep(.1)
           assert state['status']=='completed',state
           photo=api('/api/photos')['photos'][0]
+          art=api('/api/art/settings')
+          assert art['provider']=='Qwen' and art['image_model']=='qwen-image-3.0'
+          with urllib.request.urlopen('http://127.0.0.1:8000/watercolor') as response:assert b'<html' in response.read()
           with urllib.request.urlopen('http://127.0.0.1:8000/api/photos/'+photo['id']+'/original') as response:before=hashlib.sha256(response.read()).hexdigest()
           draft=api('/api/watermark/drafts',{'photo_id':photo['id'],'settings_json':{'template':'ambient'}})
           assert api('/api/watermark/drafts/'+draft['id']+'/export',{'format':'png'})
@@ -52,7 +55,7 @@ jobs:
           with urllib.request.urlopen('http://127.0.0.1:8000/') as response:assert "frame-ancestors 'none'" in response.headers['Content-Security-Policy']
           print('Actual container: import, preview, draft, export, source hash and CSP PASS')
           PY
-          docker exec photo-test test -z "$(docker exec photo-test find /app -name library-config.json -o -name library.db -o -name '*.p12')"
+          docker exec photo-test test -z "$(docker exec photo-test find /app -name library-config.json -o -name library.db -o -name '*.dpapi' -o -name '*.p12')"
       - uses: docker/login-action@v3
         # Windows releases do not replace the existing public web image.
         if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'

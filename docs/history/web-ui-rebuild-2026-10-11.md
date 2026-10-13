@@ -1,13 +1,15 @@
 # 网页版 UI 重建
 
-分支：`codex/web-ui-rebuild`。工作目录：`C:/Users/wonder/Documents/ChatGPT/photo_collection-web-ui`。
+> 历史记录：功能、下载状态和校验值对应当时版本。当前说明见 [文档索引](../README.md)。
+
+分支：`codex/web-ui-rebuild`。当时使用独立 Git worktree。
 从共同提交 `40aaa47` 建立独立 Git worktree，后续修改只在此目录进行，方便与 Windows 版本分别审阅、合并。
 
 网页版保留照片导入、筛选、收藏、标签、评分、颜色、影集、人物、时间线、统计、摄影报告、对比、水印编辑与图库、任务、设置、快捷键和主题选择。后端、数据库、原图处理与 Windows 启动代码没有修改，没有新增依赖。
 
 ## 设计落地
 
-参考分析见 [网站布局与动画分析](chuweimin-ui-animation-analysis-2026-10-11.md)。
+参考分析曾记录摄影网站布局与动画；当前摘要见 [开发交接](../development-handoff-2026-10-13.md)。原始大篇幅分析可从 Git 历史追溯。
 
 | 建议 | 实现 |
 |---|---|
@@ -40,7 +42,7 @@
 npm ci --prefix frontend --no-audit --no-fund
 npm run build --prefix frontend
 npm run test:frontend
-$env:PHOTO_TEST_PYTHON='C:/Users/wonder/Documents/ChatGPT/photo_collection/.venv/Scripts/python.exe'
+$env:PHOTO_TEST_PYTHON='<本地项目目录>/.venv/Scripts/python.exe'
 Push-Location frontend
 npx playwright test --reporter=line
 Pop-Location
