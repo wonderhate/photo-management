@@ -42,7 +42,7 @@ def migrate(source: Path, destination: Path, relocate_to: Path | None = None) ->
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(native_path(original), native_path(target))
             copied += 1
-    for name in ('settings.json', 'art-key.dpapi'):
+    for name in ('settings.json', 'art-key.dpapi', 'qwen-art-key.dpapi'):
         if (source/name).is_file() and not (destination/name).exists():
             shutil.copy2(native_path(source/name), native_path(destination/name))
     def relocate(value, root=source):

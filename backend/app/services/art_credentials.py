@@ -4,12 +4,12 @@ import os
 from ctypes import wintypes
 from ..config import DATA
 
-KEY_FILE = DATA / 'art-key.dpapi'
+KEY_FILE = DATA / 'qwen-art-key.dpapi'
 
 
 def protect(value: bytes, decrypt: bool = False) -> bytes:
     if os.name != 'nt':
-        raise ValueError('Use OPENAI_API_KEY on this platform')
+        raise ValueError('请在启动环境中设置 DASHSCOPE_API_KEY。')
 
     class Blob(ctypes.Structure):
         _fields_ = [('size', wintypes.DWORD), ('data', ctypes.POINTER(ctypes.c_char))]
@@ -33,11 +33,11 @@ def protect(value: bytes, decrypt: bool = False) -> bytes:
 
 
 def get_key() -> str:
-    if os.environ.get('OPENAI_API_KEY', '').strip():
-        return os.environ['OPENAI_API_KEY'].strip()
+    if os.environ.get('DASHSCOPE_API_KEY', '').strip():
+        return os.environ['DASHSCOPE_API_KEY'].strip()
     if KEY_FILE.is_file():
         return protect(KEY_FILE.read_bytes(), decrypt=True).decode('utf-8')
-    raise ValueError('Configure an OpenAI API key first')
+    raise ValueError('请先配置千问 API Key。')
 
 
 def save_key(value: str) -> None:
@@ -60,4 +60,4 @@ def status() -> dict:
     except (OSError, ValueError):
         error = KEY_FILE.is_file()
     return {'configured': configured, 'key_error': error, 'can_save_key': os.name == 'nt',
-            'key_source': 'environment' if os.environ.get('OPENAI_API_KEY') else 'windows' if configured else 'none'}
+            'key_source': 'environment' if os.environ.get('DASHSCOPE_API_KEY', '').strip() else 'windows' if configured else 'none'}

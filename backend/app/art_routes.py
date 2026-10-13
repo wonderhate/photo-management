@@ -24,7 +24,7 @@ def artwork(session, art_id):
 def get_settings():
     config = settings()
     return art_credentials.status() | {'image_model': config['art_image_model'],
-        'title_model': config['art_title_model'], 'provider': 'OpenAI', 'exports_dir': str(EXPORTS)}
+        'title_model': config['art_title_model'], 'provider': 'Qwen', 'endpoint': art.API_URL, 'exports_dir': str(EXPORTS)}
 
 
 @router.put('/settings')

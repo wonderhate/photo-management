@@ -50,8 +50,8 @@ class ArtUpdate(BaseModel):
 
 class ArtSettings(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    image_model: str = Field(default='gpt-image-2', pattern=r'^gpt-image-2[\w.-]*$', max_length=100)
-    title_model: str = Field(default='gpt-4.1-mini', pattern=r'^[\w.-]+$', max_length=100)
+    image_model: str = Field(default='qwen-image-3.0', pattern=r'^qwen-image-3\.0(?:-pro)?$', max_length=100)
+    title_model: str = Field(default='qwen3-vl-plus', pattern=r'^qwen[\w.-]+$', max_length=100)
     api_key: SecretStr | None = None
     clear_key: bool = False
 

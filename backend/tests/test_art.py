@@ -24,19 +24,23 @@ def photo(client, image_factory):
 @pytest.fixture
 def provider(monkeypatch):
     calls = []
-    monkeypatch.setenv('OPENAI_API_KEY', 'test-only-secret-not-a-real-key')
+    monkeypatch.setenv('DASHSCOPE_API_KEY', 'test-only-secret-not-a-real-key')
 
-    def request(endpoint, **kwargs):
-        calls.append((endpoint, kwargs))
-        if endpoint == 'responses':
+    def request(**kwargs):
+        calls.append((art.API_URL, kwargs))
+        body = kwargs['json']
+        content = body['input']['messages'][0]['content']
+        if body['model'].startswith('qwen3-vl'):
             result = {'suggestions': [{'title': '旅途一刻', 'evidence': '画面内容；未确认地点'}]}
-            return {'output': [{'type': 'message', 'content': [{'type': 'output_text', 'text': json.dumps(result)}]}]}
-        image = kwargs['files']['image'][1]
+            return {'output': {'choices': [{'message': {'content': [{'text': json.dumps(result)}]}}]}}
+        image = base64.b64decode(content[0]['image'].split(',', 1)[1])
         with Image.open(BytesIO(image)) as im:
             assert not im.getexif()
-            assert kwargs['data']['size'] == f'{im.width}x{im.height}'
+            assert body['parameters']['size'] == f'{im.width}*{im.height}'
+            assert body['parameters']['n'] == 1 and body['parameters']['watermark'] is False
+            assert '保持原构图' in content[1]['text']
         # Contract test only: deliberately echo the input, not a visual quality simulation.
-        return {'data': [{'b64_json': base64.b64encode(image).decode()}]}
+        return {'output': {'choices': [{'message': {'content': [{'image': 'data:image/png;base64,' + base64.b64encode(image).decode()}]}}]}}
 
     monkeypatch.setattr(art, 'request_api', request)
     return calls
@@ -55,7 +59,8 @@ def test_generate_title_edit_export_restart_migrate_delete(client, image_factory
     titles = client.post('/api/art/titles', json={'photo_id': p['id'], 'keywords': '河边'}).json()
     assert wait_job(client, titles)['suggestions'][0]['title'] == '旅途一刻'
     sent = provider[0][1]['json']
-    assert sent['store'] is False and 'gps' not in sent['input'][0]['content'][0]['text'].lower()
+    context = json.loads(sent['input']['messages'][0]['content'][1]['text'].split('\nContext: ')[1])
+    assert set(context) == {'user_keywords', 'date_taken', 'language'}
     assert client.post('/api/art/generate', json={'photo_id': p['id'], 'title_confirmed': False}).status_code == 422
     work = generate(client, p['id'], title='旅途一刻', title_source='suggested', title_evidence='画面内容；未确认地点')
     assert work['layout']['title_evidence'] == '画面内容；未确认地点'
@@ -133,7 +138,7 @@ def test_cancel_and_reject_duplicate_without_blocking_imports(client, image_fact
 
 def test_key_is_protected_and_never_returned(client, monkeypatch, tmp_path):
     import os
-    monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    monkeypatch.delenv('DASHSCOPE_API_KEY', raising=False)
     monkeypatch.setattr(art_credentials, 'KEY_FILE', tmp_path / 'key.dpapi')
     secret = 'test-only-watercolor-secret'
     invalid = client.put('/api/art/settings', json={'api_key': {'private': secret}})
@@ -152,14 +157,14 @@ def test_key_is_protected_and_never_returned(client, monkeypatch, tmp_path):
 
 def test_provider_failure_redacts_key_and_does_not_retry(monkeypatch):
     import httpx
-    monkeypatch.setenv('OPENAI_API_KEY', 'private-api-key')
+    monkeypatch.setenv('DASHSCOPE_API_KEY', 'private-api-key')
     count = []
     def failure(*args, **kwargs):
         count.append(1)
         raise httpx.ReadTimeout('private-api-key in untrusted exception')
     monkeypatch.setattr(httpx.Client, 'stream', failure)
     with pytest.raises(ValueError) as error:
-        art.request_api('images/edits')
+        art.request_api(json={})
     assert 'private-api-key' not in str(error.value) and 'timed out' in str(error.value)
     assert len(count) == 1
 
@@ -231,3 +236,75 @@ def test_legacy_drafts_gain_nullable_artwork_reference_with_backup(tmp_path):
     with sqlite3.connect(path) as db:
         assert db.execute('SELECT name, artwork_id FROM watermark_drafts').fetchone() == ('Keep my design', None)
         assert db.execute('PRAGMA foreign_key_list(watermark_drafts)').fetchone()[2] == 'artworks'
+
+
+@pytest.mark.parametrize('model,quality', [('qwen-image-3.0', 'low'), ('qwen-image-3.0', 'medium'), ('qwen-image-3.0-pro', 'high')])
+def test_qwen_model_selection_reaches_generation(client, image_factory, provider, model, quality):
+    _, p = photo(client, image_factory)
+    assert client.put('/api/art/settings', json={'image_model': model}).status_code == 200
+    assert client.get('/api/art/settings').json()['image_model'] == model
+    response = client.post('/api/art/generate', json={'photo_id': p['id'], 'title_confirmed': True, 'quality': quality}).json()
+    job = wait_job(client, response)
+    work = client.get('/api/art/works/' + job['artwork_id']).json()
+    assert work['generation']['model'] == model
+    body = provider[-1][1]['json']
+    assert body['model'] == model
+    assert body['parameters']['prompt_extend'] == (quality != 'low')
+    assert body['parameters']['enable_thinking'] == (quality == 'high')
+    assert client.put('/api/art/settings', json={'image_model': 'gpt-image-2'}).status_code == 422
+
+
+def test_legacy_config_and_credentials_are_not_sent_to_qwen(client, monkeypatch, tmp_path):
+    from backend.app import config
+    old = tmp_path / 'settings.json'
+    old.write_text(json.dumps({'art_image_model': 'gpt-image-2', 'art_title_model': 'gpt-4.1-mini', 'thumbnail_quality': 90}))
+    monkeypatch.setattr(config, 'SETTINGS_FILE', old)
+    monkeypatch.setattr(art_credentials, 'KEY_FILE', tmp_path / 'qwen-art-key.dpapi')
+    (tmp_path / 'art-key.dpapi').write_bytes(b'old-openai-key')
+    monkeypatch.delenv('DASHSCOPE_API_KEY', raising=False)
+    monkeypatch.setenv('OPENAI_API_KEY', 'never-send-this-openai-key')
+    result = client.get('/api/art/settings').json()
+    assert not result['configured'] and result['provider'] == 'Qwen' and result['endpoint'] == art.API_URL
+    assert result['image_model'] == 'qwen-image-3.0' and result['title_model'] == 'qwen3-vl-plus'
+    assert config.settings()['thumbnail_quality'] == 90
+
+
+def test_qwen_request_and_result_download_do_not_forward_credentials(monkeypatch):
+    import httpx
+    secret = 'test-only-qwen-secret'
+    monkeypatch.setenv('DASHSCOPE_API_KEY', secret)
+    calls = []
+    url = 'https://dashscope-result-sz.oss-cn-shenzhen.aliyuncs.com/synthetic.png?Expires=123'
+    output = BytesIO(); Image.new('RGB', (16, 16), 'blue').save(output, 'PNG')
+    def handler(request):
+        calls.append(request)
+        if request.method == 'POST':
+            assert str(request.url) == art.API_URL and request.headers['Authorization'] == 'Bearer ' + secret
+            assert json.loads(request.content)['model'] == 'qwen-image-3.0-pro'
+            return httpx.Response(200, json={'output': {'choices': [{'message': {'content': [{'image': url}]}}]}})
+        assert str(request.url) == url and 'Authorization' not in request.headers
+        return httpx.Response(200, content=output.getvalue())
+    real = httpx.Client
+    monkeypatch.setattr(httpx, 'Client', lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    result = art.request_api(json={'model': 'qwen-image-3.0-pro'})
+    assert art.generated_image(result['output']['choices'][0]['message']['content'][0]['image']) == output.getvalue()
+    assert len(calls) == 2
+    for unsafe in ('http://localhost/result.png', 'https://127.0.0.1/result.png', 'file:///photo.jpg', 'https://evil.test/result.png'):
+        with pytest.raises(ValueError): art.generated_image(unsafe)
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize('status,code,expected', [(429, 'Arrearage', '余额'), (429, 'Throttling', '受限'),
+    (401, 'InvalidApiKey', '密钥'), (400, 'InvalidParameter.Model', '模型'), (200, 'DataInspectionFailed', '失败')])
+def test_qwen_errors_are_specific_redacted_and_not_retried(monkeypatch, status, code, expected):
+    import httpx
+    secret = 'do-not-print-this-secret'
+    monkeypatch.setenv('DASHSCOPE_API_KEY', secret)
+    calls = []
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(status, json={'code': code, 'message': secret, 'request_id': secret})
+    real = httpx.Client
+    monkeypatch.setattr(httpx, 'Client', lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(ValueError) as error: art.request_api(json={})
+    assert expected in str(error.value) and secret not in str(error.value) and len(calls) == 1

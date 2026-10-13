@@ -32,12 +32,17 @@ DEFAULTS = {
     'ai_model': 'OFA-Sys/chinese-clip-vit-base-patch16',
     'export_format': 'jpg', 'export_quality': 95, 'export_long_edge': 4096,
     'focal_bands': [24, 35, 60, 100, 200],
-    'art_image_model': 'gpt-image-2', 'art_title_model': 'gpt-4.1-mini',
+    'art_image_model': 'qwen-image-3.0', 'art_title_model': 'qwen3-vl-plus',
 }
 
 def settings() -> dict:
     try:
-        return DEFAULTS | json.loads(SETTINGS_FILE.read_text('utf-8'))
+        result = DEFAULTS | json.loads(SETTINGS_FILE.read_text('utf-8'))
+        # Existing OpenAI settings are replaced when switching the watercolor provider.
+        for key in ('art_image_model', 'art_title_model'):
+            if str(result[key]).startswith('gpt-'):
+                result[key] = DEFAULTS[key]
+        return result
     except (FileNotFoundError, ValueError):
         return DEFAULTS.copy()
 

@@ -40,6 +40,7 @@ def main() -> None:
         check_ai='--ai' in sys.argv
         env=os.environ | {'PHOTO_DATA_DIR':str(work/'data'), 'PHOTO_LIBRARY_CONFIG':str(work/'config.json'), 'LOCALAPPDATA':str(work/'profile'), 'PHOTO_EXPORT_DIR':str(work/'exports'), 'PHOTO_MODELS_DIR':str(root/'models' if check_ai else work/'models'), 'PHOTO_AUTOLOAD_AI':'0'}
         env.pop('OPENAI_API_KEY', None)
+        env.pop('DASHSCOPE_API_KEY', None)
         process=subprocess.Popen([str(exe),'--serve','--status-file',str(status)], env=env, creationflags=subprocess.CREATE_NO_WINDOW)
         try:
             for _ in range(300):
@@ -91,9 +92,14 @@ def main() -> None:
             assert list((work/'exports').glob('*.jpg'))
             with opener.open(url+'/watercolor') as response:
                 assert b'<html' in response.read()
+            config=api('/api/art/settings')
+            assert config['provider']=='Qwen' and config['image_model']=='qwen-image-3.0'
+            assert config['endpoint']=='https://maas.qianwenaiapi.com/api/v1/services/aigc/multimodal-generation/generation'
+            api('/api/art/settings',{'image_model':'qwen-image-3.0-pro'},'PUT')
+            assert api('/api/art/settings')['image_model']=='qwen-image-3.0-pro'
             configured=api('/api/art/settings',{'api_key':'package-test-key-not-real'},'PUT')
             assert configured['configured'] and 'package-test-key-not-real' not in json.dumps(configured)
-            assert b'package-test-key-not-real' not in (work/'data'/'art-key.dpapi').read_bytes()
+            assert b'package-test-key-not-real' not in (work/'data'/'qwen-art-key.dpapi').read_bytes()
             api('/api/art/settings',{'clear_key':True},'PUT')
             assert not api('/api/art/settings')['configured']
             # Seed a clearly synthetic scene to test frozen layout/fonts without a cloud request.
