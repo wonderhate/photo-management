@@ -142,7 +142,7 @@ def upload_photos(files: list[UploadFile] = File(...)):
             while chunk := upload.file.read(1024*1024): stream.write(chunk)
         paths.append(str(target))
     if not paths: raise ValueError('没有支持的照片文件')
-    return jobs.submit('import', import_service.import_paths, paths, False)
+    return jobs.submit('import', import_service.import_paths, paths, False, False, True)
 
 @app.get('/api/jobs')
 def recent_jobs():

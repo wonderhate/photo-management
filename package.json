@@ -1,6 +1,7 @@
 {
   "name": "photo-management",
-  "version": "2.5.1",
+  "version": "2.6.0",
+  "license": "MIT",
   "private": true,
   "description": "Local-first Windows photo management",
   "scripts": {

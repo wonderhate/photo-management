@@ -1,6 +1,6 @@
 # 开发与贡献
 
-当前版本为 2.5.1。先阅读 [开发交接文档](docs/development-handoff-2026-10-13.md)，再从最新 `main` 创建 `codex/` 功能分支。历史计划位于 `docs/history/`，不代表当前产品范围。
+当前版本为 2.6.0。先阅读 [开发交接文档](docs/development-handoff-2026-10-13.md)，再从最新 `main` 创建 `codex/` 功能分支。历史计划位于 `docs/history/`，不代表当前产品范围。
 
 ## 本地开发
 
@@ -36,6 +36,6 @@ git diff --check
 - 更新应用版本时同步 `backend/version.py`、根目录及前端 `package.json` 和锁文件，并更新 CHANGELOG。
 - Windows 包由 `build-windows.ps1` 和 `build-installer.ps1` 构建。分发不得使用私人照片库配置；安装验证请使用未安装正式副本的测试账户。
 - `.github/workflows/windows-release.yml` 仅向已有草稿上传验证过的包；容器发布由主分支手动运行 `Web package`，Windows Release 不会自动覆盖镜像。
-- 保留字体的 OFL 文本及品牌图案来源记录。仓库目前没有声明源代码许可证；不要在清理工作中自行改变授权。
+- 项目代码采用根目录 [MIT License](LICENSE)。保留该授权、字体 OFL 文本及品牌图案来源记录；第三方资源沿用各自授权。
 
 提交前检查 `git status`，确认 `.env*`、DPAPI 凭证、数据库、原片、模型和本机绝对路径配置未被提交。

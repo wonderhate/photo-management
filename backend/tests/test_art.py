@@ -61,6 +61,8 @@ def test_generate_title_edit_export_restart_migrate_delete(client, image_factory
     sent = provider[0][1]['json']
     context = json.loads(sent['input']['messages'][0]['content'][1]['text'].split('\nContext: ')[1])
     assert set(context) == {'user_keywords', 'date_taken', 'language'}
+    assert context['language'] == 'zh'
+    assert '所有 title 标题和 evidence 说明必须使用简体中文' in sent['input']['messages'][0]['content'][1]['text']
     assert client.post('/api/art/generate', json={'photo_id': p['id'], 'title_confirmed': False}).status_code == 422
     work = generate(client, p['id'], title='旅途一刻', title_source='suggested', title_evidence='画面内容；未确认地点')
     assert work['layout']['title_evidence'] == '画面内容；未确认地点'
@@ -308,3 +310,96 @@ def test_qwen_errors_are_specific_redacted_and_not_retried(monkeypatch, status, 
     monkeypatch.setattr(httpx, 'Client', lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
     with pytest.raises(ValueError) as error: art.request_api(json={})
     assert expected in str(error.value) and secret not in str(error.value) and len(calls) == 1
+
+
+@pytest.mark.parametrize('with_titles', [False, True])
+def test_batch_upload_generate_then_optional_titles(client, image_factory, provider, with_titles):
+    paths = [image_factory('batch-a.jpg', color=(10, 30, 50)), image_factory('batch-b.jpg', color=(70, 90, 110))]
+    hashes = [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths]
+    uploaded = client.post('/api/photos/upload', files=[('files', (path.name, path.read_bytes(), 'image/jpeg'))
+                           for path in [*paths, paths[0]]])
+    imported = wait_job(client, uploaded.json())
+    ids = imported['photo_ids']
+    assert len(ids) == 2 and imported['success'] == 2 and imported['skipped'] == 1
+    assert client.post('/api/art/batch', json={'photo_ids': []}).status_code == 422
+    assert client.post('/api/art/batch', json={'photo_ids': ids * 51}).status_code == 422
+    assert client.post('/api/art/batch', json={'photo_ids': [ids[0], 'missing']}).status_code == 400
+    assert not provider
+    response = client.post('/api/art/batch', json={'photo_ids': [ids[0], ids[0], ids[1]],
+                           'generate_titles': with_titles, 'language': 'en', 'layout': {'title': 'Do not repeat'}})
+    assert response.status_code == 202, response.text
+    job = wait_job(client, response.json())
+    assert (job['total'], job['processed'], job['success'], job['failed']) == (2, 2, 2, 0)
+    models = [call[1]['json']['model'] for call in provider]
+    assert all(model.startswith('qwen-image') for model in models[:2])
+    assert len(models) == (4 if with_titles else 2)
+    assert all(model.startswith('qwen3-vl') for model in models[2:])
+    assert job['title_processed'] == (2 if with_titles else 0)
+    assert {item['photo_id'] for item in job['results']} == set(ids)
+    for item in job['results']:
+        work = client.get('/api/art/works/' + item['artwork_id']).json()
+        assert work['layout']['title'] == ('旅途一刻' if with_titles else '')
+        assert work['layout']['title_source'] == ('suggested' if with_titles else 'none')
+        assert work['revision'] == (2 if with_titles else 1)
+        assert client.get(work['poster_url']).status_code == 200
+        assert (art.folder_for(work['id']) / 'poster-1.png').is_file()
+    assert [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths] == hashes
+
+
+def test_batch_retains_images_when_generation_or_titles_fail(client, image_factory, provider, monkeypatch):
+    paths = [image_factory('partial-a.jpg', color=(10, 40, 60)), image_factory('partial-b.jpg', color=(80, 90, 120))]
+    import_paths(client, paths)
+    ids = [p['id'] for p in client.get('/api/photos').json()['photos']]
+    original_request, attempts = art.request_api, []
+    def request(**kwargs):
+        model = kwargs['json']['model']
+        attempts.append(model)
+        if model.startswith('qwen3-vl'):
+            raise ValueError('Title service unavailable')
+        if len(attempts) == 2:
+            raise ValueError('Image service unavailable')
+        return original_request(**kwargs)
+    monkeypatch.setattr(art, 'request_api', request)
+    job = wait_job(client, client.post('/api/art/batch', json={'photo_ids': ids, 'generate_titles': True}).json())
+    assert job['success'] == 1 and job['failed'] == 1 and len(attempts) == 3
+    assert job['results'][1]['error'] == 'Image service unavailable'
+    result = job['results'][0]
+    assert result['title_status'] == 'failed' and result['title_error'] == 'Title service unavailable'
+    work = client.get('/api/art/works/' + result['artwork_id']).json()
+    assert work['layout']['title'] == '' and work['revision'] == 1
+    assert client.get(work['poster_url']).status_code == 200
+
+
+def test_batch_cancel_keeps_finished_work_and_stops_remaining_requests(client, image_factory, provider, monkeypatch):
+    paths = [image_factory(f'cancel-{index}.jpg', color=(index * 50, 40, 60)) for index in range(3)]
+    hashes = [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths]
+    import_paths(client, paths)
+    ids = [p['id'] for p in client.get('/api/photos').json()['photos']]
+    entered, release = Event(), Event()
+    original_request, attempts = art.request_api, []
+    def request(**kwargs):
+        attempts.append(kwargs['json']['model'])
+        if len(attempts) == 2:
+            entered.set()
+            assert release.wait(8)
+        return original_request(**kwargs)
+    monkeypatch.setattr(art, 'request_api', request)
+    payload = {'photo_ids': ids, 'generate_titles': True}
+    job = client.post('/api/art/batch', json=payload).json()
+    try:
+        assert entered.wait(5)
+        assert client.post('/api/art/batch', json=payload).status_code == 409
+        assert client.post('/api/art/generate', json={'photo_id': ids[0], 'title_confirmed': True}).status_code == 409
+        client.post('/api/jobs/' + job['id'] + '/cancel')
+    finally:
+        release.set()
+    for _ in range(200):
+        state = client.get('/api/jobs/' + job['id']).json()
+        if state['status'] == 'cancelled':
+            break
+        time.sleep(.02)
+    assert state['status'] == 'cancelled' and len(attempts) == 2
+    assert state['processed'] == state['success'] == 1
+    assert client.get('/api/art/works').json()['total'] == 1
+    assert client.get(state['results'][0]['url']).status_code == 200
+    assert [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths] == hashes
