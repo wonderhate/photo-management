@@ -1,6 +1,23 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
+  '上传照片':'Upload Photos',
+  '部分照片导入失败，请检查文件后重新选择。':'Some photos could not be imported. Check the files and select them again.',
+  '每批最多选择 100 张照片':'Select up to 100 photos per batch',
+  '没有支持的照片文件':'No supported photo files',
+  '批量水彩转绘':'Batch Watercolor',
+  '生图 {0}/{1} · 成功 {2} · 失败 {3}':'Images {0}/{1} · Succeeded {2} · Failed {3}',
+  '标题 {0}/{1}':'Titles {0}/{1}',
+  '生成结果':'Generation Results',
+  '标题生成失败，已保留作品':'Title generation failed; the artwork was kept',
+  '查看作品':'View Artwork',
+  '已选择 {0} 张照片':'{0} photos selected',
+  '使用所选照片':'Use Selected Photos',
+  '批量照片先生成无标题海报。':'Batch photos are first generated as untitled posters.',
+  '图片生成后逐张生成并应用 AI 标题（可选）':'Generate and apply an AI title to each completed image (optional)',
+  '默认不调用标题模型；开启后为每张成功作品单独请求标题，可再手动修改。':'Title requests are off by default. Enable to request a title for each successful artwork; you can edit it afterwards.',
+  '点击生成将依次发送选中的 {0} 张照片到千问；开启 AI 标题会增加每张作品一次请求，可能产生 API 费用。照片不含 EXIF/GPS，原图不会被修改。':'Generate sends the {0} selected photos to Qwen one at a time. AI titles add one request per successful artwork and may incur API charges. EXIF/GPS is removed and originals stay unchanged.',
+  '生成 {0} 张水彩海报':'Generate {0} Watercolor Posters',
   '送入水印工坊':'Send to Watermark Studio',
   '水彩海报快照 · 拍摄信息来自原照片':'Saved watercolor poster · Metadata from the original photo',
   '水彩来源文件不可用，请恢复照片库中的作品文件。':'The watercolor source is missing. Restore the artwork files in the library.',

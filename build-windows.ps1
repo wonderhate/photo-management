@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Force .cache/packaging, releases | Out-Null
 & $python -m PyInstaller --noconfirm --distpath releases/windows --workpath .cache/packaging/build desktop/PhotoCollection.spec
 if ($LASTEXITCODE) { throw 'Windows 打包失败' }
 $package = Join-Path $PSScriptRoot 'releases\windows\PhotoCollection'
-Copy-Item README.md -Destination $package
+Copy-Item -Path README.md, LICENSE -Destination $package
 New-Item -ItemType Directory -Force (Join-Path $package 'docs') | Out-Null
 Copy-Item -Path docs/README.md, docs/development-handoff-2026-10-13.md, docs/storage-paths.md, docs/watercolor-usage.md, docs/watermark-reference-analysis.md -Destination (Join-Path $package 'docs')
 # Private library configuration is opt-in and is never included in the distributable ZIP.

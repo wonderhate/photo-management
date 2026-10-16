@@ -34,11 +34,17 @@ for(const [width,theme,lang] of [[1440,'light','zh'],[1440,'dark','en'],[390,'li
   const completed=(kind,extra)=>({id:'mock-'+kind,kind,status:'completed',total:1,processed:1,success:1,failed:0,skipped:0,errors:[],results:[],current:'',photo_id:photo.id,...extra});
   let config={configured:true,key_source:'environment',can_save_key:true,image_model:'qwen-image-3.0',title_model:'qwen3-vl-plus',endpoint:'https://maas.qianwenaiapi.com/api/v1/services/aigc/multimodal-generation/generation',exports_dir:health.exports_dir};
   await page.route('**/api/art/settings',r=>{if(r.request().method()==='PUT')config={...config,...r.request().postDataJSON()};return r.fulfill({json:config})});
-  await page.route('**/api/art/titles',r=>{titles++;return r.fulfill({status:202,json:completed('watercolor-title',{suggestions:[{title:'A Quiet Journey',evidence:'Visible hills; location unverified'}]})})});
+  await page.route('**/api/art/jobs',r=>r.fulfill({json:[{id:'legacy-openai',kind:'watercolor',status:'failed',error:'Old OpenAI request failed with 429'}]}));
+  await page.route('**/api/art/titles',r=>{titles++;expect(r.request().postDataJSON().language).toBe(lang);return r.fulfill({status:202,json:completed('watercolor-title',{suggestions:[{title:'A Quiet Journey',evidence:'Visible hills; location unverified'}]})})});
   await page.route('**/api/art/generate',r=>{generates++;expect(r.request().postDataJSON().title_confirmed).toBe(true);return r.fulfill({status:202,json:completed('watercolor',{artwork_id:fixture})})});
+  const history=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/art/jobs');
   await page.goto('/watercolor?photo='+photo.id);
+  await (await history).finished();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const en=lang==='en';
   await expect(page.getByRole('heading',{name:en?'Watercolor':'水彩转绘',exact:true})).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.art-task')).toHaveCount(0);
   await page.getByRole('button',{name:en?'AI Service Settings':'AI 服务设置',exact:true}).click();
   const model=page.getByLabel(en?'Image Model':'图像模型',{exact:true});
   await expect(model).toHaveValue('qwen-image-3.0');
@@ -59,6 +65,17 @@ for(const [width,theme,lang] of [[1440,'light','zh'],[1440,'dark','en'],[390,'li
   await expect(page.getByLabel(en?'Poster Title':'海报标题',{exact:true})).toHaveValue('A Quiet Journey');
   await page.getByLabel(en?'Poster Title':'海报标题',{exact:true}).fill('Quiet Water');
   await expect(page.getByRole('button',{name:en?'Save Layout':'保存排版',exact:true})).toBeDisabled();
+  let discarded=0;
+  const keepEdits=async dialog=>{discarded++;await dialog.dismiss()};
+  page.on('dialog',keepEdits);
+  await page.getByRole('button',{name:en?'Choose Photos':'选择照片',exact:true}).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.locator('.art-picker-grid button').first().click();
+  await page.getByRole('button',{name:en?'Use Selected Photos':'使用所选照片',exact:true}).click();
+  expect(discarded).toBe(1);
+  await page.locator('.modal header button').click();
+  page.off('dialog',keepEdits);
+  await expect(page.getByLabel(en?'Poster Title':'海报标题',{exact:true})).toHaveValue('Quiet Water');
   await page.getByLabel(en?'Use this title':'使用这个标题',{exact:true}).check();
   await page.getByLabel(en?'Layout':'留白版式',{exact:true}).selectOption('reference');
   await expect(page.locator('.art-canvas>img')).toHaveAttribute('src',/^blob:/);
@@ -91,5 +108,59 @@ for(const [width,theme,lang] of [[1440,'light','zh'],[1440,'dark','en'],[390,'li
   await page.reload();
   await expect(page.locator('.render-stage>img')).toBeVisible();
   await expect(page.locator('.watermark-caption')).toContainText(en?'Saved watercolor poster':'水彩海报快照');
+  expect(errors).toEqual([]);
+});
+
+for(const [width,theme,lang,withTitles] of [[1440,'light','zh',false],[1440,'dark','en',true],[390,'light','en',true]])test(`batch watercolor upload ${width} ${theme} ${lang}`,async({page,request},info)=>{
+  test.setTimeout(60000);
+  const en=lang==='en',errors=[];
+  page.on('pageerror',error=>errors.push(String(error)));
+  await page.setViewportSize({width,height:1000});
+  await page.addInitScript(({theme,lang})=>{localStorage.setItem('theme',theme);localStorage.setItem('lang',lang);localStorage.setItem('onboarded','1')},{theme,lang});
+  const health=await(await request.get('/api/health')).json();
+  expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');
+  const paths=[0,1].map(index=>join(health.data_dir,`batch-ui-${width}-${theme}-${index}.jpg`));
+  execFileSync(process.env.PHOTO_TEST_PYTHON||'python',['-c',"from PIL import Image; import sys; [Image.new('RGB',(320,240),(30+i*80,90,120)).save(p) for i,p in enumerate(sys.argv[1:])]",...paths]);
+  await page.route('**/api/art/settings',r=>r.fulfill({json:{configured:true,key_source:'environment',can_save_key:true,image_model:'qwen-image-3.0',title_model:'qwen3-vl-plus',endpoint:'mock',exports_dir:health.exports_dir}}));
+  await page.route('**/api/art/jobs',r=>r.fulfill({json:[{id:'old-failure',kind:'watercolor',status:'failed',error:'Old OpenAI request failed with 429'}]}));
+  let batch;
+  await page.route('**/api/art/batch',r=>{batch=r.request().postDataJSON();return r.fulfill({status:202,json:{id:'ui-batch',kind:'watercolor-batch',status:'queued',total:2,processed:0,success:0,failed:0,results:[]}})});
+  await page.route('**/api/jobs/ui-batch',r=>r.fulfill({json:{id:'ui-batch',kind:'watercolor-batch',status:'completed',total:2,processed:2,success:2,failed:0,stage:withTitles?'titles':'images',title_processed:withTitles?2:0,title_total:withTitles?2:0,results:batch.photo_ids.map((photo_id,i)=>({photo_id,artwork_id:'ui-work-'+i,file_name:'batch-'+i+'.jpg',...(withTitles?{title:'Quiet Journey '+i,title_status:'completed'}:{title_status:'skipped'})}))}}));
+  await page.route('**/api/art/works/ui-work-*/preview',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48"><rect width="64" height="48" fill="#acc8cf"/></svg>'}));
+  await page.goto('/watercolor');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.locator('input[type=file]').setInputFiles(paths);
+  const titles=page.getByLabel(en?'Generate and apply an AI title to each completed image (optional)':'图片生成后逐张生成并应用 AI 标题（可选）',{exact:true});
+  await expect(titles).not.toBeChecked();
+  if(!withTitles){
+    await page.getByRole('button',{name:'选择照片',exact:true}).click();
+    const picker=page.getByRole('dialog');
+    await picker.getByRole('textbox',{name:'文件名',exact:true}).fill('batch-ui');
+    await expect(picker.locator('.art-picker-grid button')).toHaveCount(2);
+    await picker.locator('.art-picker-grid button').first().click();
+    await expect(picker.locator('[aria-pressed=true]')).toHaveCount(1);
+    await picker.locator('.art-picker-grid button').first().click();
+    await picker.getByRole('button',{name:'使用所选照片',exact:true}).click();
+  }
+  if(withTitles)await titles.check();
+  await page.getByRole('button',{name:en?'Generate 2 Watercolor Posters':'生成 2 张水彩海报',exact:true}).click();
+  await expect(page.locator('.art-batch-results article')).toHaveCount(2);
+  expect(batch.generate_titles).toBe(withTitles);
+  expect(batch.photo_ids).toHaveLength(2);
+  expect(batch.language).toBe(lang);
+  if(withTitles)await expect(page.locator('.art-batch-results')).toContainText('Quiet Journey 1');
+  await expect(page.locator('.art-task')).toContainText(en?'Succeeded 2':'成功 2');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  if(en)expect(await page.locator('.art-page').innerText()).not.toMatch(/[\u3400-\u9fff]/u);
+  await page.evaluate(()=>window.scrollTo(0,0));
+  await page.screenshot({path:info.outputPath('batch-watercolor.png'),fullPage:true});
+  if(!withTitles){
+    await page.route('**/api/art/batch',r=>r.fulfill({status:400,json:{detail:'New Qwen failure'}}));
+    await page.getByRole('button',{name:'生成 2 张水彩海报',exact:true}).click();
+    await expect(page.getByRole('alert')).toContainText('New Qwen failure');
+  }
+  await page.reload();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.art-task')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

@@ -39,7 +39,7 @@ def pair_candidate(session, photo: Photo) -> Photo | None:
     # Ambiguous bursts or duplicate stems never get paired by time alone.
     return matches[0] if len(matches) == 1 else None
 
-def import_one(path: Path) -> str:
+def import_one(path: Path) -> tuple[str, str]:
     path = path.resolve(strict=True)
     digest = file_hash(path)
     with Session() as session:
@@ -51,7 +51,7 @@ def import_one(path: Path) -> str:
                 existing.file_stem = path.stem.casefold()
                 existing.source_directory = str(path.parent).casefold()
                 session.commit()
-            return 'skipped'
+            return 'skipped', existing.id
         existing_path = session.scalar(select(Photo).where(Photo.file_path == str(path)))
         if existing_path:
             raise ValueError('此路径的内容已改变；请先移出旧记录再导入')
@@ -91,10 +91,11 @@ def import_one(path: Path) -> str:
             session.flush()
             photo.capture_group_id = group.id
         session.add(photo)
+        photo_id = photo.id
         session.commit()
-    return 'success'
+        return 'success', photo_id
 
-def import_paths(job_id: str, paths: list[str], recursive: bool, exclude_derived: bool = False) -> None:
+def import_paths(job_id: str, paths: list[str], recursive: bool, exclude_derived: bool = False, collect_ids: bool = False) -> None:
     files: dict[str, Path] = {}
     errors = []
     failed = 0
@@ -141,14 +142,19 @@ def import_paths(job_id: str, paths: list[str], recursive: bool, exclude_derived
             errors.append(f'{path.name}：不支持的格式')
     jobs.update(job_id, total=len(files) + failed, failed=failed, processed=failed, errors=errors[:100])
     counts = dict(success=0, skipped=0, failed=failed)
+    photo_ids = {}
     for index, path in enumerate(files.values(), 1):
         jobs.check(job_id)
         jobs.update(job_id, current=str(path))
         try:
-            counts[import_one(path)] += 1
+            status, photo_id = import_one(path)
+            counts[status] += 1
+            if collect_ids:
+                photo_ids[photo_id] = None
         except Exception as error:
             counts['failed'] += 1
             errors.append(f'{path.name}：{error}')
-        jobs.update(job_id, processed=sum(counts.values()), errors=errors[:100], **counts)
+        jobs.update(job_id, processed=sum(counts.values()), errors=errors[:100],
+                    **({'photo_ids': list(photo_ids)} if collect_ids else {}), **counts)
     from .embedding_service import service
     service.index_if_ready()

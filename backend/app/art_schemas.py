@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 
@@ -32,6 +32,22 @@ class ArtTitleRequest(BaseModel):
     photo_id: str = Field(min_length=1, max_length=64)
     keywords: str = Field(default='', max_length=200)
     language: Literal['zh', 'en'] = 'zh'
+
+
+class ArtBatchGenerate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    photo_ids: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(min_length=1, max_length=100)
+    layout: ArtLayout = Field(default_factory=ArtLayout)
+    quality: Literal['low', 'medium', 'high'] = 'medium'
+    description: str = Field(default='', max_length=1500)
+    generate_titles: bool = False
+    keywords: str = Field(default='', max_length=200)
+    language: Literal['zh', 'en'] = 'zh'
+
+    @field_validator('photo_ids')
+    @classmethod
+    def unique_photos(cls, value):
+        return list(dict.fromkeys(value))
 
 
 class TitleSuggestion(BaseModel):

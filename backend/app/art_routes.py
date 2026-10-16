@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from io import BytesIO
 from PIL import Image
 from sqlalchemy import select, func
-from .art_schemas import ArtGenerate, ArtTitleRequest, ArtSettings, ArtUpdate, ArtExport, ArtLayout
+from .art_schemas import ArtGenerate, ArtBatchGenerate, ArtTitleRequest, ArtSettings, ArtUpdate, ArtExport, ArtLayout
 from .config import settings, save_settings, EXPORTS
 from .models import Session, Artwork, WatermarkDraft, Photo
 from .services import art_service as art, art_credentials, jobs
@@ -42,23 +42,31 @@ def put_settings(payload: ArtSettings):
 
 @router.get('/jobs')
 def recent_jobs():
-    return [job for job in jobs.recent() if job['kind'] in ('watercolor', 'watercolor-title')]
+    return [job for job in jobs.recent() if job['kind'] in ('watercolor', 'watercolor-title', 'watercolor-batch')]
 
 
-def submit(kind, function, payload, model):
-    art.source_photo(payload.photo_id)
+def submit(kind, function, payload, *models):
+    photo_ids = payload.photo_ids if isinstance(payload, ArtBatchGenerate) else [payload.photo_id]
+    for photo_id in photo_ids:
+        art.source_photo(photo_id)
     art_credentials.get_key()
     with art.lock:
         if any(j['status'] in ('queued', 'running') for j in recent_jobs()):
             raise HTTPException(409, 'A watercolor task is already active; wait or cancel it first')
-        result = jobs.submit(kind, function, payload, model, executor=art.pool)
-        jobs.update(result['id'], photo_id=payload.photo_id)
+        result = jobs.submit(kind, function, payload, *models, executor=art.pool)
+        jobs.update(result['id'], **({'photo_ids': photo_ids} if isinstance(payload, ArtBatchGenerate) else {'photo_id': payload.photo_id}))
         return jobs.get(result['id'])
 
 
 @router.post('/generate', status_code=202)
 def generate(payload: ArtGenerate):
     return submit('watercolor', art.generate, payload, settings()['art_image_model'])
+
+
+@router.post('/batch', status_code=202)
+def generate_batch(payload: ArtBatchGenerate):
+    config = settings()
+    return submit('watercolor-batch', art.generate_batch, payload, config['art_image_model'], config['art_title_model'])
 
 
 @router.post('/titles', status_code=202)
@@ -99,20 +107,7 @@ def update_work(art_id: str, payload: ArtUpdate):
         item = artwork(session, art_id)
         if item.revision != payload.revision:
             raise HTTPException(409, 'Artwork changed elsewhere; reopen it before saving')
-        folder = art.folder_for(item.id)
-        with Image.open(folder / 'scene.png') as scene:
-            image = art.poster(scene, (item.source_json['width'], item.source_json['height']), payload.layout)
-        revision = item.revision + 1
-        try:
-            art.save_poster(folder, image, revision)
-            item.settings_json = payload.layout.model_dump()
-            item.revision = revision
-            session.commit()
-        except Exception:
-            (folder / f'poster-{revision}.png').unlink(missing_ok=True)
-            (folder / f'preview-{revision}.webp').unlink(missing_ok=True)
-            raise
-        return art.serialize(item)
+        return art.update_layout(session, item, payload.layout)
 
 
 @router.post('/works/{art_id}/preview')

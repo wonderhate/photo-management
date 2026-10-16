@@ -25,7 +25,7 @@ def migrate() -> dict:
     for record in legacy:
         path = (PROJECT/'uploads'/record['filename']).resolve()
         try:
-            outcome = import_one(path)
+            outcome, _ = import_one(path)
             result['imported' if outcome=='success' else 'skipped'] += 1
             with Session() as session:
                 photo = session.scalar(select(Photo).where(Photo.file_hash==file_hash(path)))
