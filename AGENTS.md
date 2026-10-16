@@ -1,6 +1,6 @@
 # Working on PhotoCollection
 
-Read `docs/development-handoff-2026-10-13.md` and `CONTRIBUTING.md` before continuing development. Current application version: 2.6.0; supported products: Windows desktop and local web.
+Read `docs/development-handoff-2026-10-13.md` and `CONTRIBUTING.md` before continuing development. Current application version: 2.6.1; supported products: Windows desktop and local web.
 
 - Original photos are read-only. Removing library records, people, drafts or generated artworks must never delete or overwrite originals. Use synthetic fixtures for automated tests.
 - Keep personal databases, model weights, keys, logs, screenshots and `.local-notes/` out of Git and release artifacts. Preserve bundled font licenses and asset source records.

@@ -146,6 +146,13 @@ def main() -> None:
             api('/api/photos/'+photo['id'],method='DELETE')
             assert original.exists() and hashlib.sha256(original.read_bytes()).digest()==digest
             print('Frozen EXE: startup, EXIF, dedup, statistics, draft, export, safe removal PASS')
+            second=work/'second.png'
+            Image.new('RGB',(480,640),'cornflowerblue').save(second)
+            second_digest=hashlib.sha256(second.read_bytes()).digest()
+            subprocess.run(['node',str(root/'desktop/verify_watercolor_ui.mjs'),url,str(original),str(second)],
+                           cwd=root,check=True,timeout=90,creationflags=subprocess.CREATE_NO_WINDOW)
+            assert hashlib.sha256(original.read_bytes()).digest()==digest
+            assert hashlib.sha256(second.read_bytes()).digest()==second_digest
         finally:
             process.terminate();process.wait(timeout=20)
 

@@ -129,8 +129,17 @@ for(const [width,theme,lang,withTitles] of [[1440,'light','zh',false],[1440,'dar
   await page.route('**/api/art/works/ui-work-*/preview',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48"><rect width="64" height="48" fill="#acc8cf"/></svg>'}));
   await page.goto('/watercolor');
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await page.locator('input[type=file]').setInputFiles(paths);
   const titles=page.getByLabel(en?'Generate and apply an AI title to each completed image (optional)':'图片生成后逐张生成并应用 AI 标题（可选）',{exact:true});
+  await expect(page.getByRole('button',{name:en?'Upload Multiple Photos':'批量上传照片',exact:true})).toBeVisible();
+  await expect(page.locator('.art-selection-hint')).toBeVisible();
+  await expect(titles).toBeVisible();
+  await expect(titles).toBeDisabled();
+  await expect(titles).not.toBeChecked();
+  await page.locator('input[type=file]').setInputFiles(paths[0]);
+  await expect(page.locator('.art-canvas>img')).toBeVisible();
+  await expect(titles).toBeDisabled();
+  await page.locator('input[type=file]').setInputFiles(paths);
+  await expect(titles).toBeEnabled();
   await expect(titles).not.toBeChecked();
   if(!withTitles){
     await page.getByRole('button',{name:'选择照片',exact:true}).click();
