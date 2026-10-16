@@ -2,6 +2,11 @@ export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
   '上传照片':'Upload Photos',
+  '批量上传照片':'Upload Multiple Photos',
+  '从一张或多张旅行照片开始':'Start with one or more travel photos',
+  '支持单张或批量：上传时可用 Ctrl / Shift 多选，或从图库选择多张，每批最多 100 张。':'Choose one photo or a batch: use Ctrl / Shift to select files, or select photos from your library. Up to 100 per batch.',
+  '选择两张及以上照片后，可开启批量 AI 标题。':'Select two or more photos to enable optional AI titles for the batch.',
+  '可选择 1 至 100 张照片。点击生成后才会发送给千问，上传到本机照片库不会调用 AI。':'Choose 1 to 100 photos. Photos are sent to Qwen only after Generate; importing to the local library does not call AI.',
   '部分照片导入失败，请检查文件后重新选择。':'Some photos could not be imported. Check the files and select them again.',
   '每批最多选择 100 张照片':'Select up to 100 photos per batch',
   '没有支持的照片文件':'No supported photo files',

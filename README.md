@@ -2,7 +2,7 @@
 
 <img src="frontend/public/icon-192.png" width="72" alt="光影集图标">
 
-本地优先的摄影照片管理软件。当前版本 **2.6.0**，提供 Windows 桌面应用和本机网页版；默认进入摄影空间。
+本地优先的摄影照片管理软件。当前版本 **2.6.1**，提供 Windows 桌面应用和本机网页版；默认进入摄影空间。
 
 [![Checks](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml/badge.svg)](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml)
 [最新下载](https://github.com/wonderhate/photo-management/releases/latest) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
@@ -11,9 +11,9 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| [Windows 安装包](https://github.com/wonderhate/photo-management/releases/download/v2.6.0/PhotoCollection-Setup-2.6.0-x64.exe) | Windows 10 / 11 x64，安装向导、快捷方式和卸载入口 |
-| [Windows 便携包](https://github.com/wonderhate/photo-management/releases/download/v2.6.0/PhotoCollection-Windows.zip) | 解压后运行 `PhotoCollection.exe`，保留同目录 `_internal` |
-| [SHA-256 校验](https://github.com/wonderhate/photo-management/releases/download/v2.6.0/SHA256SUMS.txt) | 核对下载完整性 |
+| [Windows 安装包](https://github.com/wonderhate/photo-management/releases/download/v2.6.1/PhotoCollection-Setup-2.6.1-x64.exe) | Windows 10 / 11 x64，安装向导、快捷方式和卸载入口 |
+| [Windows 便携包](https://github.com/wonderhate/photo-management/releases/download/v2.6.1/PhotoCollection-Windows.zip) | 解压后运行 `PhotoCollection.exe`，保留同目录 `_internal` |
+| [SHA-256 校验](https://github.com/wonderhate/photo-management/releases/download/v2.6.1/SHA256SUMS.txt) | 核对下载完整性 |
 
 Windows 包无需 Python 或 Node.js。安装器使用当前用户目录；关闭旧程序后可覆盖升级，卸载保留用户配置、照片库和导出。缺少 WebView2 时会运行经过 Microsoft 签名验证的引导程序。应用本身尚无受信任的代码签名，SHA-256 校验不等同于发布者签名。
 
@@ -79,8 +79,8 @@ Windows 默认照片库位于 `%LOCALAPPDATA%\PhotoCollection\data`，模型位�
 从源码构建当前版本：
 
 ```powershell
-docker build -t photo-management:2.6.0 .
-docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" photo-management:2.6.0
+docker build -t photo-management:2.6.1 .
+docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" photo-management:2.6.1
 ```
 
 将示例原片目录换成自己的目录；网页导入路径填写容器中的 `/photos`。原片只读挂载，数据卷与原片分离。不要公开服务端口。容器镜像的发布独立于 Windows Release；精确发布状态见 Packages 页面和工作流。
@@ -95,7 +95,7 @@ npm run test:browser
 .venv/Scripts/python.exe -m unittest desktop.test_icon
 ```
 
-本次验证：78 项后端、5 项前端逻辑、36 项浏览器检查，以及实际 Windows EXE / 安装升级 / 卸载验证通过，详见 [2.6.0 交付验证](https://github.com/wonderhate/photo-management/blob/v2.6.0/docs/windows-2.6.0-verification.md)。测试使用合成照片库；付费生图、其它电脑的网络与硬件需要单独验收。
+本次验证：78 项后端、5 项前端逻辑、36 项浏览器检查，以及实际 Windows EXE / 安装升级 / 卸载验证通过，详见 [2.6.1 交付验证](https://github.com/wonderhate/photo-management/blob/v2.6.1/docs/windows-2.6.1-verification.md)。测试使用合成照片库；付费生图、其它电脑的网络与硬件需要单独验收。
 
 发布构建：
 
@@ -104,7 +104,7 @@ npm run test:browser
 .\build-windows.ps1 -SkipDependencies
 .\build-installer.ps1
 .venv/Scripts/python.exe desktop/verify_package.py
-.venv/Scripts/python.exe desktop/verify_installer.py releases/PhotoCollection-Setup-2.6.0-x64.exe
+.venv/Scripts/python.exe desktop/verify_installer.py releases/PhotoCollection-Setup-2.6.1-x64.exe
 ```
 
 安装验证会拒绝覆盖已有的注册安装副本。分发包不得包含个人库配置、数据库、原片、模型权重或密钥。
