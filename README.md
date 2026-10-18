@@ -4,6 +4,9 @@
 
 本地优先的摄影照片管理软件。当前版本 **2.6.1**，提供 Windows 桌面应用和本机网页版；默认进入摄影空间。
 
+站点：<https://photomanagement.online/> · [Windows 下载页](https://photomanagement.online/windows.html)（页面显示 v1.0，与本仓库 v2.6.1 是同一份发布副本）
+
+
 [![Checks](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml/badge.svg)](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml)
 [最新下载](https://github.com/wonderhate/photo-management/releases/latest) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
 
