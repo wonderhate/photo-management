@@ -1,0 +1,80 @@
+name: Linux desktop bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/linux-desktop']
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    # 22.04 sets the glibc floor (2.35); building on a newer release would exclude older distros.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    env:
+      PYTHON: .venv-linux/bin/python
+      QTWEBENGINE_CHROMIUM_FLAGS: '--no-sandbox --disable-gpu --disable-dev-shm-usage'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Runtime libraries for QtWebEngine and xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgl1 libegl1 libxkbcommon-x11-0 libnss3 libxcomposite1 libxdamage1 \
+            libxrandr2 libxtst6 libasound2 libfontconfig1 libdbus-1-3 xvfb fonts-noto-cjk
+
+      - name: Python dependencies (CPU torch)
+        run: |
+          python -m venv .venv-linux
+          .venv-linux/bin/pip install --upgrade pip
+          .venv-linux/bin/pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+          .venv-linux/bin/pip install -r backend/requirements.txt -r backend/requirements-ai.txt \
+            -r backend/requirements-faces.txt -r desktop/requirements.txt
+
+      - name: Frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Build the bundle
+        run: bash build-linux.sh
+
+      - name: Verify the bundled server and the library flow
+        run: .venv-linux/bin/python desktop/verify_linux.py releases/linux/PhotoCollection/PhotoCollection
+
+      - name: Verify the native window under xvfb
+        run: |
+          xvfb-run -a -s "-screen 0 1440x900x24" \
+            releases/linux/PhotoCollection/PhotoCollection --window-check --status-file /tmp/window.json
+          .venv-linux/bin/python - <<'PY'
+          import json
+          state = json.load(open('/tmp/window.json'))
+          assert state.get('window_loaded') is True, state
+          print('window loaded:', state['url'])
+          PY
+
+      - name: Reject private artifacts in the bundle
+        run: |
+          if find releases/linux/PhotoCollection \( -name '*.dpapi' -o -name 'library.db' -o -name 'library-config.json' \) | grep -q .; then
+            find releases/linux/PhotoCollection -name '*.dpapi' -o -name 'library.db' -o -name 'library-config.json'
+            exit 1
+          fi
+          du -sh releases/linux/PhotoCollection
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhotoCollection-Linux-x64
+          path: |
+            releases/PhotoCollection-Linux-*-x64.tar.gz
+            releases/PhotoCollection-Linux-*-x64.tar.gz.sha256
+          retention-days: 14

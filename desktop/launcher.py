@@ -1,4 +1,8 @@
-"""Local desktop server and native window."""
+"""Local desktop server and native window.
+
+Windows uses WebView2 (pywebview gui='edgechromium'); macOS uses WKWebView ('cocoa');
+Linux uses QtWebEngine ('qt'). The backend and UI are identical on every platform.
+"""
 import argparse
 import json
 import logging
@@ -11,7 +15,10 @@ import threading
 import time
 import urllib.request
 
+
 def follow_browser_fullscreen(window) -> None:
+    if os.name != 'nt':
+        return  # ponytail: only WebView2 reports ContainsFullScreenElement; Qt/GTK fullscreen is handled in-app
     from System import Action
     native = window.native
     def bind() -> None:
@@ -24,6 +31,29 @@ def follow_browser_fullscreen(window) -> None:
         native._photo_fullscreen_bound = True
         native._photo_fullscreen_handler = changed
     native.Invoke(Action(bind))
+
+
+def state_dir() -> Path:
+    """Mirrors backend.app.config.state_root() so logging works before the app imports."""
+    if os.name == 'nt':
+        base = os.environ.get('LOCALAPPDATA') or Path.home()
+    elif sys.platform == 'darwin':
+        base = Path.home() / 'Library' / 'Application Support'
+    else:
+        base = os.environ.get('XDG_STATE_HOME') or Path.home() / '.local' / 'state'
+    return Path(base) / 'PhotoCollection'
+
+
+def gui_backend() -> str:
+    if os.name == 'nt': return 'edgechromium'
+    if sys.platform == 'darwin': return 'cocoa'
+    return 'qt'
+
+
+def report_fatal(error: Exception) -> None:
+    if os.name == 'nt':
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, str(error), '光影集启动失败', 0x10)
 
 
 def main() -> None:
@@ -41,7 +71,7 @@ def main() -> None:
         if not args.result: parser.error('--dialog requires --result')
         args.result.write_text(json.dumps(select_paths(args.dialog)), 'utf-8')
         return
-    log_dir = Path(os.environ.get('LOCALAPPDATA', Path.home())) / 'PhotoCollection' / 'logs'
+    log_dir = state_dir() / 'logs'
     log_dir.mkdir(parents=True, exist_ok=True)
     # Windowed Windows executables have no stdout; uvicorn logging requires a stream.
     stream = (log_dir / 'desktop.log').open('a', encoding='utf-8', buffering=1)
@@ -86,7 +116,7 @@ def main() -> None:
                     if args.status_file: args.status_file.write_text(json.dumps({'url':url, **health, 'window_loaded':True}), 'utf-8')
                     threading.Timer(2,window.destroy).start()
             window.events.loaded += loaded
-            webview.start(gui='edgechromium', private_mode=False, storage_path=str(log_dir.parent / 'webview'), icon=str(application_icon(log_dir.parent)))
+            webview.start(gui=gui_backend(), private_mode=False, storage_path=str(log_dir.parent / 'webview'), icon=str(application_icon(log_dir.parent)))
     finally:
         server.should_exit = True
         worker.join(timeout=15)
@@ -101,6 +131,5 @@ if __name__ == '__main__':
     except Exception as error:
         logging.exception('Desktop application failed')
         if '--serve' not in sys.argv and '--dialog' not in sys.argv:
-            import ctypes
-            ctypes.windll.user32.MessageBoxW(0, str(error), '光影集启动失败', 0x10)
+            report_fatal(error)
         raise

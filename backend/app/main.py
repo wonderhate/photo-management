@@ -275,6 +275,8 @@ def reveal_photo(photo_id: str):
         path = Path(photo_or_404(session, photo_id).file_path)
     if not path.exists(): raise HTTPException(404,'原图已移动或删除')
     if os.name == 'nt': subprocess.Popen(['explorer.exe', '/select,', str(path)], creationflags=subprocess.CREATE_NO_WINDOW)
+    elif sys.platform == 'darwin': subprocess.Popen(['open', '-R', str(path)])
+    else: subprocess.Popen(['xdg-open', str(path.parent)])
     return {'path':str(path)}
 
 @app.post('/api/photos/{photo_id}/open')
@@ -283,6 +285,8 @@ def open_photo(photo_id: str):
         path = Path(photo_or_404(session, photo_id).file_path)
     if not path.exists(): raise HTTPException(404,'原图已移动或删除')
     if os.name == 'nt': os.startfile(str(path))
+    elif sys.platform == 'darwin': subprocess.Popen(['open', str(path)])
+    else: subprocess.Popen(['xdg-open', str(path)])
     return {'path':str(path)}
 
 @app.get('/api/stats')
