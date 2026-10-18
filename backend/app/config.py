@@ -7,7 +7,18 @@ from . import storage
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT.parent
 FROZEN = getattr(sys, 'frozen', False)
-USER_ROOT = Path(os.environ.get('LOCALAPPDATA', Path.home())) / 'PhotoCollection' if FROZEN else PROJECT
+
+
+def state_root() -> Path:
+    """Per-user application directory. Mirrored in desktop/launcher.py for early logging."""
+    if os.name == 'nt':
+        return Path(os.environ.get('LOCALAPPDATA') or Path.home())
+    if sys.platform == 'darwin':
+        return Path.home() / 'Library' / 'Application Support'
+    return Path(os.environ.get('XDG_STATE_HOME') or Path.home() / '.local' / 'state')
+
+
+USER_ROOT = state_root() / 'PhotoCollection' if FROZEN else PROJECT
 LOCAL_CONFIG_FILE = Path(os.environ.get('PHOTO_LIBRARY_CONFIG', (Path(os.environ['PHOTO_DATA_DIR']) if 'PHOTO_DATA_DIR' in os.environ else USER_ROOT) / 'library-config.json')).resolve()
 LEGACY_CONFIG_FILE = Path(sys.executable).parent / 'library-config.json' if FROZEN and 'PHOTO_DATA_DIR' not in os.environ else None
 LOCAL_CONFIG = storage.read_config(LOCAL_CONFIG_FILE,LEGACY_CONFIG_FILE)
