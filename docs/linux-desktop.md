@@ -51,6 +51,20 @@ CI（`linux-release.yml`）跑在 `ubuntu-22.04`：glibc 2.35 是兼容下限，
 
 CI 还会检查包里没有 `*.dpapi`、`library.db`、`library-config.json`。
 
+首次实跑（run 39122289744）结果：打包与验收通过（`linux bundle OK: import, job, preview, watermark export, CSP, original hash`），窗口步骤失败在 `could not load the Qt platform plugin "xcb"`——Qt ≥ 6.5 需要 `libxcb-cursor0`。已补进 CI 依赖，并加了 xvfb 下的截图产物。
+
+Linux 桌面包需要的系统库（普通桌面发行版自带，无桌面/服务器环境要手装）：
+`libgl1 libegl1 libxkbcommon-x11-0 libnss3 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libasound2 libfontconfig1 libdbus-1-3 libxcb-cursor0`
+
+## 体积
+
+| 平台 | 解包后 | 发布包 |
+| --- | --- | --- |
+| Windows（现有） | 790 MB | 安装包 265 MB / ZIP 300 MB |
+| Linux（本次） | 1.68 GB | tar.gz 596 MB |
+
+多出来的主要是 `PyQt6`（452 MB，含 QtWebEngine）和它带来的 Qt 运行时。这是"用户机器不装 WebKitGTK"的代价。如果体积优先，可以换 GTK 后端（包小一半，但要求系统有 `libwebkit2gtk-4.1` 和 PyGObject），本次没做。
+
 ## 已知限制（首版）
 
 1. **API Key 不能界面保存**：`services/art_credentials.py` 的加密用的是 Windows DPAPI，非 Windows 平台只能读环境变量 `DASHSCOPE_API_KEY`，设置里不显示"保存 Key"。要补齐需要接 libsecret/Keychain。

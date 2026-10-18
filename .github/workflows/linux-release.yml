@@ -59,12 +59,15 @@ jobs:
         run: |
           mkdir -p verification
           xvfb-run -a -s "-screen 0 1440x900x24" bash -c '
-            releases/linux/PhotoCollection/PhotoCollection --window-check --status-file /tmp/window.json &
+            set -u
+            releases/linux/PhotoCollection/PhotoCollection --window-check --status-file /tmp/window.json
+            releases/linux/PhotoCollection/PhotoCollection --status-file /tmp/window2.json &
             app=$!
-            for _ in $(seq 1 100); do [ -f /tmp/window.json ] && break; sleep 0.2; done
-            sleep 1
-            import -window root verification/linux-window.png 2>/dev/null || echo "screenshot skipped"
-            wait $app
+            for _ in $(seq 1 150); do [ -f /tmp/window2.json ] && break; sleep 0.2; done
+            sleep 6
+            import -window root verification/linux-window.png || echo "screenshot skipped"
+            kill $app 2>/dev/null || true
+            wait $app 2>/dev/null || true
           '
           .venv-linux/bin/python - <<'PY'
           import json
