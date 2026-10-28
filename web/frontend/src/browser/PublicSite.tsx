@@ -4,6 +4,7 @@ import {getLang,setStoredLang,type Lang} from '../i18n';
 import {loadPortfolio,type Portfolio,type PublicPhoto} from './portfolio';
 import {publicProfile} from './public-profile';
 import release from './windows-release.json';
+import ProductWalkthrough from './ProductWalkthrough';
 import './public-site.css';
 import './public-home.css';
 
@@ -75,6 +76,7 @@ export default function PublicSite(){
   const profile=publicProfile[lang],creator=release.developer;
   const aboutHref=lang==='en'?'/en/about/':'/about/',projectHref=lang==='en'?'/en/lumina/':'/lumina/';
   const localHref=(path='/')=>'/?local=1&lang='+lang+'#'+path;
+  const demoHref='/?local=1&demo=1&lang='+lang+'#/';
   useEffect(()=>{let alive=true;setStatus('loading');loadPortfolio().then(value=>{if(alive){setPortfolio(value);setStatus('ready');setActive(0);}}).catch(()=>{if(alive)setStatus('error');});return()=>{alive=false};},[revision]);
   useEffect(()=>{const change=()=>setRoute(readRoute());window.addEventListener('hashchange',change);window.addEventListener('popstate',change);return()=>{window.removeEventListener('hashchange',change);window.removeEventListener('popstate',change);};},[]);
   useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem('theme',theme);}catch{}},[theme]);
@@ -122,9 +124,9 @@ export default function PublicSite(){
       <div className="wrap hdr-in">
         <a className="home-brand" href={pageHref('/')} aria-label={t('Wonder · 光影集 — 回到首页','Wonder · Lumina — back to the homepage')}><b>Wonder</b><span>{t('光影集 / Lumina','Lumina')}</span></a>
         <nav className="nav" aria-label={t('主导航','Main navigation')}>
-          <a href={sectionHref('works')} aria-current={home?'page':undefined}>{t('作品','Work')}</a>
+          <a href={home?sectionHref('works'):pageHref('/photos')} aria-current={home?'page':undefined}>{t('摄影作品','Photographs')}</a>
           <a href={aboutHref}>{t('关于我','About')}</a>
-          <a href="/windows.html">{t('下载','Download')}</a>
+          <a href="/windows.html">{t('Windows 下载','Windows download')}</a>
         </nav>
         <div className="tools">
           <button className="icon-btn" type="button" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label={t(theme==='dark'?'切换到亮色主题':'切换到暗色主题',theme==='dark'?'Switch to light theme':'Switch to dark theme')}>{theme==='dark'?<Sun size={18}/>:<Moon size={18}/>}</button>
@@ -142,9 +144,10 @@ export default function PublicSite(){
               <h1 id="hero-title">{t('追光，也收藏','Chasing light, ')}<em>{t('时光','keeping time')}</em>{t('。','.')}</h1>
               <p className="lede">{profile.bio}</p>
               <div className="cta-row">
-                <a className="btn btn-primary" href={sectionHref('works')}>{t('查看作品','Explore photographs')}<ArrowDown size={16}/></a>
-                <a className="btn btn-ghost" href={localHref()}>{t('体验光影集','Open Lumina')}<ArrowUpRight size={16}/></a>
+                <a className="btn btn-primary" href={sectionHref('works')}>{t('浏览摄影作品','Explore photographs')}<ArrowDown size={16}/></a>
+                <a className="btn btn-ghost" href={localHref()}>{t('打开浏览器工具','Open browser tools')}<ArrowUpRight size={16}/></a>
               </div>
+              <p className="entry-support">{t('管理自己的照片：电脑 Chrome / Edge · 本地处理 · 首次需选择数据目录。','For your own photos: desktop Chrome / Edge · local processing · choose a data folder to begin.')} <a href={demoHref}>{t('用示例体验','Try the sample')}<ArrowUpRight size={14}/></a></p>
               <div className="hero-foot">
                 {hero?<button className="credit" type="button" onClick={()=>openPhoto(hero.id)}>{t('封面 · ','Cover · ')}{photoTitle(hero,t)}</button>:<span className="credit">{t('光影集 / Lumina','Lumina')}</span>}
                 <span className="scroll-cue"><i aria-hidden="true"/>{t('下滑，看光影','Scroll for the light')}</span>
@@ -157,7 +160,7 @@ export default function PublicSite(){
               <div className="sec-head rv"><div>
                 <p className="eyebrow">01 / {t('精选作品','Selected work')}</p>
                 <h2 id="works-title">{t('精选摄影作品','Selected photographs')}</h2>
-                <p>{t('六帧画面：楼梯间的光、教堂的暗、落日前的航迹，还有月光落在水面的那一刻。','Six frames: light on the stairs, the dark of a church, a trail before sunset, and moonlight on water.')}</p>
+                <p>{t('金色玻璃、砖石立面、晚霞中的船，与水边的人影和灯火。点开一张，慢慢看。','Golden glass, stone façades, a boat against the evening sky, and people and lights beside the water. Open a photograph and take a closer look.')}</p>
               </div><a className="link-arrow" href={pageHref('/photos')}>{t('全部作品','All photographs')}<ArrowUpRight size={15}/></a></div>
               <div className="works" id="gallery">
                 {pieces.map((photo,index)=><button className={'piece rv '+(SPANS[index]||'')} key={photo.id} type="button" onClick={()=>openPhoto(photo.id)} aria-label={`${t('查看作品','View photograph')}: ${photoTitle(photo,t)}`}>
@@ -168,26 +171,29 @@ export default function PublicSite(){
                 </button>)}
                 <a className="tile-more rv" href={pageHref('/photos')}>
                   <p className="eyebrow">{t('全部作品','All photographs')}</p>
-                  <h3>{t('还有更多在光影集里。','More inside Lumina.')}</h3>
-                  <p>{t('按拍摄信息浏览、筛选，或者直接打开一张，看它在屏幕上的样子。','Browse and filter by shooting details, or open one and see it full screen.')}</p>
-                  <span className="link-arrow" aria-hidden="true">{t('进入作品库','Open the library')}<ArrowUpRight size={15}/></span>
+                  <h3>{t('继续看摄影作品。','More photographs to explore.')}</h3>
+                  <p>{t('按标题、描述或标签搜索已发布的作品，打开照片查看大图与作品说明。','Search published photographs by title, description or tag, then open an image to read its description and see it larger.')}</p>
+                  <span className="link-arrow" aria-hidden="true">{t('浏览全部摄影作品','Browse all photographs')}<ArrowUpRight size={15}/></span>
                 </a>
               </div>
             </div>
           </section>
 
+          {!!portfolio?.albums.length&&<section className="public-section public-albums" aria-labelledby="home-collections-title"><header className="public-section-heading"><div><span className="public-eyebrow">{t('沿着一个主题，看下去','FOLLOW A THEME')}</span><h2 id="home-collections-title">{t('主题系列','Photo series')}</h2></div><a className="link-arrow" href={pageHref('/albums')}>{t('全部系列','All series')}<ArrowUpRight size={15}/></a></header>{collections()}</section>}
+
           <section className="sec lumina" id="lumina" aria-labelledby="lumina-title">
             <div className="wrap lumina-grid">
               <div className="rv">
                 <p className="eyebrow">02 / {t('个人项目','Personal project')}</p>
-                <h2 id="lumina-title">{t('光影集：把本地图库、暗房与水印，放在同一个摄影空间里。','Lumina: a local library, a darkroom and a watermark studio in one place.')}</h2>
-                <p className="lede">{t('从整理自己的照片出发，光影集把本地图库、光影暗房与水印创作放在一起。一份可以实际体验、也在持续改进的项目。','Starting from my own editing needs, Lumina brings the local library, the darkroom and watermark creation together. A project you can try today and that keeps improving.')}</p>
+                <h2 id="lumina-title">{t('从一组照片，到一张可以分享的作品。','From a folder of photos to an image ready to share.')}</h2>
+                <p className="lede">{t('光影集 / Lumina 是管理自己照片的本地工具。整理影集、调整画面、添加署名，再导出新文件；原片留在原处。先用示例看看调整与导出的结果。','Lumina is a local tool for your own photographs. Organize albums, adjust an image, add a signature and export a new file, keeping the original in place. Try the sample to see an edit and export for yourself.')}</p>
                 <ul className="chips">{[t('浏览器目录授权','Browser folder access'),t('原片只读','Originals read-only'),t('导出另存新文件','Exports are new files'),t('中英界面 · 深浅主题','Bilingual · light & dark')].map(label=><li key={label}>{label}</li>)}</ul>
                 <p className="notes">{t('日常图库和本地图像工具在浏览器内处理；可选的水彩与标题建议使用自行配置的云端服务，仅在确认后发送所选图片。','Everyday library and local image tools run in the browser; optional watercolor and title suggestions use a cloud service you configure and only send selected images after confirmation.')}</p>
                 <div className="cta-row">
-                  <a className="btn btn-primary" href={localHref()}>{t('打开光影集','Open Lumina')}<ArrowUpRight size={16}/></a>
-                  <a className="btn btn-line" href={projectHref}>{t('了解项目','About the project')}</a>
+                  <a className="btn btn-primary" href={demoHref}>{t('用示例体验','Try the sample')}<ArrowUpRight size={16}/></a>
+                  <a className="btn btn-line" href={localHref()}>{t('打开浏览器工具','Open browser tools')}</a>
                 </div>
+                <p className="entry-support">{t('电脑 Chrome / Edge · 本地处理。示例不读取自己的照片；使用个人图库时需选择数据目录。','Desktop Chrome / Edge · local processing. The sample does not read your photos; a personal library needs a data folder.')} <a href={projectHref}>{t('了解项目与使用边界','Project details and limits')}</a></p>
               </div>
               <div className="feat rv">
                 {[
@@ -198,6 +204,8 @@ export default function PublicSite(){
               </div>
             </div>
           </section>
+
+          <section className="sec product-section" aria-labelledby="product-preview-title"><div className="wrap"><ProductWalkthrough lang={lang} demoHref={demoHref}/></div></section>
 
           <section className="sec" id="about" aria-labelledby="about-title">
             <div className="wrap about-grid">
@@ -226,7 +234,7 @@ export default function PublicSite(){
         {route.photo&&!selected&&<section className="public-empty" role="status"><p>{t('这张照片尚未发布或已移除。','This photograph is unpublished or no longer available.')}</p><button onClick={()=>navigatePhoto('',true)}>{t('继续浏览','Continue browsing')}</button></section>}
       </>}
     </main>
-    {!home&&<section className="public-lumina" id="public-lumina" tabIndex={-1} aria-labelledby="public-lumina-title"><div><span className="public-eyebrow">LUMINA / YOUR CREATIVE SPACE</span><h2 id="public-lumina-title">{t('光影集，让创作继续。','Lumina. Keep creating.')}</h2><p>{t('管理自己的照片与影集，走进光影暗房，再为作品加上水印，或探索水彩转绘。','Organize your photographs and collections, enter the darkroom, add your watermark or explore watercolor interpretations.')}</p></div><div className="public-lumina-actions"><a className="public-primary" href={localHref()}><Aperture size={21}/>{t('进入光影集','Open Lumina')}<ArrowUpRight size={20}/></a><a className="public-lumina-windows" href="/windows.html">{t('下载桌面版','Download desktop')}<ArrowUpRight size={16}/></a></div><Aperture className="public-lumina-mark" size={260} strokeWidth={.35} aria-hidden="true"/></section>}
+    {!home&&<section className="public-lumina" id="public-lumina" tabIndex={-1} aria-labelledby="public-lumina-title"><div><span className="public-eyebrow">LUMINA / YOUR OWN PHOTOGRAPHS</span><h2 id="public-lumina-title">{t('也为自己的照片，留一处创作空间。','A creative space for your own photographs.')}</h2><p>{t('浏览器工具用于整理自己的本地照片、调整画面和导出水印作品。电脑 Chrome / Edge · 本地处理 · 首次需选择数据目录。','Use the browser tools to organize your local photos, make adjustments and export watermarked images. Desktop Chrome / Edge · local processing · choose a data folder to begin.')}</p></div><div className="public-lumina-actions"><a className="public-primary" href={localHref()}><Aperture size={21}/>{t('打开浏览器工具','Open browser tools')}<ArrowUpRight size={20}/></a><a className="public-lumina-windows" href={demoHref}>{t('用示例体验','Try the sample')}<ArrowUpRight size={16}/></a><a className="public-lumina-windows" href="/windows.html">{t('下载 Windows 版','Download for Windows')}<ArrowUpRight size={16}/></a></div><Aperture className="public-lumina-mark" size={260} strokeWidth={.35} aria-hidden="true"/></section>}
     <footer className="ftr"><div className="wrap ftr-in">
       <span className="fine">Wonder · {t('光影集 / Lumina','Lumina')}</span>
       <nav aria-label={t('页脚导航','Footer navigation')}>

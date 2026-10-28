@@ -1,7 +1,8 @@
+import {navigateWorkspace} from './workspace-navigation.mjs';
 import {expect} from '@playwright/test';
 export async function exerciseAlbumList(page,{lang,prefix,albums,all,saved,screenshot}){
   const text=(zh,en)=>lang==='en'?en:zh;
-  await page.locator('.workspace-subnav').getByRole('button',{name:text('影集','Albums'),exact:true}).click();
+  await navigateWorkspace(page,text('影集','Albums'));
   const search=page.getByRole('textbox',{name:text('搜索影集名称','Search album names'),exact:true}),sort=page.getByRole('combobox',{name:text('影集列表排序','Album list sort'),exact:true});
   const names=()=>page.locator('.album-card h3').allTextContents();await search.fill(prefix);await sort.selectOption('name');await expect(page.locator('.album-card h3')).toHaveText([prefix+' Hidden',prefix+' Trip 2',prefix+' Trip 10']);
   await page.getByRole('button',{name:text('切换影集升降序','Toggle album sort direction'),exact:true}).click();await expect(page.locator('.album-card h3')).toHaveText([prefix+' Trip 10',prefix+' Trip 2',prefix+' Hidden']);

@@ -1,5 +1,7 @@
 # 文档索引
 
+- [Windows 2.7.3 与首次使用优化](windows-2.7.3-verification.md)
+
 - [离线地球与照片地图](offline-photo-map.md)
 - [Windows 2.7.2 更新验证](windows-2.7.2-verification.md)
 - [Windows 2.7.1 公开试用验收](windows-2.7.1-verification.md)

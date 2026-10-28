@@ -45,7 +45,9 @@ export default defineConfig(({mode,command})=>{
     generateBundle(){for(const name of ['index.js','worker.js','libraw.js','libraw.wasm'])this.emitFile({type:'asset',fileName:'raw-1.6.0/'+name,source:readFileSync(fileURLToPath(new URL('./node_modules/libraw-wasm/dist/'+name,import.meta.url)))});}
   },...(browser?[{
     name:'browser-local-assets',
-    generateBundle(_options:any,bundle:Record<string,any>){
+    // Vite removes CSS-only JS chunks in generateBundle. Build the cache list
+    // afterwards, so one removed chunk cannot reject the complete offline cache.
+    generateBundle:{order:'post',handler(_options:any,bundle:Record<string,any>){
       const stamp=createHash('sha256'),earthPaths=offlineEarthAssets(stamp);
       if(showcase)this.emitFile({type:'asset',fileName:'portfolio/manifest.json',source:JSON.stringify(emptyPortfolio)});
       this.emitFile({type:'asset',fileName:'edgeone.json',source:readFileSync(fileURLToPath(new URL('../edgeone.json',import.meta.url)))});
@@ -59,6 +61,6 @@ const CACHE='photo-browser-${version}',FILES=${JSON.stringify(precache)};
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('photo-browser-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method==='GET'&&u.origin===location.origin&&u.pathname.startsWith('/_pc-file/')){e.respondWith(localFile(e));return;}if(r.method!=='GET'||u.origin!==location.origin||(u.pathname.startsWith('/api/')||u.pathname.startsWith('/portfolio/')))return;e.respondWith((async()=>{const cached=await caches.match(r);if(r.mode!=='navigate'&&cached)return cached;try{const response=await fetch(r);if(response.ok&&(FILES.includes(u.pathname)||u.pathname.startsWith('/local-assets/')||u.pathname.startsWith('/raw-1.6.0/'))){const c=await caches.open(CACHE);await c.put(r,response.clone());}return response;}catch{return cached||(r.mode==='navigate'?await caches.match('/'):null)||Response.error();}})());});`});
-    }
+    }}
   }]:[])],server:{host:'127.0.0.1',port:browser?5175:5173,strictPort:true,...(!browser?{proxy:{'/api':'http://127.0.0.1:8000'}}:{})},build:{outDir:showcase?'dist-showcase':browser?'dist-web':'dist',rollupOptions:{output:{manualChunks:{charts:['recharts']}}}}};
 });

@@ -17,6 +17,7 @@ test('the original portfolio opens the upgraded app and its download without los
   const radii=await page.locator('.topbar').evaluate(node=>getComputedStyle(node).backgroundImage);
   expect(radii).toMatch(/80px 53\.3333px at/);
   await expect(page.locator('.public-site')).toHaveCount(0);
+  await page.getByRole('button',{name:'更多功能',exact:true}).click();
   const popup=context.waitForEvent('page');
   await page.locator('.workspace-subnav .windows-download-link').click();
   const download=await popup;await download.waitForLoadState();
@@ -37,6 +38,7 @@ test('English portfolio entry retains delayed library choice in the upgraded app
   await expect(prompt).toBeVisible();
   expect(await page.evaluate(()=>window.__directoryPrompts)).toBe(0);
   await page.keyboard.press('Escape');await expect(prompt).toHaveCount(0);await expect(trigger).toBeFocused();
+  await page.getByRole('button',{name:'More features',exact:true}).click();
   const home=page.locator('.workspace-subnav a[href="/en/"]');
   await expect(home).toBeVisible();await home.click();
   await expect(page).toHaveURL(/\/en\/$/);await expect(page.locator('.public-site')).toBeVisible();

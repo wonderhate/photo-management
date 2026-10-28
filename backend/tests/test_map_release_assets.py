@@ -31,7 +31,8 @@ def packaged_map(request):
             (folder / 'windows.html').write_text('synthetic download', encoding='utf-8')
             (folder / 'portfolio').mkdir()
             (folder / 'portfolio/manifest.json').write_text(json.dumps({'photos': []}), encoding='utf-8')
-        for relative in module.bundled_map_paths():
+        registered = module.bundled_map_paths() | module.bundled_demo_paths()
+        for relative in registered:
             target = folder / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(module.ROOT / 'frontend/public' / relative, target)
@@ -47,6 +48,8 @@ def test_complete_map_assets_and_credit_are_accepted(packaged_map):
     names = {record[1] if isinstance(record, tuple) else record.relative_to(folder).as_posix()
              for record in records}
     assert module.bundled_map_paths().issubset(names)
+    assert len(module.bundled_demo_paths()) == 4
+    assert module.bundled_demo_paths().issubset(names)
 
 
 def test_map_contents_must_match_registered_sources(packaged_map):
@@ -82,3 +85,27 @@ def test_unregistered_map_paths_cannot_enter_release(packaged_map):
         with pytest.raises(ValueError, match='Unexpected public'):
             validate(folder)
         path.unlink()
+
+
+def test_demo_outputs_and_source_record_are_complete_and_unchanged(packaged_map):
+    folder, validate, module = packaged_map
+    for relative in sorted(module.bundled_demo_paths()):
+        path = folder / relative
+        original = path.read_bytes()
+        path.write_bytes(b'synthetic altered demo')
+        with pytest.raises(ValueError, match='Demo asset does not match its bundled source'):
+            validate(folder)
+        path.unlink()
+        with pytest.raises(ValueError, match='Incomplete bundled demo assets'):
+            validate(folder)
+        path.write_bytes(original)
+    for relative in ['demo/private.png', 'demo/extra.json']:
+        extra = folder / relative
+        extra.write_bytes(b'synthetic unregistered demo')
+        with pytest.raises(ValueError, match='Unexpected public'):
+            validate(folder)
+        extra.unlink()
+    for relative in module.bundled_demo_paths():
+        (folder / relative).unlink()
+    with pytest.raises(ValueError, match='Incomplete bundled demo assets'):
+        validate(folder)

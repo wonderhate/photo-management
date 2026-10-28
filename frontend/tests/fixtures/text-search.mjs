@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './workspace-navigation.mjs';
 import {expect} from '@playwright/test';
 
 export async function exerciseTextSearch(page,{lang='zh',rows,screenshot}){
@@ -11,7 +12,7 @@ export async function exerciseTextSearch(page,{lang='zh',rows,screenshot}){
   if(screenshot)await page.screenshot({path:screenshot,fullPage:true});
   expect(await page.locator('.photo-search-controls').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
   await input.fill('');await expect.poll(async()=>(await visible()).sort()).toEqual(names(['a','b','c','d']));
-  await page.locator('.workspace-subnav').getByRole('button',{name:text('影集','Albums'),exact:true}).click();await page.getByRole('button',{name:text('新建条件集合','New rule collection'),exact:true}).click();
+  await navigateWorkspace(page,text('影集','Albums'));await page.getByRole('button',{name:text('新建条件集合','New rule collection'),exact:true}).click();
   const dialog=page.getByRole('dialog',{name:text('新建条件集合','New rule collection'),exact:true}),leaf=dialog.locator('.query-leaf').first();
   await dialog.getByRole('textbox',{name:text('影集名称','Album Name'),exact:true}).fill('Text Search '+lang);
   for(const [field,value,count] of [['ai_caption','海边',3],['description','海边',1],['detected_text','open',1]]){

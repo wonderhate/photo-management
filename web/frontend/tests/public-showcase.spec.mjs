@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFileSync,readdirSync,existsSync} from 'node:fs';
 const catalog=JSON.parse(readFileSync(new URL('../dist-showcase/portfolio/manifest.json',import.meta.url),'utf8'));
+const windowsRelease=JSON.parse(readFileSync(new URL('../src/browser/windows-release.json',import.meta.url),'utf8'));
 
 test('public navigation keeps its remaining destinations and homepage anchors never become missing pages',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});
@@ -16,6 +17,8 @@ test('public navigation keeps its remaining destinations and homepage anchors ne
   await page.goto('/#/photos');
   await expect(page.locator('.public-lumina-actions a').first()).toHaveAttribute('href',/local=1/);
   await page.locator('header.hdr nav a').first().click();
+  await expect(page).toHaveURL(/#\/photos$/);await expect(page.getByRole('searchbox')).toBeVisible();
+  await page.locator('.home-brand').click();await page.locator('header.hdr nav a').first().click();
   await expect(page).toHaveURL(/#works$/);await expect(page.locator('#works')).toBeInViewport();
   await page.reload();await expect(page.locator('#works')).toBeInViewport();
   for(const path of ['/about/','/en/lumina/']){
@@ -36,7 +39,7 @@ test('personal and project pages have readable bilingual HTML, share metadata an
   for(const [,url]of (await xml.text()).matchAll(/<loc>(.*?)<\/loc>/g)){expect(url).not.toContain('#');expect((await request.get(new URL(url).pathname)).status()).toBe(200);}
   expect(await(await request.get('/robots.txt')).text()).toContain('Sitemap: https://photomanagement.online/sitemap.xml');
   const context=await browser.newContext({javaScriptEnabled:false}),page=await context.newPage();
-  try{await page.goto('http://127.0.0.1:4186/');await expect(page.getByText('我是 Wonder，喜欢摄影', {exact:false})).toBeVisible();await page.goto('http://127.0.0.1:4186/en/lumina/');await expect(page.getByRole('heading',{level:1})).toContainText('personal project');await expect(page.getByText('1706023204',{exact:true})).toBeVisible();}finally{await context.close();}
+  try{await page.goto('http://127.0.0.1:4186/');await expect(page.getByText('我是 Wonder，喜欢摄影', {exact:false})).toBeVisible();await page.goto('http://127.0.0.1:4186/en/lumina/');await expect(page.getByRole('heading',{level:1})).toHaveText('From a folder of photos to an image ready to share.');await expect(page.getByText('1706023204',{exact:true})).toBeVisible();}finally{await context.close();}
 });
 
 test('Wonder contact and project introductions work on narrow screens with no uploads',async({page,context},info)=>{
@@ -49,9 +52,11 @@ test('Wonder contact and project introductions work on narrow screens with no up
   await page.screenshot({path:info.outputPath('wonder-about-mobile-light.png'),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('link',{name:'了解光影集项目',exact:false}).click();
   await page.getByRole('link',{name:'EN',exact:true}).click();await expect(page).toHaveURL(/\/en\/lumina\/$/);await page.reload();
-  await expect(page.getByRole('heading',{level:1})).toContainText('personal project');await expect(page.locator('.public-notes')).toHaveAttribute('data-theme','light');
-  await page.screenshot({path:info.outputPath('wonder-project-mobile-en.png'),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await expect(page.getByRole('link',{name:/^Try Lumina/})).toHaveAttribute('href','/?local=1&lang=en#/');
+  await expect(page.getByRole('heading',{level:1})).toHaveText('From a folder of photos to an image ready to share.');await expect(page.locator('.public-notes')).toHaveAttribute('data-theme','light');
+  for(const image of await page.locator('.notes-demo img').all()){await image.scrollIntoViewIfNeeded();await expect.poll(()=>image.evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);}
+  await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:info.outputPath('wonder-project-mobile-en.png'),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await expect(page.locator('.notes-intro').getByRole('link',{name:/^Try the sample/})).toHaveAttribute('href','/?local=1&demo=1&lang=en#/');
+  await expect(page.locator('.notes-intro').getByRole('link',{name:/^Open browser tools/})).toHaveAttribute('href','/?local=1&lang=en#/');
   expect(requests.filter(r=>r.method!=='GET'||!r.url.startsWith('http://127.0.0.1:4186')||r.url.includes('/api/'))).toEqual([]);expect(errors).toEqual([]);
 });
 async function readyImages(page){for(const img of await page.locator('.public-image img').all()){await img.scrollIntoViewIfNeeded();await expect.poll(()=>img.evaluate(i=>i.complete&&i.naturalWidth>0)).toBe(true);}await page.evaluate(()=>scrollTo(0,0));}
@@ -63,7 +68,7 @@ test('anonymous visitors browse, search, open collections and deep-linked photog
   await page.addInitScript(()=>{window.__directoryPrompts=0;window.showDirectoryPicker=()=>{window.__directoryPrompts++;throw Error('Public visitors must not need directory access');};});
   await page.setViewportSize({width:1440,height:1000});await page.goto('/');await expect(page.locator('.hero')).toBeVisible();await expect(page.locator('.piece')).toHaveCount(2);
   await expect(page.locator('.tile-more')).toHaveAttribute('href',/#\/photos$/);
-  await expect(page.getByRole('link',{name:'下载',exact:true})).toHaveAttribute('href','/windows.html');
+  await expect(page.locator('header.hdr nav').getByRole('link',{name:'Windows 下载',exact:true})).toHaveAttribute('href','/windows.html');
   await expect(page.getByRole('link',{name:'进入光影集',exact:true})).toHaveCount(0);
   await expect(page.locator('.public-site')).not.toContainText('\\n');
   await page.evaluate(()=>scrollTo(0,0));
@@ -134,4 +139,53 @@ test('public deployment has no publisher UI or write endpoints',async({page,requ
 test('service worker never stores public photographs or the mutable manifest',async({browser})=>{
   const context=await browser.newContext({serviceWorkers:'allow'}),page=await context.newPage();
   try{await page.goto('http://127.0.0.1:4186/');await page.evaluate(()=>navigator.serviceWorker.ready);await page.reload();await expect(page.locator('.piece')).toHaveCount(2);const paths=await page.evaluate(async()=>{const urls=[];for(const k of await caches.keys())for(const r of await(await caches.open(k)).keys())urls.push(new URL(r.url).pathname);return urls;});expect(paths.some(p=>p.startsWith('/portfolio/'))).toBe(false);}finally{await context.close();}
+});
+
+for(const [lang,theme,width]of [['zh','dark',1440],['en','light',390]])test(`public first-use choices and real sample previews stay clear ${lang}`,async({page},info)=>{
+  await page.addInitScript(({lang,theme})=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',theme);window.__directoryPrompts=0;window.showDirectoryPicker=()=>{window.__directoryPrompts++;throw Error('A sample must not request a photo folder');};},{lang,theme});
+  await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto(lang==='en'?'/en/':'/');
+  const hero=page.locator('.hero');
+  await expect(hero.getByRole('link',{name:lang==='zh'?'浏览摄影作品':'Explore photographs',exact:true})).toHaveAttribute('href',/#works$/);
+  await expect(hero.getByRole('link',{name:lang==='zh'?'打开浏览器工具':'Open browser tools',exact:true})).toHaveAttribute('href',`/?local=1&lang=${lang}#/`);
+  await expect(hero.locator('.entry-support')).toContainText('Chrome / Edge');
+  await page.screenshot({path:info.outputPath(`first-use-home-${lang}-${width}.png`),animations:'disabled'});
+  const steps=page.locator('.product-steps button'),preview=page.locator('.product-preview img');
+  for(const [index,name,w,h]of [[0,'original',1200,800],[1,'adjusted',1200,800],[2,'framed',1308,998]]){
+    await steps.nth(index).click();await expect(steps.nth(index)).toHaveAttribute('aria-pressed','true');
+    await expect(preview).toHaveAttribute('src',`/demo/lumina-${name}.png`);
+    await expect.poll(()=>preview.evaluate(img=>[img.naturalWidth,img.naturalHeight])).toEqual([w,h]);
+  }
+  await page.locator('.product-preview').evaluate(node=>scrollTo(0,node.getBoundingClientRect().top+scrollY-document.querySelector('header.hdr').getBoundingClientRect().height-30));
+  await page.screenshot({path:info.outputPath(`first-use-real-preview-${lang}-${width}.png`),animations:'disabled'});
+  expect(await page.locator('.product-step-number').first().evaluate(node=>node.getBoundingClientRect().height<=Number.parseFloat(getComputedStyle(node).lineHeight)+1)).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await hero.getByRole('link',{name:lang==='zh'?'用示例体验':'Try the sample',exact:true}).click();
+  await expect(page).toHaveURL(/local=1&demo=1/);
+  await expect(page.getByRole('button',{name:lang==='zh'?'下载示例 PNG':'Download demo PNG',exact:true})).toBeEnabled();
+  expect(await page.evaluate(()=>window.__directoryPrompts)).toBe(0);
+});
+
+for(const [lang,theme,width]of [['zh','dark',1440],['en','light',390]])test(`download decisions are available before secondary content ${lang}`,async({page},info)=>{
+  await page.addInitScript(({lang,theme})=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',theme);},{lang,theme});
+  await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/windows.html');
+  const installer=windowsRelease.files.find(file=>file.kind==='installer'),primary=page.locator('.download-hero-button');
+  await expect(primary).toBeInViewport();await expect(primary).toHaveAttribute('href',windowsRelease.baseUrl+installer.name);
+  await expect(page.locator('.download-hero-meta')).toContainText(`v${windowsRelease.displayVersion}`);
+  await expect(page.locator('.download-hero-meta')).toContainText(`${(installer.bytes/1024/1024).toFixed(1)} MiB`);
+  await expect(page.locator('.download-hero-notice')).toContainText(lang==='zh'?'未签名':'unsigned');
+  await expect(page.locator('.download-back')).toHaveText(lang==='zh'?'返回摄影主页':'Back to the portfolio');
+  await expect(page.locator('.download-back')).toHaveAttribute('href',lang==='zh'?'/':'/en/');
+  await page.screenshot({path:info.outputPath(`first-use-download-hero-${lang}-${width}.png`),animations:'disabled'});
+  expect(await page.locator('.download-bottom-grid').evaluate(node=>!!(document.querySelector('#packages').compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(page.locator('#linux')).not.toHaveAttribute('open','');await expect(page.locator('#linux .download-package')).not.toBeVisible();
+  await expect(page.locator('.download-comparison')).toContainText(lang==='zh'?'两版图库不能直接互换或覆盖':'Libraries are not directly interchangeable');
+  await page.locator('.download-compare').evaluate(node=>scrollTo(0,node.getBoundingClientRect().top+scrollY-document.querySelector('.download-header').getBoundingClientRect().height-30));
+  await page.screenshot({path:info.outputPath(`first-use-comparison-${lang}-${width}.png`),animations:'disabled'});
+  await page.locator('#linux>summary').click();await expect(page.locator('#linux .download-package')).toBeVisible();
+  await expect(page.locator('#linux')).toContainText('2.6.1');await page.locator('#linux>summary').click();
+  await expect(page.locator('.download-footer a').last()).toHaveAttribute('href',`/?local=1&lang=${lang}#/`);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.route(windowsRelease.baseUrl+installer.name,route=>route.fulfill({contentType:'application/octet-stream',body:'synthetic installer fixture',headers:{'Content-Disposition':`attachment; filename="${installer.name}"`}}));
+  const pending=page.waitForEvent('download');await primary.click();const download=await pending;
+  expect(download.suggestedFilename()).toBe(installer.name);expect(readFileSync(await download.path()).toString()).toBe('synthetic installer fixture');
 });

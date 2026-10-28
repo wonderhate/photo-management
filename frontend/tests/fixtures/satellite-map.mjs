@@ -75,6 +75,7 @@ export async function exerciseSatelliteMap(page,probe,info,lang='en'){
   await settle(page);expect(await page.locator('.photo-globe canvas').evaluate(node=>node.toDataURL())).toBe(globe);
   await page.locator('.photo-globe').focus();await page.keyboard.press('ArrowRight');
   await expect.poll(()=>page.locator('.photo-globe canvas').evaluate(node=>node.toDataURL())).not.toBe(globe);
+  await button('进阶设置','Advanced settings').click();await page.locator('.map-other-styles > summary').click();
   await button('Google 卫星','Google satellite').click();await expect(keyInput()).toBeVisible();expect(probe.requests).toHaveLength(0);
   await keyInput().fill('bad');await button('保存并连接','Save and connect').click();await expect(page.getByRole('alert')).toBeVisible();expect(probe.requests).toHaveLength(0);
   await keyInput().fill(syntheticMapKey);await button('保存并连接','Save and connect').click();
@@ -137,11 +138,11 @@ export async function exerciseSatelliteMap(page,probe,info,lang='en'){
   await frame.evaluate(()=>window.gm_authFailure());await expect(page.locator('.map-connection-error')).toContainText(t('Google 地图授权失败','Google Maps authorization failed'));
   expect(probe.requests).toHaveLength(1);await button('重试连接','Retry connection').click();
   await expect.poll(()=>probe.requests.length).toBe(2);await expect(page.locator('.satellite-photo-pin')).toHaveCount(1);
-  await button('地图设置','Map settings').click();await expect(keyInput()).toHaveValue('');await keyInput().fill(replacementKey);await button('保存并连接','Save and connect').click();
+  await button('进阶设置','Advanced settings').click();await expect(keyInput()).toHaveValue('');await keyInput().fill(replacementKey);await button('保存并连接','Save and connect').click();
   await expect.poll(()=>probe.requests.length).toBe(3);await expect(page.locator('.satellite-photo-pin')).toHaveCount(1);
   expect(probe.requests[2].searchParams.get('key')).toBe(replacementKey);
   expect(await page.evaluate(key=>localStorage.getItem(key),storageKey)).toBe(replacementKey);
-  await button('地图设置','Map settings').click();await button('移除 Key','Remove key').click();
+  await button('进阶设置','Advanced settings').click();await button('移除 Key','Remove key').click();
   await expect(page.locator('.photo-globe')).toBeVisible();await expect(page.locator('.satellite-map iframe')).toHaveCount(0);
   expect(await page.evaluate(key=>localStorage.getItem(key),storageKey)).toBeNull();
   expect(probe.parentKeyLeaks).toEqual([]);expect(probe.blocked).toEqual([]);expect(probe.requests).toHaveLength(3);

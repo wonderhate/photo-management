@@ -13,7 +13,7 @@
   --sg-text:#243540;--sg-muted:#516572;--sg-accent:#715525;--sg-shadow:0 16px 40px #25455f12;
 }
 /* A two-layer surface: an edge reflection and a soft, pointer-lit interior. */
-:is(.public-site.public-site,.windows-download.windows-download) :is(.hdr,.public-header,.contact,.tile-more,.feat article,.notes-grid article,.notes-contact,.public-search,.public-lumina,.public-photo-info,.public-lightbox-bar,.public-lightbox-navigation,.public-thumbnails,.download-header,.download-package,.download-developer,.download-faq,.download-guide,.download-features article,.download-hero-art){
+:is(.public-site.public-site,.windows-download.windows-download) :is(.hdr,.public-header,.contact,.tile-more,.feat article,.notes-grid article,.notes-contact,.public-search,.public-lumina,.public-photo-info,.public-lightbox-bar,.public-lightbox-navigation,.public-thumbnails,.download-header,.download-package,.download-developer,.download-faq,.download-guide,.download-features article,.download-hero-art,.download-choice-card,.product-preview,.product-steps button){
   background:radial-gradient(ellipse 140px 86.6667px at var(--site-light-x,25%) var(--site-light-y,0%),var(--sg-light),transparent 75%),linear-gradient(145deg,var(--sg-highlight),transparent 28%,transparent 72%,var(--sg-highlight)),var(--sg-surface);
   border:1px solid var(--sg-rim);border-radius:26px;box-shadow:inset 0 1px 0 var(--sg-highlight),inset 0 -1px 0 #ffffff05,var(--sg-shadow);
   -webkit-backdrop-filter:blur(24px) saturate(140%);backdrop-filter:blur(24px) saturate(140%);
@@ -96,6 +96,8 @@
 .windows-download.windows-download .download-header-actions .download-back{padding:0 14px}
 .windows-download.windows-download .download-header-actions button{min-width:44px}
 .windows-download.windows-download .download-footer{border-color:var(--sg-rim)}
+.public-site.public-site .product-steps button[aria-pressed=true]{border-color:var(--sg-accent);box-shadow:inset 3px 0 0 var(--sg-accent),inset 0 1px 0 var(--sg-highlight)}
+.public-site.public-site .product-preview{overflow:hidden}
 @media(hover:hover) and (pointer:fine){
   :is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.public-primary,.public-secondary,.download-button):hover{transform:translateY(-2px)}
   :is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.public-primary,.public-secondary,.download-button):active{transform:translateY(0) scale(.98)}

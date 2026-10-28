@@ -6,7 +6,7 @@ import {syncBuiltinESMExports} from 'node:module';
 import {resolve} from 'node:path';
 import {runInNewContext} from 'node:vm';
 import {createServer as createPortProbe} from 'node:net';
-import {createServer,loadConfigFromFile} from 'vite';
+import {build,createServer,loadConfigFromFile} from 'vite';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const files=['/maps/satellite.html','/maps/satellite.js','/maps/satellite.css'];
@@ -175,4 +175,22 @@ test('an incomplete Earth cache rejects worker installation',async()=>{
   });
   listeners.get('install')({waitUntil(work){install=work;}});
   await assert.rejects(install,/synthetic offline tile/);
+});
+
+
+test('the final cache list excludes CSS-only JavaScript chunks removed by Vite',async()=>{
+  const loaded=await loadConfigFromFile({command:'build',mode:'browser'},fileURLToPath(new URL('../vite.config.ts',import.meta.url)),root,'error');
+  const plugin=loaded.config.plugins.flat(Infinity).find(plugin=>plugin?.name==='browser-local-assets');
+  const output=await build({configFile:false,root,logLevel:'error',plugins:[{
+    name:'synthetic-map-css-entry',
+    resolveId(id){if(id==='virtual:map-cache-entry')return '\0map-cache-entry';if(id==='./map-fixture.css')return '/virtual/map-fixture.css';},
+    load(id){if(id==='\0map-cache-entry')return 'window.loadSyntheticMap=()=>import("./map-fixture.css");';if(id==='/virtual/map-fixture.css')return '.map-fixture{color:#123456}';},
+  },plugin],build:{write:false,minify:false,rollupOptions:{input:'virtual:map-cache-entry'}}});
+  const artifacts=output.output,worker=artifacts.find(asset=>asset.fileName==='sw.js').source;
+  const paths=JSON.parse(worker.match(/FILES=(\[.*?\]);/)[1]);
+  const emitted=new Set(artifacts.map(asset=>'/'+asset.fileName));
+  const bundlePaths=paths.filter(path=>path.startsWith('/assets/'));
+  assert.ok(bundlePaths.some(path=>path.endsWith('.css')),'real dynamic CSS is precached');
+  assert.ok(bundlePaths.some(path=>path.endsWith('.js')),'real entry JS is precached');
+  for(const path of bundlePaths)assert.ok(emitted.has(path),'precache references a removed chunk: '+path);
 });

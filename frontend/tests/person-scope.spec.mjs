@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 import {readScopeURL} from './fixtures/query-scope.mjs';
 import {execFileSync} from 'node:child_process';
@@ -17,7 +18,7 @@ for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`live person photos upda
   const byId=Object.fromEntries(photos.map(p=>[p.id,p])),queries=[];let inference=0,statusReads=0;
   page.on('request',r=>{const u=new URL(r.url());if(/\/api\/faces\/(models|analyze)$/.test(u.pathname))inference++;if(u.pathname==='/api/faces/persons/'+person.id+'/scope')statusReads++;if(u.pathname==='/api/photos/ids')queries.push(u.searchParams.has('scope')?JSON.parse(u.searchParams.get('scope')).base:Object.fromEntries(u.searchParams));});
   await page.addInitScript(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('onboarded','1');localStorage.setItem('theme',lang==='en'?'light':'dark')},lang);await page.setViewportSize({width,height:1200});await page.emulateMedia({reducedMotion:'reduce'});
-  const card=()=>page.locator('.face-card').filter({has:page.getByRole('heading',{name:person.name,exact:true})}),bar=()=>page.getByRole('region',{name:text('当前检索范围','Current search scope'),exact:true}),names=()=>page.locator('.photo-caption>span'),navPeople=()=>page.locator('.workspace-subnav').getByRole('button',{name:text('人物','People'),exact:true}).click();
+  const card=()=>page.locator('.face-card').filter({has:page.getByRole('heading',{name:person.name,exact:true})}),bar=()=>page.getByRole('region',{name:text('当前检索范围','Current search scope'),exact:true}),names=()=>page.locator('.photo-caption>span'),navPeople=()=>navigateWorkspace(page,text('人物','People'));
   try{
     await page.goto('/faces');await card().getByRole('button',{name:text('查看照片','View Photos'),exact:true}).click();const origin=page.locator('.gallery.compact .photo-card[data-photo-id="'+sequence[0]+'"] .photo-image');await origin.dblclick();const viewer=page.locator('.photo-viewer');await expect(viewer.locator('.viewer-counter')).toHaveText('1 / 2');await viewer.getByRole('button',{name:text('下一张','Next photo'),exact:true}).click();await expect(viewer.locator('.viewer-caption b')).toHaveText(byId[sequence[1]].file_name);await expect(viewer.getByRole('button',{name:text('下一张','Next photo'),exact:true})).toBeDisabled();expect(queries.some(q=>q.person_id===person.id)).toBe(true);await page.keyboard.press('Escape');
     await card().getByRole('button',{name:text('实时人物照片','Live Person Photos'),exact:true}).click();await expect(bar()).toHaveAttribute('data-person-view','live');await expect(page.getByRole('heading',{level:1})).toContainText(text('人物照片','Person Photos'));await expect(bar()).toContainText(person.name);expect(readScopeURL(page.url()).base).toEqual({person_id:person.id});await expect(names()).toHaveCount(2);
@@ -37,7 +38,7 @@ test('a late person status cannot rename or refresh the next person scope',async
   const people=await Promise.all(['A','B'].map(async name=>(await request.post('/api/faces/persons',{data:{name:'AF30 race '+name}})).json())),[a,b]=people;let started,release;const began=new Promise(resolve=>started=resolve),released=new Promise(resolve=>release=resolve);
   await page.addInitScript(()=>{localStorage.setItem('onboarded','1');localStorage.setItem('lang','en')});
   await page.route('**/api/faces/persons/'+a.id+'/scope?**',async route=>{const response=await route.fetch();started();await released;await route.fulfill({response}).catch(()=>{})});
-  const nav=()=>page.locator('.workspace-subnav').getByRole('button',{name:'People',exact:true}).click(),card=name=>page.locator('.face-card').filter({has:page.getByRole('heading',{name,exact:true})});
+  const nav=()=>navigateWorkspace(page,'People'),card=name=>page.locator('.face-card').filter({has:page.getByRole('heading',{name,exact:true})});
   try{await page.goto('/faces');await card(a.name).getByRole('button',{name:'Live Person Photos',exact:true}).click();await began;await nav();await card(b.name).getByRole('button',{name:'Live Person Photos',exact:true}).click();const bar=page.getByRole('region',{name:'Current search scope',exact:true});await expect(bar).toContainText(b.name);release();await page.waitForTimeout(200);await expect(bar).not.toContainText(a.name);expect(readScopeURL(page.url()).base).toEqual({person_id:b.id});}
   finally{release();await page.goto('/?page=home').catch(()=>{});for(const p of people)await request.delete('/api/faces/persons/'+p.id)}
 });

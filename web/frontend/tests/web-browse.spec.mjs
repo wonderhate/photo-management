@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {browserApiModule} from './fixtures/browser-api-module.mjs';
 import {test,expect} from '@playwright/test';
 import {readdirSync} from 'node:fs';
@@ -33,7 +34,7 @@ async function start(page){
 }
 async function skip(page){await start(page);await page.getByRole('button',{name:'跳过，先浏览',exact:true}).click();await expect(page.locator('.app-shell')).toBeVisible();}
 async function navigate(page,name){
-  await page.locator('.workspace-subnav').getByRole('button',{name,exact:true}).click();
+  await navigateWorkspace(page,name);
 }
 function importButton(page){return page.locator('.topbar-actions').getByRole('button',{name:'导入照片',exact:true});}
 async function rootEntries(page){return page.evaluate(async()=>{const names=[];for await(const entry of window.__browseFixture.root.values())names.push(entry.name);return names.sort();});}

@@ -25,6 +25,17 @@ def bundled_map_paths():
     return paths
 
 
+def bundled_demo_paths():
+    """Allow only the registered procedural sample and its provenance record."""
+    public = ROOT / 'frontend/public'
+    metadata = json.loads((public / 'demo/source.json').read_text(encoding='utf-8'))
+    names = {entry['name'] for entry in metadata['files']}
+    expected = {'lumina-original.png', 'lumina-adjusted.png', 'lumina-framed.png'}
+    if names != expected or len(metadata['files']) != len(expected):
+        raise ValueError('Invalid bundled demo manifest.')
+    return {'demo/source.json'} | {'demo/' + name for name in names}
+
+
 def validate_public(source):
     """Check a public build without producing an archive or touching owner state."""
     source = Path(source)
@@ -33,7 +44,8 @@ def validate_public(source):
         raise ValueError('Build the public showcase first.')
     allowed_root = {'index.html', 'windows.html', 'sw.js', 'site-notes.js', 'site-glass.css', 'site-glass.js', 'local-file-worker.js', 'pageview.js', 'robots.txt', 'sitemap.xml', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'edgeone.json'}
     map_paths = bundled_map_paths()
-    public_paths = {'about/index.html', 'lumina/index.html', 'en/index.html', 'en/about/index.html', 'en/lumina/index.html'} | map_paths
+    demo_paths = bundled_demo_paths()
+    public_paths = {'about/index.html', 'lumina/index.html', 'en/index.html', 'en/about/index.html', 'en/lumina/index.html'} | map_paths | demo_paths
     allowed_dirs = {'assets', 'local-assets', 'raw-1.6.0', 'licenses', 'portfolio'}
     for p in files:
         rel = p.relative_to(source)
@@ -46,12 +58,13 @@ def validate_public(source):
             raise ValueError('Private author code cannot be published.')
         if p.stat().st_size > 25 * 1024 * 1024:
             raise ValueError('Public file exceeds 25 MiB: ' + rel.as_posix())
-        if rel.as_posix() in map_paths:
+        if rel.as_posix() in map_paths | demo_paths:
             original = ROOT / 'frontend/public' / rel
             if (not original.is_file() or original.is_symlink()
                     or not original.resolve().is_relative_to((ROOT / 'frontend/public').resolve())
                     or original.read_bytes() != p.read_bytes()):
-                raise ValueError('Map asset does not match its bundled source: ' + rel.as_posix())
+                kind = 'Map' if rel.as_posix() in map_paths else 'Demo'
+                raise ValueError(kind + ' asset does not match its bundled source: ' + rel.as_posix())
     index = (source / 'index.html').read_text(encoding='utf-8')
     if 'windows.html' not in {p.name for p in files} or "unsafe-inline'" in index:
         raise ValueError('Missing download page or unexpected inline script policy.')
@@ -65,6 +78,8 @@ def validate_public(source):
     actual_paths = {p.relative_to(source).as_posix() for p in files}
     if not map_paths.issubset(actual_paths):
         raise ValueError('Incomplete offline map assets: ' + ', '.join(sorted(map_paths - actual_paths)))
+    if not demo_paths.issubset(actual_paths):
+        raise ValueError('Incomplete bundled demo assets: ' + ', '.join(sorted(demo_paths - actual_paths)))
     return files, catalog
 
 

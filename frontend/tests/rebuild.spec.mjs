@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 import {synthetic,photos,albums} from './fixtures/workspace.mjs';
 
@@ -60,7 +61,7 @@ for(const theme of ['dark','light'])for(const width of [1440,390])test(`rebuilt 
   await page.locator('.home-collections').scrollIntoViewIfNeeded();
   await expect(page.locator('.home-collections')).toHaveCSS('opacity','1');
   await page.screenshot({path:info.outputPath('collections.png')});
-  await page.locator('.workspace-subnav').getByRole('button',{name:'照片',exact:true}).click();
+  await navigateWorkspace(page,'照片');
   await expect(page).toHaveURL(/page=photos/);await expect(page.locator('.photo-image').first()).toBeVisible();
   await page.reload();await expect(page.locator('.photo-image').first()).toBeVisible();
   await page.goBack();await expect(page.locator('.archive-hero h1')).toBeVisible();
@@ -132,7 +133,7 @@ test('reduced motion, touch swipe and narrow navigation remain usable',async({pa
   expect(await page.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').length)).toBe(0);
   await expect(page.locator('.aperture-intro')).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.workspace-subnav').getByRole('button',{name:'人物',exact:true})).toBeVisible();
+  await page.locator('.workspace-more-trigger').click();await expect(page.locator('.workspace-subnav').getByRole('button',{name:'人物',exact:true})).toBeVisible();
   await page.keyboard.press('Escape');await expect(page.locator('.workspace-subnav')).toBeVisible();
   expect(errors).toEqual([]);
 });

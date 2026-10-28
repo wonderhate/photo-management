@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 import {exerciseAlbumList} from './fixtures/album-list.mjs';
 import {execFileSync} from 'node:child_process';
@@ -25,6 +26,6 @@ test('an older album save cannot overwrite a choice made after leaving and retur
   const workspace=await(await request.get('/api/workspace')).json();let release,entered=false;const gate=new Promise(resolve=>{release=resolve;});let first=true;
   await page.route('**/api/workspace/albums',async route=>{if(first){first=false;entered=true;await gate;}await route.continue();});
   try{await page.addInitScript(()=>{localStorage.setItem('onboarded','1');localStorage.setItem('lang','en');});await page.goto('/?page=albums');const sort=page.getByRole('combobox',{name:'Album list sort',exact:true});await sort.selectOption('name');await expect.poll(()=>entered).toBe(true);
-    await page.locator('.workspace-subnav').getByRole('button',{name:'Photos',exact:true}).click();await page.locator('.workspace-subnav').getByRole('button',{name:'Albums',exact:true}).click();await sort.selectOption('created_at');await page.waitForTimeout(600);release();await expect(sort).toHaveValue('created_at');await expect.poll(async()=>(await(await request.get('/api/workspace')).json()).album_preferences.sort).toBe('created_at');await page.waitForTimeout(100);expect((await(await request.get('/api/workspace')).json()).album_preferences.sort).toBe('created_at');}
+    await navigateWorkspace(page,'Photos');await navigateWorkspace(page,'Albums');await sort.selectOption('created_at');await page.waitForTimeout(600);release();await expect(sort).toHaveValue('created_at');await expect.poll(async()=>(await(await request.get('/api/workspace')).json()).album_preferences.sort).toBe('created_at');await page.waitForTimeout(100);expect((await(await request.get('/api/workspace')).json()).album_preferences.sort).toBe('created_at');}
   finally{release();await page.goto('/?page=home');await request.patch('/api/workspace/albums',{data:{library_id:workspace.library_id,values:{sort:'custom',direction:'asc',order:[],...workspace.album_preferences}}});}
 });

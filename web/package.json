@@ -1,6 +1,6 @@
 {
   "name": "lumina-web",
-  "version": "2.7.2",
+  "version": "2.7.3",
   "private": true,
   "description": "Lumina browser-local photo library and public photography showcase",
   "scripts": {
