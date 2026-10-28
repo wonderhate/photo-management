@@ -1,6 +1,6 @@
 # 光影集 / Lumina Web
 
-独立管理浏览器本地图库、公开摄影展示和光影暗房。初始版本来自原项目当前工作区，包含此前未提交的网页版改进；桌面程序及其 Git 历史继续留在原仓库。本仓库没有配置远程 Git 地址。正式网站为 https://photomanagement.online/，仅在所有者明确点击发布时更新。
+独立管理浏览器本地图库、公开摄影展示和光影暗房。正式源码随主项目保存在 GitHub 的 `web/` 目录，桌面代码位于仓库根目录。本地独立检出保留原有历史。正式网站为 https://photomanagement.online/，通过现有作者发布器，在所有者授权后更新。
 
 ## 包含内容
 
@@ -12,7 +12,7 @@
 
 `frontend/src` 保留复用的界面组件；所有默认构建入口均为浏览器模式。`cloud_relay` 及 `assets` 已移除对原桌面仓库的路径依赖。
 
-当前本地整合版已接入“改版”的新版浏览器光影集，同时保留原网站的作品展示、介绍、下载和作者发布逻辑。全站指针柔光缩为原半径的 1/3，图库选择可跳过并在导入时继续。整合范围、构建兼容和验证记录见 [官网与新版光影集整合](docs/website-lumina-integration.md)。
+2.7.0 整合版已于 2026-10-28 上线，接入“改版”的新版浏览器光影集，同时保留原网站的作品展示、介绍、下载和作者发布逻辑。全站指针柔光缩为原半径的 1/3，图库选择可跳过并在导入时继续。整合范围、构建兼容和验证记录见 [官网与新版光影集整合](docs/website-lumina-integration.md)。
 
 ## 安装和启动
 
@@ -125,3 +125,5 @@ git commit -m "说明本次修改"
 下载按钮默认使用 `https://ai.photomanagement.online/downloads/1.0/`，支持原生断点续传；每个包保留 GitHub 备用下载及发布页入口。现有新加坡服务器共用 20 Mbps / 512 GB 月流量，实际速度与并发、访客网络有关。Service Worker 不缓存安装包。网站托管的静态单文件上限为 25 MB，因此安装包独立维护；发布网页只需正常构建目录。服务器静态目录、配置及验证记录见 `docs/windows-downloads-2026-10-17.md`。下载页本地地址为 `http://127.0.0.1:5175/windows.html`（`npm run dev`）。
 
 页面结构参考个人开发者软件的 [Everything 下载页](https://www.voidtools.com/downloads/)及 [SumatraPDF 下载页](https://www.sumatrapdfreader.org/download-free-pdf-viewer)：并列安装版与 ZIP，明确架构、大小和校验信息；未使用其图片、文案或品牌资源。
+
+Windows 2.7.0 公开试用和线上部署记录见 [新版下载维护](docs/windows-downloads-2026-10-28.md)。Linux 继续提供独立标记的 2.6.1 预览包。
