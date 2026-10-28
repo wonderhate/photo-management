@@ -26,12 +26,16 @@ jobs:
       - run: npm ci --prefix frontend
       - run: node --experimental-strip-types --test frontend/tests/*.test.*
       - run: npm run build --prefix frontend
+      - run: python -m pytest backend/tests -q
+      - run: python -m unittest desktop.test_icon
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
       - name: Install video regression tools
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
+      - name: Fetch pinned RAW test fixtures
+        run: npm run test:web:fixtures
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()
@@ -39,8 +43,6 @@ jobs:
           name: theme-regression-results
           path: verification/theme
           retention-days: 7
-      - run: python -m pytest backend/tests -q
-      - run: python -m unittest desktop.test_icon
   windows-scripts:
     runs-on: windows-latest
     steps:

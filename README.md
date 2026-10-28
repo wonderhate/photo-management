@@ -2,10 +2,10 @@
 
 <img src="frontend/public/icon-192.png" width="72" alt="光影集图标">
 
-本地优先的摄影照片管理软件。当前版本 **2.7.0**（公开试用），提供 Windows 桌面应用和本机网页版；默认进入摄影空间。
+本地优先的摄影照片管理软件。当前版本 **2.7.1**（公开试用），提供 Windows 桌面应用和本机网页版；默认进入摄影空间。
 
 [![Checks](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml/badge.svg)](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml)
-[Windows 2.7.0 公开试用](https://github.com/wonderhate/photo-management/releases/tag/v2.7.0) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
+[Windows 2.7.1 公开试用](https://github.com/wonderhate/photo-management/releases/tag/v2.7.1) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
 
 ## 正式网站与浏览器本地图库
 
@@ -47,11 +47,11 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| [Windows 安装包](https://github.com/wonderhate/photo-management/releases/download/v2.7.0/PhotoCollection-Setup-2.7.0-x64.exe) | Windows 10 / 11 x64，安装向导、快捷方式和卸载入口 |
-| [Windows 便携包](https://github.com/wonderhate/photo-management/releases/download/v2.7.0/PhotoCollection-Windows-2.7.0.zip) | 解压后运行 `PhotoCollection.exe`，保留同目录 `_internal` |
-| [SHA-256 校验](https://github.com/wonderhate/photo-management/releases/download/v2.7.0/SHA256SUMS-2.7.0.txt) | 核对下载完整性 |
+| [Windows 安装包](https://github.com/wonderhate/photo-management/releases/download/v2.7.1/PhotoCollection-Setup-2.7.1-x64.exe) | Windows 10 / 11 x64，安装向导、快捷方式和卸载入口 |
+| [Windows 便携包](https://github.com/wonderhate/photo-management/releases/download/v2.7.1/PhotoCollection-Windows-2.7.1.zip) | 解压后运行 `PhotoCollection.exe`，保留同目录 `_internal` |
+| [SHA-256 校验](https://github.com/wonderhate/photo-management/releases/download/v2.7.1/SHA256SUMS-2.7.1.txt) | 核对下载完整性 |
 
-Windows 包无需 Python 或 Node.js。安装器使用当前用户目录，包含升级和保留数据的卸载逻辑；2.7.0 的覆盖安装、跨版本升级与卸载仍待验收。缺少 WebView2 时会运行经过 Microsoft 签名验证的引导程序。应用本身尚无受信任的代码签名，SHA-256 校验不等同于发布者签名。
+Windows 包无需 Python 或 Node.js。安装器使用当前用户目录，包含升级和保留数据的卸载逻辑；2.7.1 的覆盖安装、跨版本升级与卸载仍待验收。缺少 WebView2 时会运行经过 Microsoft 签名验证的引导程序。应用本身尚无受信任的代码签名，SHA-256 校验不等同于发布者签名。
 
 当前不提供 Android / iOS 客户端、手机配对或桌面远程访问。历史版本说明仅用于追溯，请使用最新版本。
 
@@ -115,8 +115,8 @@ Windows 默认照片库位于 `%LOCALAPPDATA%\PhotoCollection\data`，模型位�
 从源码构建当前版本：
 
 ```powershell
-docker build -t photo-management:2.7.0 .
-docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" photo-management:2.7.0
+docker build -t photo-management:2.7.1 .
+docker run -d --name photo-management -p 127.0.0.1:8000:8000 --mount type=volume,source=photo-management-data,target=/data --mount "type=bind,source=D:\Photos,target=/photos,readonly" photo-management:2.7.1
 ```
 
 将示例原片目录换成自己的目录；网页导入路径填写容器中的 `/photos`。原片只读挂载，数据卷与原片分离。不要公开服务端口。容器镜像的发布独立于 Windows Release；精确发布状态见 Packages 页面和工作流。
@@ -131,7 +131,7 @@ npm run test:browser
 .venv/Scripts/python.exe -m unittest desktop.test_icon
 ```
 
-Windows 2.7.0 公开试用验收见 [交付验证](docs/windows-2.7.0-verification.md)，正式浏览器网站源码在 `web/`。测试使用合成照片库；付费生图、其它电脑的网络与硬件需要单独验收。
+Windows 2.7.1 公开试用验收见 [交付验证](docs/windows-2.7.1-verification.md)，正式浏览器网站源码在 `web/`。测试使用合成照片库；付费生图、其它电脑的网络与硬件需要单独验收。
 
 发布构建：
 
@@ -140,7 +140,7 @@ Windows 2.7.0 公开试用验收见 [交付验证](docs/windows-2.7.0-verificati
 .\build-windows.ps1 -SkipDependencies
 .\build-installer.ps1
 .venv/Scripts/python.exe desktop/verify_package.py
-.venv/Scripts/python.exe desktop/verify_installer.py releases/PhotoCollection-Setup-2.7.0-x64.exe
+.venv/Scripts/python.exe desktop/verify_installer.py releases/PhotoCollection-Setup-2.7.1-x64.exe
 ```
 
 安装验证会拒绝覆盖已有的注册安装副本。分发包不得包含个人库配置、数据库、原片、模型权重或密钥。
@@ -170,4 +170,4 @@ Project code is licensed under the [MIT License](LICENSE). Bundled third-party c
 
 `web/` 保存正式展示页、下载页与完整浏览器本地图库工程，独立安装依赖和构建：`npm ci --prefix web/frontend`、`npm --prefix web test`、`npm --prefix web run build`。作品清单、作者凭证和部署产物留在本机，不进入仓库。现有 EdgeOne 项目通过本机作者发布器更新，维护记录见 [网站整合](web/docs/website-lumina-integration.md)。
 
-Windows 2.7.0 为公开试用；Linux 继续提供 [2.6.1 预览包](https://github.com/wonderhate/photo-management/releases/tag/v2.6.1)，保留其构建脚本和 [平台限制](docs/linux-desktop.md)。新版本的安装覆盖、跨版本升级和卸载尚待验收，操作前备份图库。
+Windows 2.7.1 为公开试用；Linux 继续提供 [2.6.1 预览包](https://github.com/wonderhate/photo-management/releases/tag/v2.6.1)，保留其构建脚本和 [平台限制](docs/linux-desktop.md)。新版本的安装覆盖、跨版本升级和卸载尚待验收，操作前备份图库。

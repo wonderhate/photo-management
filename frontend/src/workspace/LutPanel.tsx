@@ -11,7 +11,7 @@ import LutFoldersPanel from './LutFoldersPanel';
 import type {LutFolderFilter} from './LutFoldersPanel';
 import {validateLutFolders} from '../core/lut-folders';
 import type {LutFolder} from '../core/lut-folders';
-import {Fragment,useEffect,useMemo,useRef,useState} from 'react';
+import {Fragment,useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import type {CSSProperties,KeyboardEvent,DragEvent} from 'react';
 import useToolPreferences from './useToolPreferences';
 import {lutViewDefaults} from '../core/lut-view';
@@ -30,7 +30,9 @@ export default function LutPanel({library,selected,base,disabled,onChange,onBegi
   const [importReport,setImportReport]=useState<{added:number;existing:number;restored:number;failed:number;ignored:number;errors:string[]}|null>(null);
   const [folders,setFolders]=useState<LutFolder[]>([]),[scanning,setScanning]=useState(false),[folderFilter,setFolderFilter]=useState<LutFolderFilter>(null),folderWork=useRef(false),freshness=useRef(0);
   const [view,saveView]=useToolPreferences('lut',lutViewDefaults,onError),filter=view.filter,pageSize=view.columns===3?39:40,limit=(page+1)*pageSize;
-  const list=useRef<HTMLUListElement>(null),browse=useRef<{timer:ReturnType<typeof setTimeout>;asset:LutAsset}|null>(null);
+  const list=useRef<HTMLUListElement>(null),browse=useRef<{timer:ReturnType<typeof setTimeout>;asset:LutAsset;focusFrom?:string}|null>(null);
+  function focusBrowse(){const pending=browse.current;if(!pending?.focusFrom)return;const button=list.current?.querySelector<HTMLButtonElement>(`[data-lut="${pending.asset.id}"] .lut-choice`);if(button){button.focus();if(browse.current===pending)pending.focusFrom=undefined;}}
+  useLayoutEffect(focusBrowse);
   const callbacks=useRef({onEnd,onCompare});callbacks.current={onEnd,onCompare};
   useEffect(()=>()=>{if(browse.current)clearTimeout(browse.current.timer);callbacks.current.onCompare(false);},[]);
   const usageWrites=useRef(new Set<Promise<void>>());
@@ -102,12 +104,13 @@ export default function LutPanel({library,selected,base,disabled,onChange,onBegi
     if(disabled||busy||e.ctrlKey||e.metaKey||e.altKey)return;
     if(e.key==='Escape'&&browse.current){e.preventDefault();e.stopPropagation();finishBrowse(false);return;}
     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)||!(e.target instanceof Element)||!e.target.closest('.lut-choice'))return;
-    const id=e.target.closest<HTMLElement>('[data-lut]')?.dataset.lut,at=rows.findIndex(a=>a.id===id),next=lutGroupedStep(at,groups,view.columns,e.key,pageSize);
+    const focused=e.target.closest<HTMLElement>('[data-lut]')?.dataset.lut;
+    const pending=browse.current,id=pending&&pending.focusFrom===focused?pending.asset.id:focused,at=rows.findIndex(a=>a.id===id),next=lutGroupedStep(at,groups,view.columns,e.key,pageSize);
     e.preventDefault();e.stopPropagation();if(next<0||next===at)return;const asset=rows[next];
     if(browse.current)clearTimeout(browse.current.timer);else onBegin();
     onChange({version:1,asset_hash:asset.id,input:'srgb',strength:selected?.strength??view.strength});
-    browse.current={asset,timer:setTimeout(()=>finishBrowse(),700)};setPage(Math.floor(next/pageSize));
-    requestAnimationFrame(()=>list.current?.querySelector<HTMLButtonElement>(`[data-lut="${asset.id}"] .lut-choice`)?.focus());
+    browse.current={asset,focusFrom:focused,timer:setTimeout(()=>finishBrowse(),700)};setPage(Math.floor(next/pageSize));
+    focusBrowse();
   }
   const current=assets.find(a=>a.id===selected?.asset_hash);
   const menuLabel=(name:string)=>bt('更多样式操作 ','More style actions ')+name;

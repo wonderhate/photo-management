@@ -11,6 +11,17 @@ import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {exerciseCollageUI,installCollageProbe,exerciseGalleryCollage} from './fixtures/collage-ui.mjs';
 import {exerciseCollageWorker} from './fixtures/collage-worker.mjs';
+// Saved projects and outputs belong to the isolated shared server; each case starts empty.
+test.beforeEach(async({request})=>{
+ const health=await(await request.get('/api/health')).json();expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');
+ for(const endpoint of ['/api/editor/collage-outputs','/api/editor/collages']){
+  for(let page=0;page<100;page++){
+   const {items}=await(await request.get(endpoint)).json();if(!items.length)break;
+   for(const item of items)expect((await request.delete(endpoint+'/'+item.id+(endpoint.endsWith('/collages')?'?revision='+item.revision:''))).ok()).toBe(true);
+   if(page===99)throw new Error('Synthetic collage fixture cleanup did not finish');
+  }
+ }
+});
 for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`collage layout framing source recovery and cancellation ${width} ${lang}`,async({page},info)=>{
  test.setTimeout(120000);await installCollageProbe(page);await page.addInitScript(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');localStorage.setItem('onboarded','1');},lang);await page.setViewportSize({width,height:1100});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/tools');await page.locator('.studio-tool').filter({hasText:lang==='en'?'Photo collage':'照片拼图'}).click();await exerciseCollageUI(page,info,lang);
 });

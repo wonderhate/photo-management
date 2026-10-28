@@ -2,6 +2,10 @@ import {expect} from '@playwright/test';
 import {imageDigest} from './text-ui.mjs';
 import {invertCube} from './lut-ui.mjs';
 export async function exerciseLutBrowse(page,info,lang='zh',route='/#/tools/edit'){
+  async function beforePaint(keys,check){
+    await page.evaluate(()=>{const raf=window.requestAnimationFrame.bind(window),cancel=window.cancelAnimationFrame.bind(window),queue=new Map();let id=2100000000;window.__lutBurst={raf,cancel,queue};window.requestAnimationFrame=callback=>{queue.set(++id,callback);return id;};window.cancelAnimationFrame=value=>queue.delete(value)||cancel(value);});
+    try{for(const key of keys)await page.keyboard.press(key);await check();}finally{await page.evaluate(()=>{const state=window.__lutBurst;window.requestAnimationFrame=state.raf;window.cancelAnimationFrame=state.cancel;for(const callback of state.queue.values())state.raf(callback);delete window.__lutBurst;});}
+  }
   const t=(zh,en)=>lang==='en'?en:zh,panel=page.locator('.lut-panel'),image=page.locator('.edit-image img'),sourceName=await image.getAttribute('alt');
   const original=await imageDigest(image),exposure=page.getByRole('slider',{name:/Exposure EV|曝光 EV/});await exposure.press('ArrowRight');await expect.poll(()=>imageDigest(image)).not.toBe(original);const adjusted=await imageDigest(image);
   await panel.locator('summary').click();const prefix=`Browse-${lang}-`,names=[prefix+'A.cube',prefix+'B-LogC.cube',prefix+'C.cube'];
@@ -10,7 +14,7 @@ export async function exerciseLutBrowse(page,info,lang='zh',route='/#/tools/edit
   await search.fill(prefix);await expect(panel.locator('.lut-choice')).toHaveCount(3);await columns.selectOption('3');await hide.check();await expect(choice(1)).toHaveCount(0);await hide.uncheck();await mark(1).selectOption('normal');await hide.check();await expect(choice(1)).toBeVisible();await hide.uncheck();await mark(1).selectOption('auto');
   await choice(0).click();const strength=panel.getByRole('slider',{name:t('LUT 强度','LUT strength')});await strength.press('End');await strength.press('ArrowLeft');await expect(strength).toHaveValue('0.99');await expect.poll(()=>imageDigest(image)).not.toBe(adjusted);
   const undo=page.getByRole('button',{name:t('撤销编辑','Undo edit'),exact:true}),redo=page.getByRole('button',{name:t('重做编辑','Redo edit'),exact:true});
-  await choice(0).focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');await expect(choice(2)).toHaveAttribute('aria-pressed','true');await expect(undo).toBeEnabled();await undo.click();await expect(choice(0)).toHaveAttribute('aria-pressed','true');await redo.click();await expect(choice(2)).toHaveAttribute('aria-pressed','true');
+  await choice(0).focus();await beforePaint(['ArrowRight','ArrowRight'],()=>expect(choice(2)).toHaveAttribute('aria-pressed','true'));await expect(undo).toBeEnabled();await undo.click();await expect(choice(0)).toHaveAttribute('aria-pressed','true');await redo.click();await expect(choice(2)).toHaveAttribute('aria-pressed','true');
   await choice(2).focus();await page.keyboard.press('ArrowLeft');await page.keyboard.press('Escape');await expect(choice(2)).toHaveAttribute('aria-pressed','true');await expect(undo).toBeEnabled();
   await search.focus();await page.keyboard.press('ArrowLeft');await expect(choice(2)).toHaveAttribute('aria-pressed','true');
   const save=page.getByRole('button',{name:new RegExp('^'+t('保存编辑','Save edits'))});await save.click();await expect(save).toBeEnabled();await expect(save).not.toContainText('•');const graded=await imageDigest(image),compare=panel.getByRole('button',{name:t('按住对比 LUT','Hold to compare LUT')});
@@ -27,8 +31,8 @@ export async function exerciseLutBrowse(page,info,lang='zh',route='/#/tools/edit
     await panel.locator('input[type=file]').first().setInputFiles(paging.map(name=>({name,mimeType:'application/octet-stream',buffer:Buffer.from(invertCube(name))})));
     await search.fill('Paging-'+lang);await expect(panel.locator('.lut-choice')).toHaveCount(39);
     const cell=i=>panel.getByRole('button',{name:t('应用 LUT ','Apply LUT ')+paging[i],exact:true});
-    await cell(38).focus();await page.keyboard.press('ArrowRight');await expect(cell(39)).toBeFocused();await expect(panel.locator('.lut-choice')).toHaveCount(5);
-    await page.keyboard.press('ArrowDown');await expect(cell(42)).toBeFocused();await page.keyboard.press('ArrowUp');await expect(cell(39)).toBeFocused();await page.keyboard.press('ArrowUp');await expect(cell(36)).toBeFocused();await page.keyboard.press('Escape');
+    await cell(38).focus();await beforePaint(['ArrowRight','ArrowDown'],()=>expect(cell(42)).toBeFocused());await expect(panel.locator('.lut-choice')).toHaveCount(5);
+    await page.keyboard.press('ArrowUp');await expect(cell(39)).toBeFocused();await page.keyboard.press('ArrowUp');await expect(cell(36)).toBeFocused();await page.keyboard.press('Escape');
     await search.fill(prefix);await expect(choice(2)).toHaveAttribute('aria-pressed','true');await expect(undo).toBeEnabled();
   }
   // Save once more to leave the test page with no pending edit confirmation.
