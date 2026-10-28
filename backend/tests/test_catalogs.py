@@ -143,7 +143,7 @@ def test_managed_process_reopens_two_catalogs_with_fresh_sessions_and_keeps_orig
     storage.write_config(configuration,{'data_dir':str(first),'models_dir':str(catalogs/'models'),'exports_dir':str(first/'exports'),'scan_paths':[]})
     env=os.environ.copy()
     for key in ('PHOTO_DATA_DIR','PHOTO_MODELS_DIR','PHOTO_EXPORT_DIR','DASHSCOPE_API_KEY'):env.pop(key,None)
-    env.update(PHOTO_LIBRARY_CONFIG=str(configuration),PHOTO_AUTOLOAD_AI='0',LOCALAPPDATA=str(catalogs/'desktop-state'))
+    env.update(PHOTO_LIBRARY_CONFIG=str(configuration),PHOTO_AUTOLOAD_AI='0',LOCALAPPDATA=str(catalogs/'desktop-state'),XDG_STATE_HOME=str(catalogs/'desktop-state'))
     process=subprocess.Popen([sys.executable,'-m','desktop.launcher','--serve','--port','0','--duration','45','--status-file',str(status_file)],env=env,cwd=Path(__file__).resolve().parents[2],creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     opener=build_opener(ProxyHandler({}));known_pids={process.pid};last_status=None
     def status_after(previous=None):

@@ -14,7 +14,7 @@ ai.photomanagement.online {
     # Release files live in the persistent Caddy config volume; never serve its parent.
     @downloads {
         method GET HEAD
-        path /downloads/1.0/PhotoCollection-Setup-1.0-x64.exe /downloads/1.0/PhotoCollection-Windows-1.0.zip /downloads/1.0/SHA256SUMS-1.0.txt /downloads/2.7.0/PhotoCollection-Setup-2.7.0-x64.exe /downloads/2.7.0/PhotoCollection-Windows-2.7.0.zip /downloads/2.7.0/SHA256SUMS-2.7.0.txt
+        path /downloads/1.0/PhotoCollection-Setup-1.0-x64.exe /downloads/1.0/PhotoCollection-Windows-1.0.zip /downloads/1.0/SHA256SUMS-1.0.txt /downloads/2.7.0/PhotoCollection-Setup-2.7.0-x64.exe /downloads/2.7.0/PhotoCollection-Windows-2.7.0.zip /downloads/2.7.0/SHA256SUMS-2.7.0.txt /downloads/2.7.1/PhotoCollection-Setup-2.7.1-x64.exe /downloads/2.7.1/PhotoCollection-Windows-2.7.1.zip /downloads/2.7.1/SHA256SUMS-2.7.1.txt
     }
     handle @downloads {
         uri strip_prefix /downloads
