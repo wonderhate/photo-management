@@ -1,3 +1,4 @@
+import {exerciseCollagePresets} from './fixtures/collage-presets-ui.mjs';
 import {browserApiModule} from './fixtures/browser-api-module.mjs';
 import {exerciseDepthUI} from './fixtures/vision-depth-ui.mjs';
 import {exerciseVisionUI} from './fixtures/vision-ui.mjs';
@@ -1324,3 +1325,5 @@ for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`browser vision sticker 
 test('browser real local depth UI imports weights cancels and reopens the mask',async({page},info)=>{
  test.skip(!process.env.PHOTO_TEST_VISION_MODELS,'Explicit public model fixtures required');test.setTimeout(150000);const photos=await setup(page),before=await sourceHash(page);await openEditor(page,photos.find(p=>p.file_name==='Landscape-1.png').id);await exerciseDepthUI(page,info,'browser','/#/tools/edit');expect(await sourceHash(page)).toBe(before);
 });
+
+for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`browser collage six presets adapt recover export and batch ${width} ${lang}`,async({page},info)=>{test.setTimeout(120000);await page.addInitScript(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);await page.setViewportSize({width,height:1100});await page.emulateMedia({reducedMotion:'reduce'});await setup(page,lang);const before=await sourceHash(page);await page.goto('/#/tools');await page.locator('.studio-tool').filter({hasText:lang==='en'?'Photo collage':'照片拼图'}).click();await exerciseCollagePresets(page,info,lang);expect(await sourceHash(page)).toBe(before);});

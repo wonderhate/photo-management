@@ -79,7 +79,7 @@
   .timeline-sidebar, .timeline-sidebar-header, .timeline-tree,
   .album-list-toolbar, .album-overview-controls, .album-table-scroll,
   .library-toolbar, .gallery-tools, .draft-toolbar, .draft-batch, .selection-toolbar, .filter-panel, .display-panel,
-  .query-scope-bar, .facet-bar, .facet-workbench, .facet-popover, .facets, .map-controls, .map-summary, .map-actions,
+  .query-scope-bar, .facet-bar, .facet-workbench, .facet-popover, .facets, .map-controls, .map-summary, .map-actions, .map-connection, .map-selected-card, .map-view-switch,
   .editor-toolbar, .edit-stage-top, .edit-stage-controls, .editor-exif, .draft-editor-bar, .stage-toolbar,
   .editor-welcome, .studio-tool, .edit-variants article,
   .collage-toolbar, .split-toolbar, .split-presets, .split-saved,
@@ -152,7 +152,7 @@
 :root:root[data-material="liquid-glass"][data-theme] button:not(:where(
   .photo-image, .select-box, .color-dots button, .rating-stars button,
   .collage-swatch, .collage-cells > button, .palette-swatches button,
-  .map-cluster, .crop-handle, .composition-handle,
+  .map-cluster, .globe-pin, .satellite-photo-pin, .map-photo-fan button, .crop-handle, .composition-handle,
   .layer-handle, .text-handle, .lut-choice, .lut-thumbnail,
   .film-frame button, .filmstrip button, .viewer-filmstrip button,
   .public-photo-button, .public-thumbnails button
@@ -169,7 +169,7 @@
 :root:root[data-material="liquid-glass"][data-theme] button:is(.primary, .active, [aria-pressed="true"], [aria-selected="true"]):not(:where(
   .photo-image, .select-box, .color-dots button, .rating-stars button,
   .collage-swatch, .collage-cells > button, .palette-swatches button,
-  .map-cluster, .crop-handle, .composition-handle, .layer-handle, .text-handle,
+  .map-cluster, .globe-pin, .satellite-photo-pin, .map-photo-fan button, .crop-handle, .composition-handle, .layer-handle, .text-handle,
   .lut-choice, .lut-thumbnail, .film-frame button, .filmstrip button,
   .viewer-filmstrip button, .public-photo-button, .public-thumbnails button
 )) {

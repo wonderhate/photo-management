@@ -2,6 +2,29 @@ import {test,expect} from '@playwright/test';
 import {readFileSync,readdirSync,existsSync} from 'node:fs';
 const catalog=JSON.parse(readFileSync(new URL('../dist-showcase/portfolio/manifest.json',import.meta.url),'utf8'));
 
+test('public navigation keeps its remaining destinations and homepage anchors never become missing pages',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  for(const [path,section]of [['/#lumina','lumina'],['/#works','works'],['/#/#lumina','lumina'],['/en/#lumina','lumina']]){
+    await page.goto(path);await expect(page.locator('.hero')).toBeVisible();
+    await expect(page.locator('.public-state')).toHaveCount(0);
+    await expect(page.locator('#'+section)).toBeInViewport();
+    const links=page.locator('header.hdr nav a');
+    await expect(links).toHaveCount(3);
+    await expect(links.nth(1)).toHaveAttribute('href',path.startsWith('/en/')?'/en/about/':'/about/');
+    await expect(links.nth(2)).toHaveAttribute('href','/windows.html');
+  }
+  await page.goto('/#/photos');
+  await expect(page.locator('.public-lumina-actions a').first()).toHaveAttribute('href',/local=1/);
+  await page.locator('header.hdr nav a').first().click();
+  await expect(page).toHaveURL(/#works$/);await expect(page.locator('#works')).toBeInViewport();
+  await page.reload();await expect(page.locator('#works')).toBeInViewport();
+  for(const path of ['/about/','/en/lumina/']){
+    await page.goto(path);const links=page.locator('header.public-header nav a');
+    await expect(links).toHaveCount(3);await expect(links.last()).toHaveAttribute('href','/windows.html');
+    await expect(links.filter({hasText:/光影集|Lumina/})).toHaveCount(0);
+  }
+});
+
 test('personal and project pages have readable bilingual HTML, share metadata and real sitemap URLs',async({request,browser})=>{
   for(const path of ['/','/en/','/about/','/en/about/','/lumina/','/en/lumina/']){
     const response=await request.get(path);expect(response.status()).toBe(200);
@@ -24,7 +47,7 @@ test('Wonder contact and project introductions work on narrow screens with no up
   await expect(page.getByRole('status')).toContainText('QQ 已复制');
   await page.getByRole('button',{name:'切换到亮色主题'}).click();await expect(page.locator('.public-notes')).toHaveAttribute('data-theme','light');
   await page.screenshot({path:info.outputPath('wonder-about-mobile-light.png'),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'光影集项目',exact:true}).click();
+  await page.getByRole('link',{name:'了解光影集项目',exact:false}).click();
   await page.getByRole('link',{name:'EN',exact:true}).click();await expect(page).toHaveURL(/\/en\/lumina\/$/);await page.reload();
   await expect(page.getByRole('heading',{level:1})).toContainText('personal project');await expect(page.locator('.public-notes')).toHaveAttribute('data-theme','light');
   await page.screenshot({path:info.outputPath('wonder-project-mobile-en.png'),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

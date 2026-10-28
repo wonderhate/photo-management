@@ -15,7 +15,7 @@ test('development pages start under CSP with React refresh and local WebSocket a
   page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   for(const [path,selector] of [['/windows.html','.download-packages'],['/','.hero'],['/?local=1','.browser-start']]){
     const response=await page.goto('http://127.0.0.1:5185'+path);
-    assert.equal(response.status(),200);await expect(page.locator(selector)).toBeVisible();
+    assert.equal(response.status(),200);try{await expect(page.locator(selector)).toBeVisible();}catch(error){t.diagnostic(JSON.stringify({path,errors,body:(await page.locator('body').innerText()).slice(0,1000)}));throw error;}
     const csp=response.headers()['content-security-policy'];
     const nonce=await page.locator('meta[property="csp-nonce"]').evaluate(e=>e.nonce);
     assert.ok(nonce);assert.ok(csp.includes(`script-src 'self' 'nonce-${nonce}'`));

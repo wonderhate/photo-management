@@ -21,6 +21,9 @@ import type {CollagePageResult} from '../core/collage-batch-export';
 import {zipStore} from '../core/zip-store';
 import CollageTool from './CollageTool';
 import {useCollageBatchPreviews} from './useCollageBatchPreviews';
+import {applyCollagePreset,matchingCollagePreset} from '../core/collage-presets';
+import type {CollagePresetId} from '../core/collage-presets';
+import CollagePresetPicker from './CollagePresetPicker';
 import './collage.css';
 
 const labels={pending:()=>bt('待导出','Pending'),running:()=>bt('正在导出','Exporting'),completed:()=>bt('已完成','Completed'),failed:()=>bt('失败','Failed'),cancelled:()=>bt('已取消','Cancelled')};
@@ -28,6 +31,9 @@ type Address={page:number;cell:number};
 export default function CollageBatchTool({photoIds=[],initialInputs,initialScene,initialBook,project=null,suspended=false,onOpenProject,onOpenOutput,onClose}:{photoIds?:string[];initialInputs?:CollageInput[];initialScene?:CollageScene;onClose:()=>void;initialBook?:CollageBook;project?:CollageProject|null;suspended?:boolean;onOpenProject?:(record:CollageProject)=>void;onOpenOutput?:(record:CollageOutput)=>void}){
  const [projectRecord,setProjectRecord]=useState(project),[nameDirty,setNameDirty]=useState(false);
  const [book,setBook]=useState<CollageBook|null>(null),[inputs,setInputs]=useState<CollageInput[]>([]),[history,setHistory]=useState<CollageBook[]>([]),[editing,setEditing]=useState<number|null>(null);
+ const [pendingPreset,setPendingPreset]=useState<CollagePresetId|null>(null);
+ const activePreset=book?.pages.length?matchingCollagePreset(book.pages[0]):null;
+ const uniformPreset=activePreset&&book?.pages.every(p=>matchingCollagePreset(p)===activePreset)?activePreset:null;
  const [busy,setBusy]=useState(''),[error,setError]=useState(''),[progress,setProgress]=useState(''),[results,setResults]=useState<CollagePageResult[]>([]),[manifest,setManifest]=useState<CollageBook|null>(null),[chosen,setChosen]=useState<Address|null>(null),[target,setTarget]=useState('');
  const [preferences,savePreferences,readPreferences]=useToolPreferences('collageBatch',collageBatchDefaults,setError),{format,quality}=preferences;
  const [, ,readCanvasPreferences]=useToolPreferences('collage',collageDefaults,setError);
@@ -50,6 +56,8 @@ export default function CollageBatchTool({photoIds=[],initialInputs,initialScene
    else if(book){const old=new Map(book.placements.map(c=>[c.source_id,c]));value.placements=value.placements.map(c=>old.get(c.source_id)||c);value=regroupCollage({...value,pages:book.pages});}
    else if(initialScene){value.placements=structuredClone(initialScene.cells);value=regroupCollage({...value,pages:[initialScene]});}
    else value.pages=value.pages.map(p=>({...p,...canvasDefaults.canvas}));
+   const preset=book?uniformPreset:pendingPreset;
+   if(!restore&&preset)value.pages=value.pages.map(p=>applyCollagePreset(p,preset));
    validateCollageBook(value);setInputs(next);setBook(value);setHistory([]);setResults([]);setChosen(null);setTarget('');setManifest(null);saved.current=restore?JSON.stringify(value):'';exported.current=false;
   }catch(e){if(alive.current)setError(controller.signal.aborted?bt('读取已取消，原有批次保留。','Reading cancelled; the previous batch is preserved.'):browserError(e));}finally{session.close();if(worker.current===session)worker.current=null;if(alive.current){setBusy('');setProgress('');}}
  }
@@ -62,7 +70,7 @@ export default function CollageBatchTool({photoIds=[],initialInputs,initialScene
  }catch(e){if(alive.current)setError(browserError(e));}finally{if(alive.current)setBusy('');if(fileInput.current)fileInput.current.value='';}}
  async function openProject(file?:File){if(!file)return;try{if(file.size>2*1024*1024)throw new Error('Unsupported collage batch document.');const value=JSON.parse(await file.text());validateCollageBook(value);if(alive.current){setManifest(upgradeCollageBook(value));setError('');}}catch(e){if(alive.current)setError(browserError(e));}finally{if(projectInput.current)projectInput.current.value='';}}
  async function save(){if(!book)return;try{await downloadBlob(new Blob([JSON.stringify(book,null,2)],{type:'application/json'}),'Collage.pc-collage-batch.json');saved.current=JSON.stringify(book);setBook({...book});}catch(e){setError(browserError(e));}}
- function group(options:Partial<CollageGrouping>){if(!book)return;try{if(edit(regroupCollage(book,options)))savePreferences(options);}catch(e){setError(browserError(e));}}
+ function group(options:Partial<CollageGrouping>){if(!book)return;try{const next=regroupCollage(book,options);if(uniformPreset)next.pages=next.pages.map(p=>applyCollagePreset(p,uniformPreset));if(edit(next))savePreferences(options);}catch(e){setError(browserError(e));}}
  function swap(a:Address,b:Address){if(!book||a.page===b.page&&a.cell===b.cell)return;try{edit(swapCollagePages(book,a,b));}catch(e){setError(browserError(e));}}
  function release(e:React.PointerEvent<HTMLButtonElement>,cancel=false){const start=drag.current;drag.current=null;if(!start||cancel)return;if(Math.hypot(e.clientX-start.x,e.clientY-start.y)<8)return;suppressClick.current=true;const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-batch-cell]');if(hit)swap(start,{page:Number(hit.dataset.page),cell:Number(hit.dataset.batchCell)});}
  async function exportPages(){if(!book)return;setBusy('export');setError('');exported.current=false;const controller=new AbortController();abort.current=controller;const byId=new Map(inputs.map(i=>[i.id,i]));try{
@@ -72,6 +80,7 @@ export default function CollageBatchTool({photoIds=[],initialInputs,initialScene
  if(editing!==null&&book){const page=book.pages[editing];return <CollageTool initialInputs={page.sources.map(s=>inputs.find(i=>i.id===s.id)!)} initialScene={page} onClose={()=>setEditing(null)} onApply={scene=>{try{if(edit(applyCollagePage(book,editing,scene)))setEditing(null);}catch(e){setError(browserError(e));}}}/>;}
  const choices=book?.pages.flatMap((p,page)=>p.cells.map((c,cell)=>({page,cell,id:c.source_id,name:p.sources.find(s=>s.id===c.source_id)!.name})))||[];
  return <Modal wide className={'collage-modal'+(suspended?' collage-suspended':'')} title={bt('批量拼图','Batch collage')} onClose={close}><div className="collage-tool collage-batch">
+  <CollagePresetPicker batch count={book?.size} selected={book?uniformPreset:pendingPreset} disabled={!!busy||!!manifest||suspended} onSelect={id=>{if(book)edit({...book,version:2,pages:book.pages.map(p=>applyCollagePreset(p,id))});else setPendingPreset(id);}}/>
   {onOpenProject&&<CollageProjectBar document={book?{kind:'batch',value:book}:null} inputs={inputs} record={projectRecord} disabled={!!busy} onRemoved={id=>{if(projectRecord?.id===id){setProjectRecord(null);saved.current='';setBook(book?{...book}:null);}}} onNameDirty={setNameDirty} onBusy={value=>setBusy(value?'project':'')} onSaved={record=>{setProjectRecord(record);saved.current=JSON.stringify(book);setBook(book?{...book}:null);}} onOpen={record=>{if(!(dirty||hasOutput&&!exported.current)||window.confirm(bt('打开其他工程？未保存的布局和未下载的结果将丢失。','Open another project? Unsaved layouts and undownloaded outputs will be lost.')))onOpenProject(record);}}/>}
   <p className="muted">{bt('按顺序分组，逐页编辑及导出。最多 240 张 / 512 MiB；原片只读。单页最多 12 张，余图不会被静默丢弃。','Group, edit and export page by page. Up to 240 photos / 512 MiB; read-only originals. Each page holds at most 12 photos; remainders are always shown.')}</p>
   <div className="collage-toolbar"><button disabled={!!busy} onClick={()=>fileInput.current?.click()}>{manifest?bt('选择清单中的原图','Choose document originals'):bt('添加照片 / RAW','Add photos / RAW')}</button><button disabled={!!busy} onClick={()=>projectInput.current?.click()}>{bt('打开批量清单','Open batch document')}</button><button disabled={!book||!!busy} onClick={()=>void save()}>{bt('保存批量清单','Save batch document')}</button><button disabled={!history.length||!!busy} onClick={()=>{const prior=history.at(-1)!;if(edit(prior))setHistory(history.slice(0,-1));}}>{bt('撤销批量修改','Undo batch change')}</button></div>

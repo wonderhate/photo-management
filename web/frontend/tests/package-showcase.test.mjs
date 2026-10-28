@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,unlink,truncate,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,copyFile,cp,unlink,truncate,rm} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
@@ -19,14 +19,40 @@ async function fixture(){
   return root;
 }
 
-test('public package validation accepts glass, local worker, the exact map and compiled WASM without making a release',async()=>{
+async function mapFixture(root){
+  await cp(fileURLToPath(new URL('../public/maps',import.meta.url)),join(root,'maps'),{recursive:true});
+  await mkdir(join(root,'licenses'),{recursive:true});
+  await copyFile(fileURLToPath(new URL('../public/licenses/nasa-blue-marble.json',import.meta.url)),join(root,'licenses/nasa-blue-marble.json'));
+}
+
+test('public package validation accepts the complete registered map and its source record without making a release',async()=>{
   const root=await fixture();
   try{
-    await mkdir(join(root,'maps'));
-    for(const name of ['site-glass.css','site-glass.js','local-file-worker.js','maps/land-110m.json','assets/runtime.mjs','assets/runtime.wasm'])await writeFile(join(root,name),'synthetic public asset');
-    const result=validate(root);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/11 1/);
+    await mapFixture(root);
+    for(const name of ['site-glass.css','site-glass.js','local-file-worker.js','assets/runtime.mjs','assets/runtime.wasm'])await writeFile(join(root,name),'synthetic public asset');
+    const result=validate(root);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/700 1/);
     await writeFile(join(root,'maps/private.json'),'synthetic private data');
     const rejected=validate(root);assert.notEqual(rejected.status,0);assert.match(rejected.stderr,/Unexpected public artifact: maps\/private\.json/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('public package validation rejects altered, missing and unregistered map resources',async()=>{
+  const root=await fixture();
+  try{
+    await mapFixture(root);
+    for(const relative of ['maps/earth/4/31-15.jpg','maps/earth/metadata.json','maps/satellite.js','licenses/nasa-blue-marble.json']){
+      const file=join(root,relative),original=await readFile(file);
+      await writeFile(file,'synthetic replacement');
+      const changed=validate(root);assert.notEqual(changed.status,0,relative);assert.match(changed.stderr,/Map asset does not match its bundled source/);
+      await unlink(file);
+      const missing=validate(root);assert.notEqual(missing.status,0,relative);assert.match(missing.stderr,/Incomplete offline map assets/);
+      await writeFile(file,original);
+    }
+    for(const relative of ['maps/earth/4/99-99.jpg','maps/earth/private.json','maps/new-bridge.js']){
+      const file=join(root,relative);await writeFile(file,'synthetic unregistered map');
+      const result=validate(root);assert.notEqual(result.status,0,relative);assert.match(result.stderr,/Unexpected public artifact/);await unlink(file);
+    }
+    assert.equal(validate(root).status,0);
   }finally{await rm(root,{recursive:true,force:true});}
 });
 

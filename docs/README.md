@@ -1,5 +1,7 @@
 # 文档索引
 
+- [离线地球与照片地图](offline-photo-map.md)
+- [Windows 2.7.2 更新验证](windows-2.7.2-verification.md)
 - [Windows 2.7.1 公开试用验收](windows-2.7.1-verification.md)
 - [正式网站、下载与浏览器图库部署](../web/docs/windows-downloads-2026-10-28.md)
 
