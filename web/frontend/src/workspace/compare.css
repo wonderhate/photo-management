@@ -1,0 +1,16 @@
+.compare-page .compare-toolbar{flex-wrap:wrap;border-color:var(--line)}
+.compare-toolbar .controls{flex-wrap:wrap;gap:6px}
+.compare-toolbar .compare-hint{margin:6px 0 0;font-size:11px;color:var(--muted);max-width:560px}
+.compare-toolbar .compare-percent{white-space:nowrap;font-variant-numeric:tabular-nums}
+.compare-grid{min-height:0;grid-auto-rows:minmax(280px,1fr)}
+.compare-grid .compare-item{min-width:0;min-height:0}
+.compare-item[data-active=true]{box-shadow:inset 0 0 0 1px var(--accent)}
+.compare-item .image-area.compare-stage{position:relative;overflow:hidden;outline-offset:-3px;min-height:200px}
+.compare-stage[data-can-pan=true]{cursor:grab}
+.compare-stage[data-dragging=true]{cursor:grabbing;user-select:none}
+.compare-item .compare-stage img{transition:none;user-select:none}
+.compare-item .compare-select{padding:0;background:transparent;border:0;color:var(--text);text-align:left;max-width:100%;font:inherit}
+.compare-item[data-active=true] .compare-select b{color:var(--accent)}
+.compare-item .close-btn:focus-visible{opacity:1}
+.compare-error{z-index:1;padding:14px;background:var(--panel);color:var(--muted);font-size:12px}
+@media(max-width:760px){.compare-page .compare-toolbar .controls{width:100%}.compare-grid{flex:none;overflow:visible;grid-auto-rows:360px}.compare-item .image-area.compare-stage{min-height:250px}}

@@ -1,0 +1,279 @@
+{
+  "rows": [
+    {
+      "id": "a",
+      "file_name": "DSC_001.jpg",
+      "camera_model": "SONY",
+      "lens_model": "FE 85",
+      "camera_make": "Sony",
+      "tags": [
+        "山",
+        "Manual"
+      ],
+      "user_description": null,
+      "annotation": {
+        "version": 1,
+        "revision": 1,
+        "caption": "海边日出 sunrise",
+        "detected_text": "CAFE 50%_价目",
+        "tags": [
+          "已拒绝"
+        ],
+        "provider": "synthetic-local",
+        "model": "fixture",
+        "updated_at": "2026-10-25T00:00:00Z"
+      }
+    },
+    {
+      "id": "b",
+      "file_name": "SEA_002.JPG",
+      "camera_model": "Canon",
+      "lens_model": "50mm",
+      "camera_make": "Canon",
+      "tags": [
+        "旅行"
+      ],
+      "user_description": "",
+      "annotation": {
+        "version": 1,
+        "revision": 1,
+        "caption": "海边隐藏 beach",
+        "detected_text": "OPEN DAILY",
+        "tags": [
+          "已拒绝"
+        ],
+        "provider": "synthetic-local",
+        "model": "fixture",
+        "updated_at": "2026-10-25T00:00:00Z"
+      }
+    },
+    {
+      "id": "c",
+      "file_name": "sunSet.jpg",
+      "camera_model": null,
+      "lens_model": null,
+      "camera_make": null,
+      "tags": [],
+      "user_description": "人工山景%_ \"OR\"",
+      "annotation": {
+        "version": 1,
+        "revision": 1,
+        "caption": "海边隐藏",
+        "detected_text": "İSTANBUL CAFÉ",
+        "tags": [
+          "已拒绝"
+        ],
+        "provider": "synthetic-local",
+        "model": "fixture",
+        "updated_at": "2026-10-25T00:00:00Z"
+      }
+    },
+    {
+      "id": "d",
+      "file_name": "OTHER.jpg",
+      "camera_model": null,
+      "lens_model": null,
+      "camera_make": null,
+      "tags": [
+        "海滨"
+      ],
+      "user_description": null,
+      "annotation": null
+    }
+  ],
+  "cases": [
+    {
+      "name": "Chinese word",
+      "root": {
+        "op": "icontains",
+        "field": "text",
+        "value": "海边"
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "English case",
+      "root": {
+        "op": "icontains",
+        "field": "text",
+        "value": "SUNRISE"
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "short phrase",
+      "root": {
+        "op": "contains",
+        "field": "description",
+        "value": "山景"
+      },
+      "ids": [
+        "c"
+      ]
+    },
+    {
+      "name": "explicit AI captions",
+      "root": {
+        "op": "contains",
+        "field": "ai_caption",
+        "value": "海边"
+      },
+      "ids": [
+        "a",
+        "b",
+        "c"
+      ]
+    },
+    {
+      "name": "Unicode accent",
+      "root": {
+        "op": "icontains",
+        "field": "detected_text",
+        "value": "café"
+      },
+      "ids": [
+        "c"
+      ]
+    },
+    {
+      "name": "Unicode expansion",
+      "root": {
+        "op": "icontains",
+        "field": "detected_text",
+        "value": "i̇stanbul"
+      },
+      "ids": [
+        "c"
+      ]
+    },
+    {
+      "name": "literal wildcards",
+      "root": {
+        "op": "icontains",
+        "field": "text",
+        "value": "%_"
+      },
+      "ids": [
+        "a",
+        "c"
+      ]
+    },
+    {
+      "name": "raw annotation tags excluded",
+      "root": {
+        "op": "icontains",
+        "field": "text",
+        "value": "已拒绝"
+      },
+      "ids": []
+    },
+    {
+      "name": "manual blank",
+      "root": {
+        "op": "eq",
+        "field": "user_description",
+        "value": ""
+      },
+      "ids": [
+        "b"
+      ]
+    },
+    {
+      "name": "canonical empty",
+      "root": {
+        "op": "is_null",
+        "field": "description"
+      },
+      "ids": [
+        "b",
+        "d"
+      ]
+    },
+    {
+      "name": "OCR independent of blank",
+      "root": {
+        "op": "icontains",
+        "field": "detected_text",
+        "value": "open"
+      },
+      "ids": [
+        "b"
+      ]
+    },
+    {
+      "name": "tag case",
+      "root": {
+        "op": "icontains",
+        "field": "tag",
+        "value": "manual"
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "negative text",
+      "root": {
+        "op": "not",
+        "child": {
+          "op": "icontains",
+          "field": "text",
+          "value": "海边"
+        }
+      },
+      "ids": [
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "combined metadata",
+      "root": {
+        "op": "and",
+        "children": [
+          {
+            "op": "icontains",
+            "field": "text",
+            "value": "sony"
+          },
+          {
+            "op": "contains",
+            "field": "description",
+            "value": "日出"
+          }
+        ]
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "literal query syntax",
+      "root": {
+        "op": "icontains",
+        "field": "text",
+        "value": "\"OR\""
+      },
+      "ids": [
+        "c"
+      ]
+    },
+    {
+      "name": "one Chinese character",
+      "root": {
+        "op": "icontains",
+        "field": "text",
+        "value": "海"
+      },
+      "ids": [
+        "a",
+        "d"
+      ]
+    }
+  ]
+}

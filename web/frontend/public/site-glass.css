@@ -1,0 +1,142 @@
+/* Shared material for the public portfolio and downloads. Local-library UI is out of scope. */
+:is(.public-site.public-site,.windows-download.windows-download){
+  --sg-bg:#101a21;--sg-solid:#19262e;--sg-surface:rgba(29,45,54,.73);--sg-subtle:rgba(45,65,75,.38);
+  --sg-rim:rgba(205,234,244,.19);--sg-highlight:rgba(226,246,255,.2);--sg-light:rgba(182,225,255,.14);
+  --sg-text:#edf3f4;--sg-muted:#afbec5;--sg-accent:#ecd2a1;--sg-shadow:0 18px 48px #020b1524;
+  --bg:var(--sg-bg);--panel:var(--sg-solid);--text:var(--sg-text);--muted:var(--sg-muted);--line:var(--sg-rim);--accent:var(--sg-accent);
+  --dw-bg:var(--sg-bg);--dw-panel:var(--sg-solid);--dw-text:var(--sg-text);--dw-muted:var(--sg-muted);--dw-line:var(--sg-rim);--dw-gold:var(--sg-accent);
+  display:flow-root;color:var(--sg-text);background:radial-gradient(ellipse at 95% 18%,#6b977a20,transparent 43%),radial-gradient(ellipse at 4% 45%,#346a9726,transparent 42%),var(--sg-bg);
+}
+.public-site.public-site[data-theme=light],html[data-theme=light] .windows-download.windows-download{
+  --sg-bg:#eef3f4;--sg-solid:#f8fafb;--sg-surface:rgba(255,255,255,.73);--sg-subtle:rgba(255,255,255,.48);
+  --sg-rim:rgba(64,92,112,.19);--sg-highlight:rgba(255,255,255,.95);--sg-light:rgba(106,169,211,.13);
+  --sg-text:#243540;--sg-muted:#516572;--sg-accent:#715525;--sg-shadow:0 16px 40px #25455f12;
+}
+/* A two-layer surface: an edge reflection and a soft, pointer-lit interior. */
+:is(.public-site.public-site,.windows-download.windows-download) :is(.hdr,.public-header,.contact,.tile-more,.feat article,.notes-grid article,.notes-contact,.public-search,.public-lumina,.public-photo-info,.public-lightbox-bar,.public-lightbox-navigation,.public-thumbnails,.download-header,.download-package,.download-developer,.download-faq,.download-guide,.download-features article,.download-hero-art){
+  background:radial-gradient(ellipse 140px 86.6667px at var(--site-light-x,25%) var(--site-light-y,0%),var(--sg-light),transparent 75%),linear-gradient(145deg,var(--sg-highlight),transparent 28%,transparent 72%,var(--sg-highlight)),var(--sg-surface);
+  border:1px solid var(--sg-rim);border-radius:26px;box-shadow:inset 0 1px 0 var(--sg-highlight),inset 0 -1px 0 #ffffff05,var(--sg-shadow);
+  -webkit-backdrop-filter:blur(24px) saturate(140%);backdrop-filter:blur(24px) saturate(140%);
+  transition:background-color .24s ease,border-color .24s ease,box-shadow .24s ease,opacity .6s ease,transform .6s ease;
+}
+:is(.public-site.public-site,.windows-download.windows-download) [data-site-glass-lit]{border-color:color-mix(in srgb,var(--sg-rim),var(--sg-text) 15%);box-shadow:inset 0 1px 0 var(--sg-highlight),inset 0 0 28px var(--sg-light),var(--sg-shadow)}
+/* The navigation floats above the photographs, so its transmitted light stays visible. */
+.public-site.public-site .hdr{position:sticky;top:14px;z-index:20;margin:14px auto;width:calc(100% - 40px);max-width:1328px;color:var(--sg-text)}
+.public-site.public-site .hdr-in{min-height:72px;display:flex;align-items:center;gap:24px;justify-content:space-between;width:100%;padding:10px 24px}
+.public-site.public-site .home-brand{display:flex;align-items:baseline;gap:12px}
+.public-site.public-site .home-brand b{font:500 25px/1.2 var(--font-display)}
+.public-site.public-site .home-brand span{font-size:11px;color:var(--sg-muted)}
+.public-site.public-site .nav,.public-site.public-site .tools{display:flex;align-items:center;gap:6px}
+.public-site.public-site .tools{margin-left:auto}
+.public-site.public-site .nav{margin-left:auto}
+.public-site.public-site .nav a{padding:10px 15px;font-size:13px;min-height:44px;display:flex;align-items:center}
+.public-site.public-site .public-header{position:sticky;top:14px;z-index:20;margin:14px 24px;padding:14px 26px}
+.windows-download.windows-download .download-header{position:sticky;top:14px;z-index:20;margin:14px auto;max-width:1328px;width:calc(100% - 40px);padding:17px 26px}
+.public-site.public-site .hero{margin:0 20px;border-radius:32px;overflow:hidden;min-height:clamp(550px,77svh,880px);isolation:isolate}
+.public-site.public-site .hero-in{padding-top:72px;padding-bottom:50px}
+.public-site.public-site .hero h1 em{color:#f1d8ac}
+.public-site.public-site .hero-foot{align-items:center}
+.public-site.public-site button.credit{min-height:44px;padding:10px 18px;background:#13212b80;border:1px solid #ffffff38;border-radius:99px;backdrop-filter:blur(18px);color:#f8f4eb}
+.public-site.public-site .piece{border-radius:24px;overflow:hidden;box-shadow:0 15px 40px #020b151c}
+.public-site.public-site .piece .idx{background:#14212b80;padding:8px 12px;border:1px solid #ffffff40;border-radius:99px;backdrop-filter:blur(16px)}
+.public-site.public-site .piece .cap{left:14px;right:14px;bottom:14px;padding:14px 18px;background:#101b287d;border:1px solid #ffffff30;border-radius:17px;backdrop-filter:blur(18px);color:#fff8ed}
+.public-site.public-site .piece .cap span{color:#e1e6e9}
+.public-site.public-site .tile-more{padding:32px}
+.public-site.public-site .lumina{background:transparent;border-block:1px solid var(--sg-rim)}
+.public-site.public-site .feat{display:grid;gap:14px}
+.public-site.public-site .feat article{padding:26px;gap:24px}
+.public-site.public-site .contact{padding:32px}
+.public-site.public-site .qq{padding:20px 0;border-bottom:0}
+.public-site.public-site .chips li{background:var(--sg-subtle);border:1px solid var(--sg-rim);border-radius:99px;padding:8px 13px}
+.public-site.public-site .ftr{background:transparent;border-top:1px solid var(--sg-rim)}
+.public-site.public-site .ftr-in{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-block:30px}
+.public-site.public-site .ftr nav{display:flex;flex-wrap:wrap;gap:20px}
+.public-site.public-site .public-skip:not(:focus){clip-path:inset(50%);width:1px;height:1px;overflow:hidden;padding:0;white-space:nowrap}
+.public-site.public-site .notes-main{padding-top:76px}
+.public-site.public-site .notes-grid article{padding:28px}
+.public-site.public-site .notes-contact{padding:36px;margin-top:28px;scroll-margin-top:140px}
+.public-site.public-site .notes-intro{position:relative}
+.public-site.public-site .public-section{scroll-margin-top:140px}
+.public-site.public-site .public-search{border-radius:99px;overflow:hidden}
+.public-site.public-site .public-search input{background:transparent;border:0;box-shadow:none}
+.public-site.public-site .public-collection{border-radius:26px;overflow:hidden}
+.public-site.public-site .public-lumina{margin:24px}
+.public-site.public-site .public-lightbox{background:var(--sg-bg)}
+.public-site.public-site .public-lightbox-bar{margin:12px 12px 6px;border-radius:20px}
+.public-site.public-site .public-lightbox-stage{background:transparent}
+.public-site.public-site .public-photo-info{margin:8px 12px 8px 0;padding:24px}
+.public-site.public-site .public-lightbox-navigation{margin:6px 12px;border-radius:18px}
+.public-site.public-site .public-thumbnails{margin:0 12px 12px;border-radius:18px}
+.public-site.public-site .public-thumbnails button{border-radius:10px;overflow:hidden}
+/* Shared control geometry and a small elastic response; text remains above the sheen. */
+:is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.icon-btn,.lang,.nav a,.tools button,.public-actions button,.public-actions>a,.copy,.public-primary,.public-secondary,.notes-qq button,.public-photo-info button,.public-lightbox-navigation button,.download-header-actions button,.download-back,.download-button,.download-contact button,.download-checksum button){
+  min-height:44px;border-radius:99px;border:1px solid var(--sg-rim);background:linear-gradient(150deg,var(--sg-highlight),transparent 55%),var(--sg-subtle);
+  box-shadow:inset 0 1px 0 var(--sg-highlight),0 4px 12px #020b150a;color:var(--sg-text);transition:background-color .2s,border-color .2s,box-shadow .2s,transform .24s cubic-bezier(.2,.8,.3,1);
+}
+:is(.public-site.public-site,.windows-download.windows-download) :is(.btn-primary,.public-primary,.download-button.primary){background:linear-gradient(135deg,#f8e9c9,#d6b879);border-color:#fff0cb9c;color:#302817;box-shadow:inset 0 1px 0 #fff8e8,0 5px 18px #c99e4820}
+.public-site.public-site .hero .btn-ghost{--sg-text:#f8f4eb;--sg-subtle:#16243166;--sg-rim:#ffffff50;--sg-highlight:#ffffff23;backdrop-filter:blur(18px)}
+:is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.nav a,.icon-btn,.lang,.copy,.public-primary,.public-secondary,.download-button,.download-header-actions button):hover{box-shadow:inset 0 1px 0 var(--sg-highlight),0 0 20px var(--sg-light);border-color:var(--sg-accent)}
+:is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.icon-btn,.lang,.copy,.public-primary,.public-secondary,.download-button,.download-header-actions button):active{transform:scale(.98)}
+:is(.public-site.public-site,.windows-download.windows-download) :focus-visible{outline:2px solid var(--sg-accent);outline-offset:4px}
+.windows-download.windows-download .download-hero{padding:76px 0 60px}
+.windows-download.windows-download .download-hero-art{min-height:330px;overflow:hidden;background:radial-gradient(ellipse at 25% 0%,#e7c98924,transparent 65%),radial-gradient(ellipse at 90% 95%,#73b5e73b,transparent 65%),var(--sg-surface)}
+.windows-download.windows-download .download-orbit{width:240px;height:240px;border-color:var(--sg-rim)}
+.windows-download.windows-download .download-app-icon{background:linear-gradient(135deg,var(--sg-highlight),transparent),var(--sg-subtle);border-color:var(--sg-highlight);box-shadow:inset 0 1px 0 var(--sg-highlight),0 24px 50px #020b1530;backdrop-filter:blur(18px)}
+.windows-download.windows-download .download-art-word{position:relative}
+.windows-download.windows-download .download-bottom-grid{gap:22px;padding-bottom:42px}
+.windows-download.windows-download .download-faq{padding:30px}
+.windows-download.windows-download .download-package.recommended{padding-top:30px;border-top:1px solid #d9bf8c88}
+.windows-download.windows-download .download-package-top span{padding:6px 12px;border:1px solid var(--sg-rim);border-radius:99px;background:var(--sg-subtle)}
+.windows-download.windows-download .download-features{gap:18px;border:0;padding-block:36px}
+.windows-download.windows-download .download-features article{padding:24px}
+.windows-download.windows-download .download-guide{padding:32px;gap:40px;margin-bottom:24px}
+.windows-download.windows-download .download-contact button{width:44px;height:44px;flex-shrink:0}
+.windows-download.windows-download .download-button.primary:hover{background:linear-gradient(135deg,#fff2d6,#dfc487);filter:none;color:#302817}
+.windows-download.windows-download .download-checksum summary{min-height:44px;align-content:center}
+.windows-download.windows-download .download-header-actions .download-back{padding:0 14px}
+.windows-download.windows-download .download-header-actions button{min-width:44px}
+.windows-download.windows-download .download-footer{border-color:var(--sg-rim)}
+@media(hover:hover) and (pointer:fine){
+  :is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.public-primary,.public-secondary,.download-button):hover{transform:translateY(-2px)}
+  :is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.public-primary,.public-secondary,.download-button):active{transform:translateY(0) scale(.98)}
+}
+@media(max-width:760px){
+  .public-site.public-site .hdr,.windows-download.windows-download .download-header{top:8px;margin:8px auto;width:calc(100% - 24px);border-radius:23px}
+  .public-site.public-site .hdr-in{padding:10px 14px;flex-wrap:wrap;gap:4px 10px;min-height:64px}
+  .public-site.public-site .home-brand span{display:none}
+  .public-site.public-site .nav{display:flex;order:3;width:100%;justify-content:space-between;border-top:1px solid var(--sg-rim);padding-top:6px;margin-top:4px;gap:4px}
+  .public-site.public-site .nav a{justify-content:center;padding:8px 10px;flex:1;font-size:12px}
+  .public-site.public-site .hero{margin:0 12px;border-radius:26px}
+  .public-site.public-site .hero-in{padding:48px 24px 32px}
+  .public-site.public-site .piece{border-radius:22px}
+  .public-site.public-site .contact,.public-site.public-site .tile-more,.public-site.public-site .notes-contact{padding:24px}
+  .public-site.public-site .feat article{padding:22px;gap:16px}
+  .public-site.public-site .public-header{top:8px;margin:8px 12px;padding:14px 18px;border-radius:23px}
+  .public-site.public-site .public-header nav{flex-wrap:wrap;gap:6px 12px}
+  .public-site.public-site .notes-main{padding-top:36px}
+  .public-site.public-site .public-photo-info{margin:4px 10px;padding:18px;border-radius:18px}
+  .public-site.public-site .ftr-in{flex-direction:column;align-items:flex-start}
+  .windows-download.windows-download .download-header{padding:14px 16px;gap:8px}
+  .windows-download.windows-download .download-header-actions{gap:4px}
+  .windows-download.windows-download .download-header-actions .download-back{padding:0 10px}
+  .windows-download.windows-download .download-brand{gap:7px}
+  .windows-download.windows-download .download-brand>span{font-size:20px}
+  .windows-download.windows-download .download-hero{padding:44px 0}
+  .windows-download.windows-download .download-faq,.windows-download.windows-download .download-guide{padding:24px}
+  .windows-download.windows-download .download-hero-art{min-height:270px}
+  .windows-download.windows-download .download-orbit{width:160px;height:160px}
+}
+@media(prefers-reduced-motion:reduce){
+  html:has(.public-site,.windows-download){scroll-behavior:auto}
+  :is(.public-site.public-site,.windows-download.windows-download) *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+  :is(.public-site.public-site,.windows-download.windows-download) :is(.btn,.public-primary,.public-secondary,.download-button):is(:hover,:active){transform:none}
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  :is(.public-site.public-site,.windows-download.windows-download){--sg-surface:var(--sg-solid);--sg-subtle:var(--sg-solid);--sg-light:transparent;--sg-highlight:transparent;--sg-rim:var(--sg-muted)}
+  :is(.public-site.public-site,.windows-download.windows-download) *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .public-site.public-site :is(button.credit,.piece .cap,.piece .idx,.hero .btn-ghost){background:#12212e;color:#fff}
+}
+@media(forced-colors:active){
+  :is(.public-site.public-site,.windows-download.windows-download){--sg-surface:Canvas;--sg-subtle:Canvas;--sg-text:CanvasText;--sg-rim:CanvasText;--sg-accent:LinkText;--sg-light:transparent;--sg-highlight:transparent;background:Canvas;color:CanvasText}
+  :is(.public-site.public-site,.windows-download.windows-download) *{box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}

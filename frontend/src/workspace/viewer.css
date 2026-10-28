@@ -1,0 +1,16 @@
+.viewer-tools{position:absolute;z-index:4;left:50%;bottom:12px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:4px;max-width:calc(100% - 24px);padding:6px 8px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;box-shadow:0 4px 20px #0002;transition:opacity .18s;opacity:1}
+.viewer-tools[data-visible=false]{opacity:0;pointer-events:none}
+.viewer-tools:focus-within{opacity:1;pointer-events:auto}
+:root:root[data-theme] .viewer-tools button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:32px;min-height:32px;padding:5px 8px;font-size:11px;background:transparent;color:var(--text);border:0;border-radius:5px;white-space:nowrap}
+:root:root[data-theme] .viewer-tools button.active{color:var(--accent);background:var(--surface)}
+.viewer-tools button:disabled{opacity:.35}
+.viewer-tools .viewer-percent{display:flex;flex-direction:row;gap:2px;align-items:center;font-size:11px;white-space:nowrap}
+:root:root[data-theme] .viewer-percent input{width:58px;min-height:32px;padding:4px;font-size:11px;text-align:center;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:4px;appearance:textfield}
+.viewer-percent input::-webkit-inner-spin-button,.viewer-percent input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+:root:root[data-theme] .photo-viewer .detail-image[data-can-pan=true]{cursor:grab}
+:root:root[data-theme] .photo-viewer .detail-image[data-dragging=true]{cursor:grabbing;user-select:none}
+:root:root[data-theme] .photo-viewer .photo-detail.proofing .detail-image{background:#fff}
+.photo-detail.proofing .detail-image::before,.photo-detail.proofing .detail-image::after,.photo-detail.proofing :is(.snow-layer,.film-grain,.shutter-flash,.viewfinder,.aperture-intro){display:none!important}
+.photo-detail.proofing .detail-image>img{box-shadow:none;animation:none!important}
+@media(max-width:760px){.viewer-tools{gap:2px;padding:5px 6px}.viewer-tools .viewer-tool-label{display:none}:root:root[data-theme] .viewer-tools button{min-width:32px;padding:5px 6px}.viewer-tools .viewer-percent input{width:54px}}
+@media(prefers-reduced-motion:reduce){.viewer-tools{transition:none}}

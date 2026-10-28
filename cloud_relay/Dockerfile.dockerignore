@@ -1,0 +1,10 @@
+**
+!cloud_relay/
+!cloud_relay/app.py
+!cloud_relay/__init__.py
+!cloud_relay/requirements.txt
+!backend/
+!backend/app/
+!backend/app/art_schemas.py
+!backend/app/services/
+!backend/app/services/qwen_protocol.py

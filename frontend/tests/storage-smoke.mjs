@@ -20,7 +20,7 @@ try {
   if(liveCount<beforeCount)throw new Error('Gallery count regressed');
   await fs.mkdir('verification',{recursive:true});
   await page.screenshot({path:'verification/storage-import-progress.png',fullPage:true});
-  await page.locator('.photo-image').first().click();
+  await page.locator('.photo-image').first().dblclick();
   await page.getByRole('button',{name:'制作水印',exact:true}).click();
   await page.locator('.render-stage img').waitFor();
   await page.getByLabel('文件名模板',{exact:true}).fill('目录验证_20260930');

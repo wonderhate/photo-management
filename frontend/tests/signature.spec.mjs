@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures/native-runtime.mjs';
 import {execFileSync} from 'node:child_process';
 import {join} from 'node:path';
 

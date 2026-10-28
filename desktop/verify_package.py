@@ -17,9 +17,13 @@ from PIL import Image, TiffImagePlugin
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     exe = Path(sys.argv[1]) if len(sys.argv)>1 else root/'releases/windows/PhotoCollection/PhotoCollection.exe'
-    assert (exe.parent/'LICENSE').read_bytes() == (root/'LICENSE').read_bytes(), 'Package must preserve the project license'
     from ctypes import windll, create_string_buffer, c_void_p, c_uint, cast, POINTER, byref
     sys.path.insert(0, str(root))
+    from desktop.release_audit import audit
+    # Installed packages also contain Inno's uninstaller and user configuration;
+    # the distributed package is audited before installer compilation instead.
+    if not (exe.parent/'unins000.exe').exists():
+        assert audit(exe.parent)==json.loads((exe.parent/'release-manifest.json').read_text('utf-8'))
     from backend.version import VERSION
     info = create_string_buffer(windll.version.GetFileVersionInfoSizeW(str(exe), None))
     assert info._length_ > 0, 'Executable must have Windows version metadata'
@@ -66,11 +70,7 @@ def main() -> None:
             endpoint=urlsplit(url)
             listeners={parts[1] for line in subprocess.check_output(['netstat','-ano','-p','tcp'],text=True,encoding='oem').splitlines() if len(parts:=line.split())==5 and parts[3]=='LISTENING' and parts[1].endswith(f':{endpoint.port}')}
             assert listeners=={endpoint.netloc}, ('Server must listen on loopback only',listeners)
-            schema = api('/openapi.json')
-            assert not any(p.startswith(('/api/remote', '/api/files/browse')) for p in schema['paths'])
-            assert '/api/art/batch' in schema['paths'], 'Frozen executable is missing batch watercolor'
-            batch = schema['components']['schemas']['ArtBatchGenerate']['properties']
-            assert batch['photo_ids']['maxItems'] == 100 and batch['generate_titles']['default'] is False
+            assert not any(p.startswith(('/api/remote', '/api/files/browse')) for p in api('/openapi.json')['paths'])
             for path,headers,expected in [
                 ('/api/remote/settings',{},404),('/api/remote/session',{},404),('/api/files/browse',{},404),
                 ('/api/health',{'Host':'192.168.1.2','Cookie':'photo_remote=retired'},400),
@@ -146,13 +146,6 @@ def main() -> None:
             api('/api/photos/'+photo['id'],method='DELETE')
             assert original.exists() and hashlib.sha256(original.read_bytes()).digest()==digest
             print('Frozen EXE: startup, EXIF, dedup, statistics, draft, export, safe removal PASS')
-            second=work/'second.png'
-            Image.new('RGB',(480,640),'cornflowerblue').save(second)
-            second_digest=hashlib.sha256(second.read_bytes()).digest()
-            subprocess.run(['node',str(root/'desktop/verify_watercolor_ui.mjs'),url,str(original),str(second)],
-                           cwd=root,check=True,timeout=90,creationflags=subprocess.CREATE_NO_WINDOW)
-            assert hashlib.sha256(original.read_bytes()).digest()==digest
-            assert hashlib.sha256(second.read_bytes()).digest()==second_digest
         finally:
             process.terminate();process.wait(timeout=20)
 

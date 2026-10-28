@@ -67,6 +67,7 @@
 .autocomplete-panel button.active,.autocomplete-panel button:hover{background:#2e362c;color:#e4e9dc}
 .autocomplete-panel .ac-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .autocomplete-panel small{font-size:9px;color:#74816f;border:1px solid #3d4739;border-radius:3px;padding:1px 5px}
+.autocomplete-panel>small[role=status]{display:block;border:0;padding:8px 10px;color:var(--muted);line-height:1.6}
 
 /* ── Shortcuts Help ── */
 .shortcuts-list{display:flex;flex-direction:column;gap:0}
@@ -124,6 +125,29 @@
 .faces-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:20px}
 .face-card{background:#1b231c;border:1px solid #303d2e;border-radius:8px;padding:16px;min-width:0;overflow:hidden}
 .face-card h3{font-size:14px;color:#d4dbc4;overflow-wrap:anywhere}
+.person-heading{display:flex;align-items:center;gap:12px;min-width:0}
+.person-cover{width:64px;height:64px;object-fit:cover;border-radius:50%;flex-shrink:0;background:var(--panel)}
+.person-cover-empty{display:grid;place-items:center;font-size:22px;color:var(--muted)}
+.person-management,.person-review-tools{margin:18px 0}
+.person-management .error-box button{margin-inline-start:12px}
+.person-history>.row{justify-content:space-between;gap:12px;margin-top:12px}
+.person-history span{overflow-wrap:anywhere;min-width:0}
+.person-merge-dialog fieldset{border:1px solid var(--line);border-radius:8px;padding:12px;max-height:36vh;overflow:auto}
+.person-merge-dialog .person-choice{display:flex;flex-direction:row;align-items:center;gap:8px;margin:10px 0;overflow-wrap:anywhere}
+.person-choice input,.face-review-actions input{width:auto;flex-shrink:0}
+.person-merge-preview{overflow-wrap:anywhere}
+.person-review-tools>.row{margin-bottom:12px}
+.person-review-tools input{max-width:100%;min-width:0}
+.face-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.face-review-actions label{display:flex;flex-direction:row;align-items:center;gap:6px}
+.face-group-decisions{margin:14px 0}
+.face-group-dialog fieldset{border:1px solid var(--line);border-radius:8px;padding:12px;max-height:38vh;overflow:auto}
+.face-group-dialog .person-choice{display:flex;flex-direction:row;align-items:center;gap:8px;margin:10px 0;overflow-wrap:anywhere}
+.face-group-dialog .person-choice span{min-width:0}
+.face-group-dialog>.row{gap:8px;flex-wrap:wrap}
+.face-group-pager{align-items:center;margin:12px 0}
+.face-group-preview{overflow-wrap:anywhere}
+.face-group-dialog .error-box button{margin-inline-start:12px}
 .face-card p{font-size:12px;color:#adbba6;margin-top:8px}
 .face-card>.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .face-card button{font-size:12px;padding:8px 10px;max-width:100%;white-space:normal}

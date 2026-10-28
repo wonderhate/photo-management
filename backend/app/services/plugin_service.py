@@ -8,6 +8,7 @@ from ..config import USER_ROOT
 PLUGINS = USER_ROOT / 'plugins'
 
 class PluginContext:
+    api_version = 1
     def __init__(self, params: dict) -> None:
         self.params = params
         self.log: list[str] = []
@@ -19,12 +20,13 @@ class PluginContext:
     def photos(self, limit: int = 500, offset: int = 0, **filters) -> list[dict]:
         from . import library_service
         q = library_service.query_photos({k: v for k, v in filters.items() if v not in (None, '')}, 'capture')
-        with Session() as session:
-            photos = session.scalars(q.order_by(Photo.id).offset(max(0,int(offset))).limit(max(1, min(int(limit), 2000)))).all()
-            return [dict(id=p.id, file_name=p.file_name, file_path=p.file_path, camera_model=p.camera_model,
-                         lens_model=p.lens_model, focal_length=p.focal_length, f_number=p.f_number, iso=p.iso,
-                         date_taken=p.date_taken, favorite=p.favorite, rating=p.rating, color_label=p.color_label,
-                         is_raw=p.is_raw) for p in photos]
+        # The plugin sees its own uncommitted changes; every ctx.update still
+        # belongs to the outer run transaction and rolls back on failure.
+        photos = self.session.scalars(q.order_by(Photo.id).offset(max(0,int(offset))).limit(max(1, min(int(limit), 2000)))).all()
+        return [dict(id=p.id, file_name=p.file_name, file_path=p.file_path, camera_model=p.camera_model,
+                     lens_model=p.lens_model, focal_length=p.focal_length, f_number=p.f_number, iso=p.iso,
+                     date_taken=p.date_taken, favorite=p.favorite, rating=p.rating, color_label=p.color_label,
+                     is_raw=p.is_raw) for p in photos]
 
     def update(self, photo_id: str, favorite=None, rating=None, color_label=None, add_tags=None) -> None:
         from ..schemas import PhotoUpdate
@@ -39,6 +41,7 @@ class PluginContext:
                 photo.favorite = bool(favorite)
             if rating is not None:
                 photo.rating = validated.rating
+                photo.rating_source = 'manual'
             if color_label is not None:
                 photo.color_label = None if validated.color_label=='none' else validated.color_label
             if add_tags:
@@ -71,7 +74,7 @@ def discover() -> list[dict]:
     return result
 
 def run(name: str, params: dict) -> dict:
-    if name not in {p['name'] for p in discover()}:
+    if name not in {p['name'] for p in discover() if not p.get('error')}:
         raise ValueError('插件不存在')
     module = _load(PLUGINS / f'{name}.py')
     context = PluginContext(params or {})

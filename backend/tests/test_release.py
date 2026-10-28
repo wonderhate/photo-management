@@ -8,8 +8,12 @@ def test_local_browser_security_headers(client):
         assert response.headers['X-Content-Type-Options'] == 'nosniff'
         assert response.headers['X-Frame-Options'] == 'DENY'
         assert response.headers['Referrer-Policy'] == 'no-referrer'
+        assert response.headers['Cross-Origin-Opener-Policy']=='same-origin'
+        assert response.headers['Cross-Origin-Embedder-Policy']=='require-corp'
     policy = client.get('/').headers['Content-Security-Policy']
     assert "script-src 'self'" in policy and "frame-ancestors 'none'" in policy
+    assert 'unsafe-eval' not in policy
+    assert 'unsafe-eval' in client.get('/raw-1.6.0/worker.js').headers['Content-Security-Policy']
     assert 'Content-Security-Policy' not in client.get('/docs').headers
     blocked = client.post('/api/library/scan', headers={'Origin': 'https://untrusted.example'})
     assert blocked.status_code == 403 and blocked.headers['X-Frame-Options'] == 'DENY'

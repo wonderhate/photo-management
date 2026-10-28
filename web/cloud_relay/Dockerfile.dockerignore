@@ -1,0 +1,7 @@
+**
+!cloud_relay/
+!cloud_relay/__init__.py
+!cloud_relay/app.py
+!cloud_relay/protocol.py
+!cloud_relay/schemas.py
+!cloud_relay/requirements.txt

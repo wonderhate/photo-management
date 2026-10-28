@@ -19,7 +19,7 @@ class DraftStatus(BaseModel):
 
 class DraftExport(BaseModel):
     output_directory: str | None = Field(default=None, max_length=4096)
-    format: Literal['jpg', 'png'] | None = None
+    format: Literal['jpg', 'png', 'webp'] | None = None
     quality: int | None = Field(default=None, ge=1, le=100)
     long_edge: int | None = Field(default=None, ge=0, le=16000)
     filename_template: str | None = Field(default=None, min_length=1, max_length=180)

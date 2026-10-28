@@ -1,5 +1,8 @@
 """Install, upgrade and uninstall the real installer using only isolated test data."""
 import json
+from contextlib import closing
+import hashlib
+import sqlite3
 import os
 from pathlib import Path
 import shutil
@@ -14,11 +17,15 @@ KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{BCED57B5-7474-45C9-
 
 
 def registration() -> dict[str, str] | None:
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY, access=winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as key:
-            return {name: winreg.QueryValueEx(key, name)[0] for name in ('InstallLocation', 'DisplayVersion')}
-    except FileNotFoundError:
-        return None
+    for hive in (winreg.HKEY_CURRENT_USER,winreg.HKEY_LOCAL_MACHINE):
+        for view in (winreg.KEY_WOW64_64KEY,winreg.KEY_WOW64_32KEY):
+            try:entry=winreg.OpenKey(hive,KEY,access=winreg.KEY_READ|view)
+            except FileNotFoundError:continue
+            with entry:
+                try:return {name:winreg.QueryValueEx(entry,name)[0] for name in ('InstallLocation','DisplayVersion')}
+                except FileNotFoundError:
+                    raise RuntimeError('An incomplete installed registration exists; use a separate Windows test account.') from None
+    return None
 
 
 def main() -> None:
@@ -38,6 +45,9 @@ def main() -> None:
         args = ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/DIR=' + str(install), '/GROUP=' + group]
         config = install / 'library-config.json'
         saved = None
+        original = work / 'synthetic-original.jpg'
+        original.write_bytes(b'synthetic source whose bytes must survive installation')
+        original_hash = hashlib.sha256(original.read_bytes()).hexdigest()
         def run(command: list[str]) -> None:
             subprocess.run(command, check=True, timeout=180, creationflags=subprocess.CREATE_NO_WINDOW)
         try:
@@ -49,13 +59,30 @@ def main() -> None:
             assert not (install / 'library-config.json').exists(), 'Private build configuration was distributed'
             config.write_text(json.dumps({'data_dir': str(data), 'scan_paths': []}), encoding='utf-8')
             saved = config.read_bytes()
+            seed_env=os.environ|{'PHOTO_DATA_DIR':str(data),'PHOTO_LIBRARY_CONFIG':str(work/'seed-config.json'),
+                'PHOTO_MODELS_DIR':str(work/'models'),'PHOTO_EXPORT_DIR':str(work/'exports'),'PHOTO_AUTOLOAD_AI':'0'}
+            # A previous-schema synthetic library exercises the application's
+            # startup migration after installation, not only an unrelated sentinel.
+            subprocess.run([sys.executable,'-c',
+                "from backend.app.models import initialize; initialize(); import sqlite3,sys; "
+                "c=sqlite3.connect(sys.argv[1]); c.execute('DROP TABLE vision_assets'); "
+                "c.execute('PRAGMA user_version=27'); c.commit(); c.close()",str(data/'library.db')],
+                cwd=ROOT,env=seed_env,check=True,timeout=60,creationflags=subprocess.CREATE_NO_WINDOW)
+            old_database=(data/'library.db').read_bytes()
             run([str(installer), *args, '/LOG=' + str(work / 'upgrade.log')])
-            assert config.read_bytes() == saved and sentinel.is_file(), 'Upgrade replaced user data/configuration'
+            assert config.read_bytes() == saved and sentinel.is_file() and (data/'library.db').read_bytes()==old_database, 'Upgrade replaced user data/configuration'
             run([sys.executable, str(ROOT / 'desktop/verify_package.py'), str(exe)])
             status = work / 'window.json'
-            env = os.environ | {'LOCALAPPDATA': str(work / 'profile'), 'PHOTO_DATA_DIR': str(work / 'window-data'), 'PHOTO_EXPORT_DIR': str(work / 'exports'), 'PHOTO_MODELS_DIR': str(work / 'models'), 'PHOTO_AUTOLOAD_AI': '0'}
+            env = seed_env | {'LOCALAPPDATA': str(work / 'profile')}
             subprocess.run([str(exe), '--window-check', '--status-file', str(status)], env=env, check=True, timeout=90, creationflags=subprocess.CREATE_NO_WINDOW)
             assert json.loads(status.read_text())['window_loaded'] is True, 'Native window did not load'
+            with closing(sqlite3.connect(data/'library.db')) as db:
+                assert db.execute('PRAGMA user_version').fetchone()[0]==28
+                assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
+            backups=list((data/'backups').glob('*.db'))
+            assert len(backups)==1
+            with closing(sqlite3.connect(backups[0])) as db:assert db.execute('PRAGMA user_version').fetchone()[0]==27
+            assert hashlib.sha256(original.read_bytes()).hexdigest()==original_hash
             print('Installer: installation, shortcuts, preserved configuration, upgrade and actual application PASS')
         finally:
             entry = registration()
@@ -70,6 +97,7 @@ def main() -> None:
             assert not shortcuts.exists(), 'Start menu entries were left behind'
             if saved is not None:
                 assert config.read_bytes() == saved and sentinel.is_file(), 'Uninstall removed user data/configuration'
+                assert (data/'library.db').is_file() and hashlib.sha256(original.read_bytes()).hexdigest()==original_hash
             # Inno's temporary uninstaller can still hold its log after removing the registration.
             for _ in range(200):
                 try:

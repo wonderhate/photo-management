@@ -1,0 +1,10 @@
+{
+  "initial":{"tags":["Manual","旅行","__proto__","toString"],"user_description":""},
+  "steps":[
+    {"ai":{"caption":"First AI","tags":["山","溪","Manual","__proto__"]},"origins":{"Manual":"user","旅行":"user","__proto__":"user","toString":"user","山":"ai","溪":"ai"},"rejected":[],"description":null,"source":"user"},
+    {"manual":{"add_tags":["溪","constructor"],"remove_tags":["山"]},"origins":{"Manual":"user","旅行":"user","__proto__":"user","toString":"user","溪":"user","constructor":"user"},"rejected":["山"],"description":null,"source":"user"},
+    {"ai":{"caption":"Second AI","tags":["山","云"]},"origins":{"Manual":"user","旅行":"user","__proto__":"user","toString":"user","溪":"user","constructor":"user","云":"ai"},"rejected":["山"],"description":null,"source":"user"},
+    {"manual":{"user_description":null},"origins":{"Manual":"user","旅行":"user","__proto__":"user","toString":"user","溪":"user","constructor":"user","云":"ai"},"rejected":["山"],"description":"Second AI","source":"ai"},
+    {"manual":{"restore_ai_tags":["山"]},"origins":{"Manual":"user","旅行":"user","__proto__":"user","toString":"user","溪":"user","constructor":"user","云":"ai","山":"ai"},"rejected":[],"description":"Second AI","source":"ai"}
+  ]
+}

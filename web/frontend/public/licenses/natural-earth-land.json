@@ -1,0 +1,15 @@
+{
+  "name": "Natural Earth 1:110m land",
+  "version": "4.1.0",
+  "license": "Public domain",
+  "authors": [
+    "Tom Patterson",
+    "Nathaniel Vaughn Kelso",
+    "Natural Earth contributors"
+  ],
+  "source": "https://naturalearth.s3.amazonaws.com/110m_physical/ne_110m_land.zip",
+  "source_page": "https://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/",
+  "terms": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "sha256": "1926c621afd6ac67c3f36639bb1236134a48d82226dc675d3e3df53d02d2a3de",
+  "conversion": "Polygon coordinates rounded to 0.001 degrees; equirectangular SVG path data. No administrative boundaries or place labels."
+}

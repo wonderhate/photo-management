@@ -1,0 +1,15 @@
+import {test,expect} from './fixtures/native-runtime.mjs';
+import {exerciseComposition,pngPixelsDigest} from './fixtures/composition-ui.mjs';
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {join} from 'node:path';
+
+for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`interactive composition preserves one-step undo, geometry, reopen and exact export ${width} ${lang}`,async({page,request},info)=>{
+  test.setTimeout(60000);const text=(zh,en)=>lang==='en'?en:zh,health=await(await request.get('/api/health')).json();expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');const filename=`AF32-ui-${width}.png`,path=join(health.data_dir,filename);
+  execFileSync(process.env.PHOTO_TEST_PYTHON||'python',['-c',"from PIL import Image,ImageDraw;import sys;im=Image.new('RGB',(640,480),(40,90,130));d=ImageDraw.Draw(im);[d.rectangle((x,y,x+39,y+39),fill=(x%256,y%256,(x+y)%256)) for x in range(0,640,40) for y in range(0,480,40)];im.save(sys.argv[1])",path]);const hash=()=>createHash('sha256').update(readFileSync(path)).digest('hex'),before=hash();
+  await page.addInitScript(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('onboarded','1');localStorage.setItem('theme',lang==='en'?'light':'dark')},lang);await page.setViewportSize({width,height:1100});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/tools/darkroom');await page.locator('.editor-toolbar input[type=file]').setInputFiles(path);await expect(page.locator('.edit-image img')).toHaveJSProperty('naturalWidth',640);
+  const result=await exerciseComposition(page,info,lang);await page.getByRole('button',{name:new RegExp('^'+text('保存编辑','Save edits'))}).click();let saved;await expect.poll(async()=>{saved=(await(await request.get('/api/editor/edits?search='+filename)).json()).edits[0];return saved?.recipe?.version;}).toBe(2);expect(saved.recipe.composition).toEqual({source_width:640,source_height:480,angle:result.angle,aspect:2/3});expect(saved.recipe.rotation).toBe(90);expect(saved.recipe.flipY).toBe(true);
+  await page.reload();await page.locator('.edit-records>div').filter({hasText:filename}).getByRole('button').first().click();await expect(page.locator('.edit-image img')).toHaveJSProperty('naturalWidth',result.width);await expect(page.locator('.edit-image img')).toHaveJSProperty('naturalHeight',result.height);
+  const exportPanel=page.locator('.edit-controls details').last();await exportPanel.getByRole('combobox').selectOption('png');await page.getByRole('spinbutton',{name:text('导出最长边','Export long edge'),exact:true}).fill('0');const download=page.waitForEvent('download');await exportPanel.getByRole('button',{name:text('另存并下载','Save & download'),exact:true}).click();const out=info.outputPath('composition-native.png');await(await download).saveAs(out);const bytes=readFileSync(out);expect([bytes.readUInt32BE(16),bytes.readUInt32BE(20)]).toEqual([result.width,result.height]);expect(await pngPixelsDigest(page,bytes)).toBe(result.digest);expect(hash()).toBe(before);
+});

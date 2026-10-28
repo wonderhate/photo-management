@@ -19,7 +19,19 @@ class ArtLayout(BaseModel):
         return value.strip()
 
 
-class ArtGenerate(BaseModel):
+class CloudAuthorization(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    cloud_confirmed: bool = Field(strict=True)
+
+    @field_validator('cloud_confirmed')
+    @classmethod
+    def explicit_cloud_confirmation(cls, value):
+        if value is not True:
+            raise ValueError('Confirm the cloud upload and possible charge before submitting.')
+        return value
+
+
+class ArtGenerate(CloudAuthorization):
     model_config = ConfigDict(extra='forbid')
     photo_id: str = Field(min_length=1, max_length=64)
     layout: ArtLayout = Field(default_factory=ArtLayout)
@@ -28,13 +40,13 @@ class ArtGenerate(BaseModel):
     description: str = Field(default='', max_length=1500)
 
 
-class ArtTitleRequest(BaseModel):
+class ArtTitleRequest(CloudAuthorization):
     photo_id: str = Field(min_length=1, max_length=64)
     keywords: str = Field(default='', max_length=200)
     language: Literal['zh', 'en'] = 'zh'
 
 
-class ArtBatchGenerate(BaseModel):
+class ArtBatchGenerate(CloudAuthorization):
     model_config = ConfigDict(extra='forbid')
     photo_ids: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(min_length=1, max_length=100)
     layout: ArtLayout = Field(default_factory=ArtLayout)

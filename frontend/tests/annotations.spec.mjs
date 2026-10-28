@@ -1,0 +1,13 @@
+import {test,expect} from './fixtures/native-runtime.mjs';
+import {exercisePhotoAnnotations} from './fixtures/photo-annotations.mjs';
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {join} from 'node:path';
+for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`manual descriptions and tag decisions survive a relabel ${width} ${lang}`,async({page,request},info)=>{
+  const health=await(await request.get('/api/health')).json();expect(health.data_dir.replaceAll('\\','/')).toContain('/.test-artifacts/theme-browser-');const name='Notes-'+width+'.jpg',source=join(health.data_dir,name);execFileSync(process.env.PHOTO_TEST_PYTHON||'python',['-c',"from PIL import Image;import sys;Image.new('RGB',(120,80),(int(sys.argv[2])%200,140,160)).save(sys.argv[1])",source,String(width)]);const hash=()=>createHash('sha256').update(readFileSync(source)).digest('hex'),before=hash(),job=await(await request.post('/api/photos/import',{data:{paths:[source]}})).json();await expect.poll(async()=>(await(await request.get('/api/jobs/'+job.id)).json()).status).toBe('completed');const photo=(await(await request.get('/api/photos?search='+name)).json()).photos[0],url='/api/photos/'+photo.id;
+  const getPhoto=async()=>(await(await request.get(url)).json()),annotate=async(caption,tags)=>{const p=await getPhoto(),r=await request.post(url+'/annotation',{data:{version:1,source_hash:p.file_hash,expected_revision:p.annotation?.revision||0,caption,tags,provider:'synthetic-local',model:'fixture-v1',detected_text:'TEST ONLY'}});expect(r.ok()).toBe(true);};
+  await request.patch(url,{data:{tags:['Manual'],favorite:true,rating:0,color_label:'blue',flag:'picked'}});await annotate('First AI',['山','溪']);
+  try{await page.addInitScript(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('onboarded','1');localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);await page.setViewportSize({width,height:1300});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/?page=photos');await exercisePhotoAnnotations(page,{lang,photo,getPhoto,relabel:()=>annotate('Second AI',['山','溪','云']),failNext:()=>page.route('**/api/photos/'+photo.id,route=>route.request().method()==='PATCH'?route.fulfill({status:503,json:{detail:'Synthetic note save failure'}}):route.continue(),{times:1}),error:'Synthetic note save failure',screenshot:info.outputPath('photo-annotations.png')});const p=await getPhoto();expect([p.favorite,p.rating,p.color_label,p.flag]).toEqual([true,0,'blue','picked']);expect(hash()).toBe(before);}
+  finally{await page.goto('/?page=home').catch(()=>{});await request.delete(url+'?scope=file');expect(hash()).toBe(before);}
+});

@@ -1,0 +1,493 @@
+{
+  "rows": [
+    {
+      "id": "a",
+      "file_name": "Empty.jpg",
+      "rating": null,
+      "camera_model": null,
+      "tags": [],
+      "favorite": false,
+      "date_taken": null,
+      "iso": 0,
+      "flag": "picked"
+    },
+    {
+      "id": "b",
+      "file_name": "100%_sunset.jpg",
+      "rating": 0,
+      "camera_model": "SONY",
+      "tags": [
+        "旅途",
+        "100%_"
+      ],
+      "favorite": true,
+      "date_taken": "2026-01-01T00:00:00",
+      "iso": 100,
+      "flag": "rejected"
+    },
+    {
+      "id": "c",
+      "file_name": "Sunset.jpg",
+      "rating": 4,
+      "camera_model": "SONY",
+      "tags": [
+        "旅途"
+      ],
+      "favorite": false,
+      "date_taken": "2026-01-02T12:00:00",
+      "iso": 400,
+      "flag": "unmarked"
+    },
+    {
+      "id": "d",
+      "file_name": "Portrait.jpg",
+      "rating": 5,
+      "camera_model": "Canon",
+      "tags": [
+        "人像"
+      ],
+      "favorite": true,
+      "date_taken": "2025-12-31T12:00:00",
+      "iso": 800
+    },
+    {
+      "id": "e",
+      "file_name": "sunset.jpg",
+      "rating": 2,
+      "camera_model": "",
+      "tags": [
+        "旅途人像"
+      ],
+      "favorite": false,
+      "date_taken": "2026-01-01",
+      "iso": null,
+      "flag": "picked"
+    },
+    {
+      "id": "f",
+      "file_name": "Snow.jpg",
+      "rating": null,
+      "camera_model": "Sony",
+      "tags": [
+        "雪山"
+      ],
+      "favorite": false,
+      "date_taken": "2026-01-01T00:00:00.123+00:00",
+      "iso": 1600,
+      "flag": "rejected"
+    }
+  ],
+  "cases": [
+    {
+      "name": "zero is a known rating",
+      "root": {
+        "op": "eq",
+        "field": "rating",
+        "value": 0
+      },
+      "ids": [
+        "b"
+      ]
+    },
+    {
+      "name": "unrated is not zero",
+      "root": {
+        "op": "is_null",
+        "field": "rating"
+      },
+      "ids": [
+        "a",
+        "f"
+      ]
+    },
+    {
+      "name": "known ratings",
+      "root": {
+        "op": "not_null",
+        "field": "rating"
+      },
+      "ids": [
+        "b",
+        "c",
+        "d",
+        "e"
+      ]
+    },
+    {
+      "name": "ne excludes null",
+      "root": {
+        "op": "ne",
+        "field": "rating",
+        "value": 0
+      },
+      "ids": [
+        "c",
+        "d",
+        "e"
+      ]
+    },
+    {
+      "name": "not includes null intentionally",
+      "root": {
+        "op": "not",
+        "child": {
+          "op": "eq",
+          "field": "rating",
+          "value": 0
+        }
+      },
+      "ids": [
+        "a",
+        "c",
+        "d",
+        "e",
+        "f"
+      ]
+    },
+    {
+      "name": "null or zero",
+      "root": {
+        "op": "or",
+        "children": [
+          {
+            "op": "eq",
+            "field": "rating",
+            "value": 0
+          },
+          {
+            "op": "is_null",
+            "field": "rating"
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "f"
+      ]
+    },
+    {
+      "name": "high rating without portrait tag",
+      "root": {
+        "op": "and",
+        "children": [
+          {
+            "op": "gte",
+            "field": "rating",
+            "value": 4
+          },
+          {
+            "op": "not",
+            "child": {
+              "op": "eq",
+              "field": "tag",
+              "value": "人像"
+            }
+          }
+        ]
+      },
+      "ids": [
+        "c"
+      ]
+    },
+    {
+      "name": "exact tag",
+      "root": {
+        "op": "eq",
+        "field": "tag",
+        "value": "旅途"
+      },
+      "ids": [
+        "b",
+        "c"
+      ]
+    },
+    {
+      "name": "absent tag includes untagged",
+      "root": {
+        "op": "ne",
+        "field": "tag",
+        "value": "人像"
+      },
+      "ids": [
+        "a",
+        "b",
+        "c",
+        "e",
+        "f"
+      ]
+    },
+    {
+      "name": "tag substring",
+      "root": {
+        "op": "contains",
+        "field": "tag",
+        "value": "旅途"
+      },
+      "ids": [
+        "b",
+        "c",
+        "e"
+      ]
+    },
+    {
+      "name": "untagged",
+      "root": {
+        "op": "is_null",
+        "field": "tag"
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "tag in",
+      "root": {
+        "op": "in",
+        "field": "tag",
+        "value": [
+          "雪山",
+          "人像",
+          "雪山"
+        ]
+      },
+      "ids": [
+        "d",
+        "f"
+      ]
+    },
+    {
+      "name": "literal wildcard text",
+      "root": {
+        "op": "contains",
+        "field": "file_name",
+        "value": "%_"
+      },
+      "ids": [
+        "b"
+      ]
+    },
+    {
+      "name": "text is case sensitive",
+      "root": {
+        "op": "contains",
+        "field": "file_name",
+        "value": "Sunset"
+      },
+      "ids": [
+        "c"
+      ]
+    },
+    {
+      "name": "bound SQL value",
+      "root": {
+        "op": "contains",
+        "field": "file_name",
+        "value": "' OR 1=1 --"
+      },
+      "ids": []
+    },
+    {
+      "name": "false boolean",
+      "root": {
+        "op": "eq",
+        "field": "favorite",
+        "value": false
+      },
+      "ids": [
+        "a",
+        "c",
+        "e",
+        "f"
+      ]
+    },
+    {
+      "name": "rating in",
+      "root": {
+        "op": "in",
+        "field": "rating",
+        "value": [
+          0,
+          5
+        ]
+      },
+      "ids": [
+        "b",
+        "d"
+      ]
+    },
+    {
+      "name": "number zero",
+      "root": {
+        "op": "lte",
+        "field": "iso",
+        "value": 0
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "number range",
+      "root": {
+        "op": "and",
+        "children": [
+          {
+            "op": "gt",
+            "field": "iso",
+            "value": 100
+          },
+          {
+            "op": "lt",
+            "field": "iso",
+            "value": 1600
+          }
+        ]
+      },
+      "ids": [
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "wall clock seconds and date midnight",
+      "root": {
+        "op": "eq",
+        "field": "date_taken",
+        "value": "2026-01-01"
+      },
+      "ids": [
+        "b",
+        "e",
+        "f"
+      ]
+    },
+    {
+      "name": "date boundary",
+      "root": {
+        "op": "gte",
+        "field": "date_taken",
+        "value": "2026-01-02"
+      },
+      "ids": [
+        "c"
+      ]
+    },
+    {
+      "name": "not before includes missing date",
+      "root": {
+        "op": "not",
+        "child": {
+          "op": "lt",
+          "field": "date_taken",
+          "value": "2026-01-02"
+        }
+      },
+      "ids": [
+        "a",
+        "c"
+      ]
+    },
+    {
+      "name": "nested boolean",
+      "root": {
+        "op": "or",
+        "children": [
+          {
+            "op": "and",
+            "children": [
+              {
+                "op": "lte",
+                "field": "rating",
+                "value": 2
+              },
+              {
+                "op": "contains",
+                "field": "tag",
+                "value": "旅途"
+              }
+            ]
+          },
+          {
+            "op": "not",
+            "child": {
+              "op": "not_null",
+              "field": "camera_model"
+            }
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "e"
+      ]
+    },
+    {
+      "name": "picked flag",
+      "root": {
+        "op": "eq",
+        "field": "flag",
+        "value": "picked"
+      },
+      "ids": [
+        "a",
+        "e"
+      ]
+    },
+    {
+      "name": "unmarked includes legacy missing flag",
+      "root": {
+        "op": "eq",
+        "field": "flag",
+        "value": "unmarked"
+      },
+      "ids": [
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "not rejected flag",
+      "root": {
+        "op": "not",
+        "child": {
+          "op": "eq",
+          "field": "flag",
+          "value": "rejected"
+        }
+      },
+      "ids": [
+        "a",
+        "c",
+        "d",
+        "e"
+      ]
+    },
+    {
+      "name": "either marked flag",
+      "root": {
+        "op": "in",
+        "field": "flag",
+        "value": [
+          "picked",
+          "rejected"
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "e",
+        "f"
+      ]
+    },
+    {
+      "name": "flags have an explicit neutral state",
+      "root": {
+        "op": "is_null",
+        "field": "flag"
+      },
+      "ids": []
+    }
+  ]
+}

@@ -33,10 +33,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgl1 libegl1 libxkbcommon-x11-0 libnss3 libxcomposite1 libxdamage1 \
-            libxrandr2 libxtst6 libasound2 libfontconfig1 libdbus-1-3 \
-            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-            libxcb-render-util0 libxcb-shape0 libxcb-xkb1 \
-            xvfb x11-utils imagemagick fonts-noto-cjk
+            libxrandr2 libxtst6 libasound2 libfontconfig1 libdbus-1-3 xvfb fonts-noto-cjk
 
       - name: Python dependencies (CPU torch)
         run: |
@@ -57,18 +54,8 @@ jobs:
 
       - name: Verify the native window under xvfb
         run: |
-          mkdir -p verification
-          xvfb-run -a -s "-screen 0 1440x900x24" bash -c '
-            set -u
+          xvfb-run -a -s "-screen 0 1440x900x24" \
             releases/linux/PhotoCollection/PhotoCollection --window-check --status-file /tmp/window.json
-            releases/linux/PhotoCollection/PhotoCollection --status-file /tmp/window2.json &
-            app=$!
-            for _ in $(seq 1 150); do [ -f /tmp/window2.json ] && break; sleep 0.2; done
-            sleep 6
-            import -window root verification/linux-window.png || echo "screenshot skipped"
-            kill $app 2>/dev/null || true
-            wait $app 2>/dev/null || true
-          '
           .venv-linux/bin/python - <<'PY'
           import json
           state = json.load(open('/tmp/window.json'))
@@ -90,5 +77,4 @@ jobs:
           path: |
             releases/PhotoCollection-Linux-*-x64.tar.gz
             releases/PhotoCollection-Linux-*-x64.tar.gz.sha256
-            verification/linux-window.png
           retention-days: 14

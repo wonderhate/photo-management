@@ -1,4 +1,5 @@
-const CACHE='photo-archive-v4';
+importScripts('/local-file-worker.js');
+const CACHE='photo-archive-v5';
 const MAX_ENTRIES=250;
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/','/manifest.webmanifest','/icon-192.png','/icon-512.png'])).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
@@ -11,6 +12,7 @@ async function remember(request,response){
 self.addEventListener('fetch',event=>{
   const request=event.request,url=new URL(request.url);
   if(request.method!=='GET'||url.origin!==location.origin)return;
+  if(url.pathname.startsWith('/_pc-file/')){event.respondWith(localFile(event));return;}
   // Never persist API responses or photo bytes in the service worker.
   if(url.pathname.startsWith('/api/'))return;
   // HTML always checks the server for the current build. Hashed assets are immutable.

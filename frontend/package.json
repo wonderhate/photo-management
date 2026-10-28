@@ -1,15 +1,20 @@
 {
   "name": "photo-library-ui",
   "private": true,
-  "version": "2.6.1",
+  "version": "2.7.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "build:web": "tsc -b && vite build --mode browser",
+    "dev:web": "vite --host 127.0.0.1 --mode browser",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@huggingface/transformers": "4.3.1",
+    "exifr": "^7.1.3",
+    "libraw-wasm": "1.6.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

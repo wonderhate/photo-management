@@ -117,11 +117,12 @@ def test_old_signature_previews_refresh_without_changing_draft_or_losing_offline
         draft = client.post('/api/watermark/drafts',json={'photo_id':photo['id'],'settings_json':settings}).json()
         with Session() as session:
             saved = session.get(WatermarkDraft,draft['id'])
-            old = Path(saved.preview_path).with_name(saved.id+'-'+template+'-old.webp')
+            old = Path(saved.preview_path).with_name(saved.id+'-'+template+'-centered-signature-old.webp')
             Path(saved.preview_path).rename(old); saved.preview_path = str(old); session.commit()
         assert client.get(draft['preview_url']).status_code == 200
         updated = client.get('/api/watermark/drafts/'+draft['id']).json()
-        assert 'centered-signature' in updated['preview_path'] and not old.exists()
+        marker = 'centered-signature-stable-ambient' if template == 'ambient' else 'centered-signature'
+        assert marker in updated['preview_path'] and old.exists()
         assert updated['revision'] == draft['revision'] and updated['settings_json'] == draft['settings_json']
     path.unlink()
     preview = Path(updated['preview_path'])

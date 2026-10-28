@@ -1,0 +1,320 @@
+/* Shared material for desktop, local web, portals and the exhibition shell.
+   Photo pixels, editing canvases and exported artwork never use these filters. */
+:root:root[data-material="liquid-glass"] {
+  --glass-blur: 20px;
+  --glass-surface: rgb(23 23 22 / .77);
+  --glass-raised: rgb(33 33 31 / .88);
+  --glass-card: rgb(28 28 26 / .68);
+  --glass-field: rgb(12 12 11 / .68);
+  --glass-solid: #1b1b1a;
+  --glass-rim: rgb(255 252 235 / .17);
+  --glass-rim-lit: rgb(255 245 215 / .43);
+  --glass-sheen: rgb(255 252 235 / .055);
+  --glass-light: rgb(255 241 200 / .13);
+  --glass-control-light: rgb(255 241 200 / .2);
+  --glass-shadow: rgb(0 0 0 / .23);
+  --glass-inset: rgb(255 255 255 / .12);
+  --glass-ambient: rgb(201 165 88 / .065);
+  --glass-ambient-cool: rgb(152 174 180 / .035);
+  --glass-radius: 22px;
+  --glass-control-radius: 12px;
+  --glass-motion-fast: 150ms;
+  --glass-motion-panel: 240ms;
+  --glass-ease: cubic-bezier(.2, .75, .25, 1);
+}
+
+:root:root[data-material="liquid-glass"][data-theme="light"] {
+  --glass-surface: rgb(255 254 250 / .78);
+  --glass-raised: rgb(255 254 250 / .94);
+  --glass-card: rgb(255 254 250 / .69);
+  --glass-field: rgb(255 255 253 / .77);
+  --glass-solid: #fffefa;
+  --glass-rim: rgb(143 127 92 / .23);
+  --glass-rim-lit: rgb(130 98 37 / .39);
+  --glass-sheen: rgb(255 255 255 / .62);
+  --glass-light: rgb(255 255 255 / .72);
+  --glass-control-light: rgb(255 255 255 / .84);
+  --glass-shadow: rgb(81 65 35 / .075);
+  --glass-inset: rgb(255 255 255 / .94);
+  --glass-ambient: rgb(177 144 77 / .07);
+  --glass-ambient-cool: rgb(125 160 168 / .045);
+  color-scheme: light;
+}
+
+:root:root[data-material="liquid-glass"][data-theme="dark"] { color-scheme: dark; }
+:root:root[data-material="liquid-glass"][data-theme] body {
+  background: radial-gradient(ellipse at 95% 0, var(--glass-ambient), transparent 48%),
+    radial-gradient(ellipse at 0 55%, var(--glass-ambient-cool), transparent 52%), var(--bg, var(--glass-solid));
+}
+:root:root[data-material="liquid-glass"][data-theme] :is(.app-shell, .main-workspace, .page-content, .workspace-transition, .workspace-route-content) {
+  background-color: transparent;
+}
+
+/* A small number of large functional surfaces own the backdrop sampling. */
+:root:root[data-material="liquid-glass"][data-theme] :is(
+  .topbar, .workspace-subnav, .sidebar, .photo-inspector,
+  .photo-viewer .photo-detail > aside, .viewer-toolbar, .viewer-tools, .viewer-filmstrip,
+  .modal, .video-dialog, .command-menu, .settings-card, .display-panel, .filter-panel, .facet-popover,
+  .editor-panel, .edit-controls, .art-controls, .collage-controls, .split-options,
+  .browser-start-card, .public-header, .public-photo-info,
+  .public-lightbox-bar, .public-lightbox-navigation, .public-thumbnails,
+  [data-liquid-glass]
+) {
+  --glass-light-color: transparent;
+  background: radial-gradient(ellipse 80px 53.3333px at var(--glass-pointer-x, 50%) var(--glass-pointer-y, -180px), var(--glass-light-color), transparent 74%),
+    linear-gradient(145deg, var(--glass-sheen), transparent 48%), var(--glass-surface);
+  border-color: var(--glass-rim);
+  color: var(--text);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.16);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.16);
+  box-shadow: inset 0 1px 0 var(--glass-inset), inset 0 -1px 0 rgb(255 255 255 / .025), 0 10px 32px var(--glass-shadow);
+  transition: background-color var(--glass-motion-fast), border-color var(--glass-motion-fast), box-shadow var(--glass-motion-panel) var(--glass-ease), opacity var(--glass-motion-fast);
+}
+
+/* Content surfaces share the same optical rim without per-card GPU blur. */
+:root:root[data-material="liquid-glass"][data-theme] :is(
+  .settings-card, .chart-panel, .face-card, .album-card, .draft-card, .video-card,
+  .stat-card, .summary-card, .report-hero, .report-card, .report-section,
+  .analysis-card, .insight-card, .habit-card, .narrative, .narratives,
+  .timeline-sidebar, .timeline-sidebar-header, .timeline-tree,
+  .album-list-toolbar, .album-overview-controls, .album-table-scroll,
+  .library-toolbar, .gallery-tools, .draft-toolbar, .draft-batch, .selection-toolbar, .filter-panel, .display-panel,
+  .query-scope-bar, .facet-bar, .facet-workbench, .facet-popover, .facets, .map-controls, .map-summary, .map-actions,
+  .editor-toolbar, .edit-stage-top, .edit-stage-controls, .editor-exif, .draft-editor-bar, .stage-toolbar,
+  .editor-welcome, .studio-tool, .edit-variants article,
+  .collage-toolbar, .split-toolbar, .split-presets, .split-saved,
+  .split-export fieldset, .collage-projects, .collage-source-details, .collage-output-list > li, .batch-settings, .batch-page,
+  .art-task, .art-settings, .art-disclosure, .activity-resources, .activity-detail,
+  .activity-resource-grid, .agent-result, .ai-scope-list, .ai-prompt,
+  .art-works article, .art-batch-results article, .ai-results button,
+  .frame-layer, .frame-asset-row, .lut-source-info, .lut-folders article, .lut-tree-pages, .lut-group-heading,
+  .lut-copied-tree, .text-fields, .overlay-stop, .vision-model, .cloud-receipt,
+  .photo-annotations, .photo-location, .photo-raw-source, .photo-rating-source,
+  .asset-relationships, .source-card, .derived-card, .removed-photo-card,
+  .plugin-row, .plugin-output, .capability-list > li, .catalog-settings fieldset, .catalog-preview, .catalog-pending,
+  .metrics, .lifecycle, .report-controls, .segmented, .lens-row, .face-model-integrity,
+  .hero-actions, .hero-bottom, .collection-copy, .showcase-bottom, .showcase-hero .button-row,
+  .browser-settings, .public-collection, .public-statement, .public-search, .public-cover-controls,
+  .toast, .job-panel, .job-toast, .task-toast, .import-progress
+) {
+  --glass-light-color: transparent;
+  background: radial-gradient(ellipse 73.3333px 50px at var(--glass-pointer-x, 50%) var(--glass-pointer-y, -180px), var(--glass-light-color), transparent 74%),
+    linear-gradient(145deg, var(--glass-sheen), transparent 52%), var(--glass-card);
+  border-color: var(--glass-rim);
+  border-radius: var(--glass-radius);
+  box-shadow: inset 0 1px 0 var(--glass-inset), 0 6px 20px var(--glass-shadow);
+  transition: background-color var(--glass-motion-fast), border-color var(--glass-motion-fast), box-shadow var(--glass-motion-panel) var(--glass-ease);
+}
+
+/* Menus need a stable, more opaque backing over varied photographs. */
+:root:root[data-material="liquid-glass"][data-theme] :is(
+  .recent-panel, .autocomplete-panel, .draft-menu, .album-menu,
+  .context-menu, .photo-context-menu, .lut-context-menu,
+  .command-popover, .workspace-nav-tooltip, .hover-preview,
+  [role="menu"]:not(.workspace-subnav)
+) {
+  background: linear-gradient(145deg, var(--glass-sheen), transparent 58%), var(--glass-raised);
+  border-color: var(--glass-rim);
+  border-radius: 16px;
+  color: var(--text);
+  -webkit-backdrop-filter: blur(16px) saturate(1.12);
+  backdrop-filter: blur(16px) saturate(1.12);
+  box-shadow: inset 0 1px 0 var(--glass-inset), 0 12px 36px var(--glass-shadow);
+}
+
+:root:root[data-material="liquid-glass"][data-theme] :is(
+  .modal, .photo-inspector, .photo-viewer .photo-detail > aside,
+  .editor-panel, .edit-controls, .art-controls, .collage-controls, .split-options,
+  .browser-start-card, .activity-center, .public-photo-info
+) { border-radius: var(--glass-radius); }
+
+:root:root[data-material="liquid-glass"][data-theme] :is(.topbar, .workspace-subnav, .public-header) {
+  border-bottom-color: var(--glass-rim);
+  box-shadow: inset 0 1px 0 var(--glass-inset), 0 4px 20px var(--glass-shadow);
+}
+:root:root[data-material="liquid-glass"][data-theme] .workspace-subnav {
+  border-radius: 0 0 20px 20px;
+}
+:root:root[data-material="liquid-glass"][data-theme] :is(.modal > header, .photo-inspector > header, .activity-toolbar, .timeline-sidebar-header) {
+  background: var(--glass-raised);
+  border-color: var(--glass-rim);
+  color: var(--text);
+}
+:root:root[data-material="liquid-glass"][data-theme] .scrim { background: rgb(0 0 0 / .48); }
+:root:root[data-material="liquid-glass"][data-theme="light"] .scrim { background: rgb(44 39 28 / .28); }
+:root:root[data-material="liquid-glass"][data-theme] :is(.collection-copy, .hero-bottom) :is(h3, p, small, a, span),
+:root:root[data-material="liquid-glass"][data-theme] .hero-actions .hero-secondary,
+:root:root[data-material="liquid-glass"][data-theme] .public-hero-bottom button {
+  color: var(--text);
+}
+
+/* Controls refract the light of their containing material; no nested blur. */
+:root:root[data-material="liquid-glass"][data-theme] button:not(:where(
+  .photo-image, .select-box, .color-dots button, .rating-stars button,
+  .collage-swatch, .collage-cells > button, .palette-swatches button,
+  .map-cluster, .crop-handle, .composition-handle,
+  .layer-handle, .text-handle, .lut-choice, .lut-thumbnail,
+  .film-frame button, .filmstrip button, .viewer-filmstrip button,
+  .public-photo-button, .public-thumbnails button
+)) {
+  --glass-light-color: transparent;
+  background-image: radial-gradient(ellipse 36.6667px 23.3333px at var(--glass-pointer-x, 50%) var(--glass-pointer-y, -90px), var(--glass-light-color), transparent 76%),
+    linear-gradient(160deg, var(--glass-sheen), transparent 52%);
+  background-color: var(--glass-card);
+  border-color: var(--glass-rim);
+  border-radius: var(--glass-control-radius);
+  box-shadow: inset 0 1px 0 var(--glass-inset), 0 2px 6px var(--glass-shadow);
+  transition: background-color var(--glass-motion-fast), border-color var(--glass-motion-fast), box-shadow var(--glass-motion-fast), color var(--glass-motion-fast);
+}
+:root:root[data-material="liquid-glass"][data-theme] button:is(.primary, .active, [aria-pressed="true"], [aria-selected="true"]):not(:where(
+  .photo-image, .select-box, .color-dots button, .rating-stars button,
+  .collage-swatch, .collage-cells > button, .palette-swatches button,
+  .map-cluster, .crop-handle, .composition-handle, .layer-handle, .text-handle,
+  .lut-choice, .lut-thumbnail, .film-frame button, .filmstrip button,
+  .viewer-filmstrip button, .public-photo-button, .public-thumbnails button
+)) {
+  background-color: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--glass-rim));
+  color: var(--accent);
+}
+:root:root[data-material="liquid-glass"][data-theme] button.primary {
+  background-color: var(--accent);
+  color: #14120d;
+  border-radius: 999px;
+  filter: none;
+}
+:root:root[data-material="liquid-glass"][data-theme="light"] button.primary { color: #fffefa; }
+:root:root[data-material="liquid-glass"][data-theme] button:is(.icon, .quiet, .workspace-nav-icon) {
+  background-color: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+:root:root[data-material="liquid-glass"][data-theme] .workspace-nav-icon { border-radius: 50%; }
+:root:root[data-material="liquid-glass"][data-theme] .workspace-nav-icon[aria-current="page"] {
+  background-color: var(--accent-soft);
+  box-shadow: inset 0 1px 0 var(--glass-inset);
+}
+:root:root[data-material="liquid-glass"][data-theme] :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]), select, textarea) {
+  background: linear-gradient(155deg, var(--glass-sheen), transparent 70%), var(--glass-field);
+  border-color: var(--glass-rim);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 2px var(--glass-shadow), 0 1px 0 var(--glass-inset);
+  color: var(--text);
+  transition: border-color var(--glass-motion-fast), box-shadow var(--glass-motion-fast);
+}
+:root:root[data-material="liquid-glass"][data-theme] input[type="range"] {
+  accent-color: var(--accent);
+  transition: filter var(--glass-motion-fast);
+}
+
+/* Runtime sets coordinates on at most one containing surface and one control. */
+:root:root[data-material="liquid-glass"][data-theme] [data-glass-lit] {
+  --glass-light-color: var(--glass-light);
+  border-color: var(--glass-rim-lit);
+  box-shadow: inset 0 1px 0 var(--glass-inset), inset 0 0 16px var(--glass-sheen), 0 5px 22px var(--glass-shadow);
+}
+:root:root[data-material="liquid-glass"][data-theme] button[data-glass-lit] {
+  --glass-light-color: var(--glass-control-light);
+  background-color: var(--accent-soft);
+}
+:root:root[data-material="liquid-glass"][data-theme] button.primary[data-glass-lit] { background-color: var(--accent); }
+:root:root[data-material="liquid-glass"][data-theme] [data-glass-lit="focus"] {
+  --glass-pointer-x: 50%;
+  --glass-pointer-y: 15%;
+}
+:root:root[data-material="liquid-glass"][data-theme] button[data-glass-pressed="true"] {
+  box-shadow: inset 0 2px 7px var(--glass-shadow), inset 0 1px 0 var(--glass-inset);
+  background-color: var(--accent-soft);
+}
+:root:root[data-material="liquid-glass"][data-theme] button.primary[data-glass-pressed="true"] { background-color: var(--accent); }
+
+/* Gallery frames share the material while image color and geometry stay intact. */
+:root:root[data-material="liquid-glass"][data-theme] :is(.photo-caption, .draft-card-info, .draft-card-bottom, .video-card > .button-row) {
+  background: linear-gradient(155deg, var(--glass-sheen), transparent 65%), var(--glass-card);
+  color: var(--text);
+  border-radius: 0 0 10px 10px;
+}
+:root:root[data-material="liquid-glass"][data-theme] .photo-card:hover .photo-image > img:not(.photo-backdrop) { filter: none; transform: none; }
+:root:root[data-material="liquid-glass"][data-theme] .photo-image > img.loaded:not(.photo-backdrop) { filter: none; }
+:root:root[data-material="liquid-glass"][data-theme] :is(.photo-image, .album-cover, .draft-cover, .video-poster) {
+  border-color: var(--glass-rim);
+  box-shadow: 0 2px 8px var(--glass-shadow);
+}
+:root:root[data-material="liquid-glass"][data-theme] :is(.photo-card.selected .photo-image, .album-card[aria-selected="true"]) {
+  outline-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 3px 14px var(--glass-shadow);
+}
+:root:root[data-material="liquid-glass"][data-theme] .photo-rating-controls {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin: 14px 0;
+  flex-wrap: wrap;
+}
+:root:root[data-material="liquid-glass"][data-theme] .photo-rating-controls > span { color: var(--muted); font-size: 12px; }
+:root:root[data-material="liquid-glass"][data-theme] :is(.photo-inspector, .photo-viewer .photo-detail > aside, .public-photo-info) {
+  --muted: var(--text);
+  background-color: var(--glass-raised);
+}
+
+/* Shared state motion: local entry, no permanent moving light or image effect. */
+@keyframes glass-panel-enter {
+  from { opacity: .35; translate: 0 6px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes glass-inspector-enter {
+  from { opacity: .3; translate: 10px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+:root:root[data-material="liquid-glass"][data-theme] :is(.modal, .recent-panel, .autocomplete-panel, .command-menu, .draft-menu, .lut-context-menu) {
+  animation: glass-panel-enter var(--glass-motion-panel) var(--glass-ease) backwards;
+}
+:root:root[data-material="liquid-glass"][data-theme] .photo-inspector {
+  animation: glass-inspector-enter var(--glass-motion-panel) var(--glass-ease) backwards;
+}
+/* Zoom/pan and the fullscreen film track need a stable coordinate frame.
+   Their existing exhibition motion remains inside the image stage. */
+:root:root[data-material="liquid-glass"][data-theme] .photo-viewer .modal { animation: none; }
+
+/* Public pages own local palette variables; retain them inside the common material. */
+:root:root[data-material="liquid-glass"][data-theme] .public-site { --glass-control-radius: 12px; }
+
+/* Accessibility and unsupported backdrops use the same geometry and actions. */
+@supports not (backdrop-filter: blur(1px)) {
+  :root:root[data-material="liquid-glass"] { --glass-surface: var(--glass-solid); --glass-card: var(--glass-solid); --glass-raised: var(--glass-solid); }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root:root[data-material="liquid-glass"][data-theme] {
+    --glass-surface: var(--glass-solid);
+    --glass-card: var(--glass-solid);
+    --glass-raised: var(--glass-solid);
+    --glass-field: var(--glass-solid);
+    --glass-sheen: transparent;
+    --glass-light: transparent;
+    --glass-control-light: transparent;
+    --glass-ambient: transparent;
+    --glass-ambient-cool: transparent;
+    --glass-rim: var(--muted, CanvasText);
+    --glass-rim-lit: var(--text, CanvasText);
+  }
+  :root:root:root[data-material="liquid-glass"][data-theme] :is(.topbar, .workspace-subnav, .sidebar, .photo-inspector, .photo-detail > aside, .viewer-tools, .viewer-toolbar, .viewer-filmstrip, .modal, .video-dialog, .command-menu, .settings-card, .display-panel, .filter-panel, .facet-popover, .editor-panel, .edit-controls, .art-controls, .collage-controls, .split-options, .browser-start-card, .recent-panel, .autocomplete-panel, .draft-menu, .lut-context-menu, .public-header, .public-photo-info, .public-lightbox-bar, .public-lightbox-navigation, .public-thumbnails, [role="menu"], [data-liquid-glass]) {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:root[data-material="liquid-glass"][data-theme] { --glass-motion-fast: 0ms; --glass-motion-panel: 0ms; }
+  :root:root[data-material="liquid-glass"][data-theme] :is(.modal, .photo-inspector, .recent-panel, .autocomplete-panel, .command-menu, .draft-menu, .lut-context-menu) { animation: none; }
+  :root:root[data-material="liquid-glass"][data-theme] [data-glass-lit] { --glass-light-color: transparent; }
+}
+@media (forced-colors: active) {
+  :root:root[data-material="liquid-glass"][data-theme] :is(button, input, select, textarea, .modal, .photo-inspector, .workspace-subnav, .settings-card, .edit-controls) {
+    background: Canvas;
+    color: CanvasText;
+    border-color: ButtonText;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

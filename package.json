@@ -1,15 +1,25 @@
 {
   "name": "photo-management",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "license": "MIT",
   "private": true,
   "description": "Local-first Windows photo management",
   "scripts": {
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File start.ps1",
     "build": "npm run build --prefix frontend",
+    "build:web": "npm run build:web --prefix frontend",
+    "build:showcase": "node --experimental-strip-types frontend/scripts/build-showcase.mjs",
+    "preview:showcase": "node frontend/tests/web-server.mjs --showcase",
+    "test:showcase": "node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.showcase.config.ts",
+    "dev:web": "npm run dev:web --prefix frontend",
     "test": ".venv\\Scripts\\python.exe -m pytest backend/tests -q",
     "test:frontend": "node --experimental-strip-types --test frontend/tests/*.test.*",
+    "test:web:cloud": "node frontend/tests/web-cloud-check.mjs",
+    "test:web": "node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.web.config.ts",
+    "test:relay": ".venv\\Scripts\\python.exe -m unittest cloud_relay.test_relay",
     "test:browser": "npx --prefix frontend playwright test --config frontend/playwright.config.ts",
-    "test:http": ".venv\\Scripts\\python.exe -m backend.verify_live"
+    "test:http": ".venv\\Scripts\\python.exe -m backend.verify_live",
+    "preview:web": "node frontend/tests/web-server.mjs --relay",
+    "test:web:fixtures": "node frontend/tests/fetch-raw-fixtures.mjs"
   }
 }

@@ -1,0 +1,107 @@
+[
+  {
+    "id": "depth-anything-v2-small",
+    "runtime": "native",
+    "kind": "depth",
+    "repo": "depth-anything/Depth-Anything-V2-Small-hf",
+    "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "name": "config.json",
+        "bytes": 950,
+        "sha256": "c56698d3643dde1f83ea2212759e6b31a22b8f827246a36dd007ee8a22b3ff75"
+      },
+      {
+        "name": "preprocessor_config.json",
+        "bytes": 775,
+        "sha256": "d41175c0d889477ca8fc67191e540faef14baf6275157b3fdecf78469e6bbf84"
+      },
+      {
+        "name": "model.safetensors",
+        "bytes": 99173660,
+        "sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70"
+      }
+    ]
+  },
+  {
+    "id": "slimsam-uniform-50",
+    "runtime": "native",
+    "kind": "segment",
+    "repo": "Zigeng/SlimSAM-uniform-50",
+    "revision": "d67c795ed0caaec7423d799da25cdeded48aac40",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "name": "config.json",
+        "bytes": 365,
+        "sha256": "03052785761ce76a533150dfedc1bd90b7be289f4b4a21174e86f87db752be2c"
+      },
+      {
+        "name": "preprocessor_config.json",
+        "bytes": 466,
+        "sha256": "225545a743c654e3c495ec6f545a0eaba57c8ba3fbbd8483b3cb1c0fc58db517"
+      },
+      {
+        "name": "model.safetensors",
+        "bytes": 111884344,
+        "sha256": "c6146291d993f315ae1951e1209555d6c9dea1404546dc54edbc3f15fb1d8e69"
+      }
+    ]
+  },
+  {
+    "id": "depth-anything-v2-small",
+    "runtime": "browser",
+    "kind": "depth",
+    "repo": "onnx-community/depth-anything-v2-small",
+    "revision": "4472b7362082ad9968fee890ca0f1e5aca36b93d",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "name": "config.json",
+        "bytes": 38,
+        "sha256": "3aee5b9bc4f711ee885c2526d871f0c8c6c8c4b26b8e04253d0167f6a83264f5"
+      },
+      {
+        "name": "preprocessor_config.json",
+        "bytes": 461,
+        "sha256": "03576db3c13dd0471fdf5f5e1428befcb95de063fe699879150b293dc9e0a2c6"
+      },
+      {
+        "name": "onnx/model_quantized.onnx",
+        "bytes": 27258801,
+        "sha256": "fcf51f1b230362b28690bb9d1809bf0431f29cad20534e3f589bd7285547f20d"
+      }
+    ]
+  },
+  {
+    "id": "slimsam-uniform-77",
+    "runtime": "browser",
+    "kind": "segment",
+    "repo": "Xenova/slimsam-77-uniform",
+    "revision": "5850ab45f587c112167512ffef949107115e26a0",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "name": "config.json",
+        "bytes": 379,
+        "sha256": "6339884f168658d3ca6473b486973913fb33e84e625e06ae2dd7b4a808187419"
+      },
+      {
+        "name": "preprocessor_config.json",
+        "bytes": 466,
+        "sha256": "225545a743c654e3c495ec6f545a0eaba57c8ba3fbbd8483b3cb1c0fc58db517"
+      },
+      {
+        "name": "onnx/vision_encoder_quantized.onnx",
+        "bytes": 8882165,
+        "sha256": "cce23c7b2e5d4f330932738fb67ba518e04b0d99ccdd1cccd22a7da4e01f2971"
+      },
+      {
+        "name": "onnx/prompt_encoder_mask_decoder_quantized.onnx",
+        "bytes": 4903810,
+        "sha256": "cb90b279f549d2cab7fd6e20c38522438c65d84bdcca3d2a764cff7d857fdce2"
+      }
+    ]
+  }
+]

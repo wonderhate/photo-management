@@ -1,0 +1,20 @@
+import type {CollageOutput} from '../core/collage-output';
+import type {CollageBook} from '../core/collage-book';
+import {editorServices} from '../core/editor-adapter';
+import {collageDocumentSources} from '../core/collage-project';
+import type {CollageProject} from '../core/collage-project';
+import {Modal} from '../components';
+import {bt,browserError} from '../browser/text';
+import {useEffect,useRef,useState} from 'react';
+import CollageTool from './CollageTool';
+import CollageBatchTool from './CollageBatchTool';
+import type {CollageInput} from '../browser/collage-session';
+import type {CollageScene} from '../core/collage';
+export default function CollageLauncher({photoIds=[],onClose}:{photoIds?:string[];onClose:()=>void}){
+ const [batch,setBatch]=useState(photoIds.length>12),[initial,setInitial]=useState<{inputs:CollageInput[];scene:CollageScene|null;book?:CollageBook}|null>(null);
+ const [record,setRecord]=useState<CollageProject|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[epoch,setEpoch]=useState(0);const alive=useRef(true),read=useRef<AbortController|null>(null);
+ useEffect(()=>{alive.current=true;return()=>{alive.current=false;read.current?.abort();};},[]);
+ async function open(saved:CollageProject){const controller=new AbortController();read.current=controller;setLoading(true);setError('');try{const services=await editorServices(),record=await services.library.getCollage(saved.id),inputs:CollageInput[]=[];for(const source of collageDocumentSources(record.document)){controller.signal.throwIfAborted();inputs.push({id:source.id,file:await services.library.collageSource(record,source.id,controller.signal),profile:source.profile,...(source.photo_id?{photo_id:source.photo_id}:{})});}if(!alive.current||controller.signal.aborted||read.current!==controller)return;setRecord(record);setInitial({inputs,scene:record.document.kind==='single'?record.document.value:null});setBatch(record.document.kind==='batch');setEpoch(e=>e+1);}catch(e){if(alive.current&&!controller.signal.aborted&&read.current===controller)setError(browserError(e));}finally{if(alive.current&&read.current===controller)setLoading(false);}}
+ async function openOutput(saved:CollageOutput){const controller=new AbortController();read.current=controller;setLoading(true);setError('');try{const services=await editorServices(),output=await services.library.getCollageOutput(saved.id),inputs:CollageInput[]=[];for(const source of collageDocumentSources(output.project.document)){controller.signal.throwIfAborted();inputs.push({id:source.id,file:await services.library.collageOutputSource(output,source.id,controller.signal),profile:source.profile,...(source.photo_id?{photo_id:source.photo_id}:{})});}if(!alive.current||controller.signal.aborted||read.current!==controller)return;const doc=output.project.document;setRecord(null);setInitial({inputs,scene:doc.kind==='single'?doc.value:null,book:doc.kind==='batch'?doc.value:undefined});setBatch(doc.kind==='batch');setEpoch(e=>e+1);}catch(e){if(alive.current&&!controller.signal.aborted&&read.current===controller)setError(browserError(e));}finally{if(alive.current&&read.current===controller)setLoading(false);}}
+ return <>{batch?<CollageBatchTool key={epoch} photoIds={initial?[]:photoIds} initialInputs={initial?.inputs} initialScene={initial?.scene||undefined} initialBook={record?.document.kind==='batch'?record.document.value:initial?.book} project={record} suspended={loading||!!error} onOpenProject={open} onOpenOutput={openOutput} onClose={onClose}/>:<CollageTool key={epoch} photoIds={initial?[]:photoIds} initialInputs={initial?.inputs} initialScene={initial?.scene||undefined} project={record} suspended={loading||!!error} onOpenProject={open} onOpenOutput={openOutput} onClose={onClose} onBatch={(inputs,scene)=>{setRecord(null);setInitial({inputs,scene});setBatch(true);}}/>}{(loading||error)&&<Modal title={bt('打开拼图工程','Open collage project')} onClose={()=>{read.current?.abort();read.current=null;setError('');setLoading(false);}}><p role={error?'alert':'status'}>{error||bt('正在核验并读取源图快照…','Checking and reading source snapshots…')}</p></Modal>}</>;
+}

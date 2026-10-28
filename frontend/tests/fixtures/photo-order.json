@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {"id":"z","file_name":"Same.jpg","rating":5,"date_taken":"2026-01-01T12:00:00","created_at":"2026-02-01T12:00:00"},
+    {"id":"h","file_name":"中文.jpg","rating":1,"date_taken":null,"created_at":"2026-02-02T12:00:00"},
+    {"id":"g","file_name":"file2.jpg","rating":0,"date_taken":"2026-01-01T12:00:00","created_at":"2026-02-01T12:00:00"},
+    {"id":"f","file_name":"file10.jpg","rating":null,"date_taken":"2026-01-02T12:00:00","created_at":"2026-02-02T12:00:00"},
+    {"id":"e","file_name":"😀.jpg","rating":2,"date_taken":null,"created_at":"2026-02-02T12:00:00"},
+    {"id":"d","file_name":"\ue000.jpg","rating":5,"date_taken":"2026-01-01T12:00:00","created_at":"2026-02-02T12:00:00"},
+    {"id":"c","file_name":"Z.jpg","rating":null,"date_taken":null,"created_at":"2026-02-01T12:00:00"},
+    {"id":"b","file_name":"a.jpg","rating":0,"date_taken":"2026-01-02T12:00:00","created_at":"2026-02-01T12:00:00"},
+    {"id":"a","file_name":"Same.jpg","rating":5,"date_taken":"2026-01-01T12:00:00","created_at":"2026-02-01T12:00:00"}
+  ],
+  "expected": {
+    "rating:asc":["b","g","h","e","a","d","z","c","f"],
+    "rating:desc":["a","d","z","e","h","b","g","c","f"],
+    "file_name:asc":["a","z","c","b","f","g","h","d","e"],
+    "file_name:desc":["e","d","h","g","f","b","c","a","z"],
+    "date_taken:asc":["a","d","g","z","b","f","c","e","h"],
+    "date_taken:desc":["b","f","a","d","g","z","c","e","h"],
+    "created_at:asc":["a","b","c","g","z","d","e","f","h"],
+    "created_at:desc":["d","e","f","h","a","b","c","g","z"]
+  }
+}

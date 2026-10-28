@@ -1,0 +1,51 @@
+ai.photomanagement.online {
+    log {
+        output file /config/access.log {
+            roll_size 20MiB
+            roll_keep 5
+        }
+    }
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+    }
+
+    # Release files live in the persistent Caddy config volume; never serve its parent.
+    @downloads {
+        method GET HEAD
+        path /downloads/1.0/PhotoCollection-Setup-1.0-x64.exe /downloads/1.0/PhotoCollection-Windows-1.0.zip /downloads/1.0/SHA256SUMS-1.0.txt /downloads/2.7.0/PhotoCollection-Setup-2.7.0-x64.exe /downloads/2.7.0/PhotoCollection-Windows-2.7.0.zip /downloads/2.7.0/SHA256SUMS-2.7.0.txt
+    }
+    handle @downloads {
+        uri strip_prefix /downloads
+        root * /config/lumina-downloads
+        header {
+            Content-Disposition "attachment"
+            Content-Type application/octet-stream
+            Cache-Control "public, max-age=86400"
+        }
+        file_server
+    }
+
+    @relay path /health /cloud-art /cloud-studio
+    handle @relay {
+        reverse_proxy relay:9000 {
+            stream_timeout 15m
+        }
+    }
+    @beacon path /hit
+    handle @beacon {
+        rewrite * /hit.gif
+        root * /config/lumina-downloads
+        header {
+            Cross-Origin-Resource-Policy "cross-origin"
+            Cache-Control "no-store"
+            Content-Type "image/gif"
+        }
+        file_server
+    }
+
+    handle {
+        respond "Not found" 404
+    }
+}

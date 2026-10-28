@@ -1,0 +1,30 @@
+"""Original, inspectable style prompts; the dedicated watercolor workflow stays separate."""
+_ROWS=[
+ ('ink','水墨','Ink wash','Restrained monochrome ink washes, dry brush edges and generous breathing room.'),
+ ('oil','油画','Oil painting','Layered oil paint, visible impasto, carefully modelled light and restrained palette.'),
+ ('gouache','水粉','Gouache','Opaque gouache, flat matte pigment, softly simplified shapes.'),
+ ('pencil','铅笔','Pencil','Graphite pencil drawing with delicate cross hatching and natural paper grain.'),
+ ('charcoal','炭笔','Charcoal','Expressive charcoal study with broad tonal masses and soft smudged transitions.'),
+ ('pastel','粉彩','Pastel','Soft pastel pigments with velvety edges and delicate broken color.'),
+ ('linocut','版画','Linocut','Two-color linocut print with bold carved lines and tactile ink coverage.'),
+ ('etching','蚀刻','Etching','Fine etched lines and tonal hatching on warm printmaking paper.'),
+ ('woodblock','木版','Woodblock','Traditional woodblock print with simplified color planes and hand printed texture.'),
+ ('cyanotype','蓝晒','Cyanotype','Cyanotype photographic print in deep Prussian blue and white.'),
+ ('duotone','双色','Duotone','Restrained editorial duotone in charcoal and warm ochre.'),
+ ('risograph','孔版印刷','Risograph','Two-ink risograph print with subtle grain and slight registration shifts.'),
+ ('comic','漫画','Comic','Clear comic ink drawing with restrained cel shading and faithful subject placement.'),
+ ('line','线描','Line drawing','Continuous fine line drawing with minimal shading and no added typography.'),
+ ('pixel','像素','Pixel art','Carefully composed pixel art with a limited palette and readable silhouettes.'),
+ ('paper','纸艺','Paper cut','Layered cut-paper shapes with gentle paper relief shadows.'),
+ ('mosaic','马赛克','Mosaic','Small colored mosaic tiles preserving the scene composition and main subjects.'),
+ ('stained-glass','彩玻璃','Stained glass','Luminous stained glass panels with thin dark leading and coherent subject shapes.'),
+ ('embroidery','刺绣','Embroidery','Tactile embroidery stitches on plain fabric, retaining subject silhouettes.'),
+ ('clay','黏土','Clay','Handcrafted matte clay miniature with soft studio light and visible handmade texture.'),
+ ('miniature','微缩','Miniature','Detailed physical miniature, subtle depth of field, original camera perspective.'),
+ ('noir','黑白电影','Film noir','Cinematic monochrome, rich shadows and subtle silver grain.'),
+ ('vintage','复古胶片','Vintage film','Gentle analog grain, muted warm color and soft highlight roll-off.'),
+ ('dream','柔光梦境','Soft dream','Soft luminous atmosphere and delicate bloom without inventing new subjects.'),
+ ('botanical','自然图鉴','Naturalist study','Precise naturalist illustration with delicate pigment and carefully observed detail.'),
+]
+STYLES=[dict(id=id,name_zh=zh,name_en=en,prompt='Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. '+prompt)
+        for id,zh,en,prompt in _ROWS]

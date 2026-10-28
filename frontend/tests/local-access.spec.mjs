@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures/native-runtime.mjs';
 
 for(const lang of ['zh','en'])test(`settings contain local controls without phone pairing ${lang}`,async({page,request})=>{
   await page.addInitScript(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('onboarded','1')},lang);

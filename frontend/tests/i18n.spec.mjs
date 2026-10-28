@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures/native-runtime.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -52,8 +52,9 @@ test('English interface covers pages, dialogs and live language changes',async({
   }
   await page.goto('/timeline');
   await page.locator('.timeline-year>button').first().click();
-  await page.locator('.timeline-month>button').first().click();
-  await expect(page.locator('.timeline-month>button')).toContainText('September');
+  const september=page.locator('.timeline-month>button').filter({hasText:'September'});
+  await september.click();
+  await expect(september).toHaveClass('active');
   await checkEnglish('expanded timeline');
   await page.goto('/faces');
   await page.getByRole('button',{name:'View Photos',exact:true}).click();
@@ -97,7 +98,7 @@ test('English interface covers pages, dialogs and live language changes',async({
   await page.locator('.topbar-actions').getByRole('button',{name:'Import Photos',exact:true}).click();
   await checkEnglish('import dialog');await page.keyboard.press('Escape');
   await page.keyboard.press('?');await checkEnglish('shortcuts dialog');await page.keyboard.press('Escape');
-  await page.getByRole('button',{name:'View 用户的照片.jpg',exact:true}).click();
+  await page.getByRole('button',{name:'View 用户的照片.jpg',exact:true}).dblclick();
   await expect(page.locator('.detail-image')).toBeVisible();
   await checkEnglish('photo detail');await page.keyboard.press('Escape');
   await page.locator('.select-box').first().click();
@@ -107,7 +108,7 @@ test('English interface covers pages, dialogs and live language changes',async({
   await expect(page.getByAltText('Live watermark preview')).toBeVisible();
   const slider=page.locator('input[type=range]').first();await slider.focus();await slider.press('ArrowRight');
   const changedValue=await slider.inputValue();
-  await page.locator('.sidebar nav').getByRole('button',{name:'Albums',exact:true}).click();
+  await page.locator('.workspace-subnav').getByRole('button',{name:'Albums',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Unsaved Watermark'})).toBeVisible();
   await checkEnglish('unsaved watermark dialog');
   await page.getByRole('button',{name:'Continue Editing',exact:true}).click();
