@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {readdirSync} from 'node:fs';
+import {readdirSync,readFileSync} from 'node:fs';
 
 test('the original portfolio opens the upgraded app and its download without losing the workspace',async({page,context})=>{
   await page.emulateMedia({reducedMotion:'no-preference'});
@@ -55,5 +55,10 @@ test('the integrated static build serves private-media support and narrowly scop
   expect((await request.get('/')).headers()['content-security-policy']).not.toContain("'wasm-unsafe-eval'");
   expect((await request.get('/')).headers()['content-security-policy']).toContain("media-src 'self' blob:");
   const module=assets.find(name=>name.endsWith('.mjs'));expect(module).toBeTruthy();
+  const hosting=JSON.parse(readFileSync(new URL('../dist-showcase/edgeone.json',import.meta.url),'utf8'));
+  for(const name of assets.filter(name=>/\.(mjs|wasm)$/.test(name))){
+    const type=hosting.headers.find(rule=>rule.source==='/assets/'+name)?.headers.find(header=>header.key==='Content-Type')?.value;
+    expect(type).toContain(name.endsWith('.mjs')?'text/javascript':'application/wasm');
+  }
   expect((await request.get('/assets/'+module)).headers()['content-type']).toContain('text/javascript');
 });

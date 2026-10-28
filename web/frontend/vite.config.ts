@@ -13,12 +13,16 @@ export default defineConfig(({mode,command})=>{
     generateBundle:{order:'post',handler(_options:any,bundle:Record<string,any>){
       const stamp=createHash('sha256');
       if(showcase)this.emitFile({type:'asset',fileName:'portfolio/manifest.json',source:JSON.stringify(emptyPortfolio)});
-      this.emitFile({type:'asset',fileName:'edgeone.json',source:readFileSync(fileURLToPath(new URL('../edgeone.json',import.meta.url)))});
+      const hosting=JSON.parse(readFileSync(fileURLToPath(new URL('../edgeone.json',import.meta.url)),'utf8'));
+      // Static hosts may default .mjs to octet-stream. Pin exact emitted paths;
+      // a prefix rule would also catch the neighboring WASM binary.
+      for(const file of Object.keys(bundle))if(/\.(mjs|wasm)$/.test(file))hosting.headers.push({source:'/'+file,headers:[{key:'Content-Type',value:file.endsWith('.mjs')?'text/javascript; charset=utf-8':'application/wasm'}]});
+      this.emitFile({type:'asset',fileName:'edgeone.json',source:JSON.stringify(hosting,null,2)});
       for(const name of ['index.html','windows.html','public/manifest.webmanifest','public/icon-192.png','public/icon-512.png','public/site-notes.js','public/site-glass.css','public/site-glass.js','scripts/public-pages.mjs','src/browser/public-profile.ts'])stamp.update(readFileSync(fileURLToPath(new URL('./'+name,import.meta.url))));
       for(const folder of ['signatures','brand_logos']){const base=fileURLToPath(new URL('../assets/'+folder+'/',import.meta.url));for(const file of readdirSync(base)){const source=readFileSync(base+file);stamp.update(folder+'/'+file).update(source);this.emitFile({type:'asset',fileName:'local-assets/'+folder+'/'+file,source});}}
       for(const name of ['index.js','worker.js','libraw.js','libraw.wasm']){const source=readFileSync(fileURLToPath(new URL('./node_modules/libraw-wasm/dist/'+name,import.meta.url)));stamp.update(source);this.emitFile({type:'asset',fileName:'raw-1.6.0/'+name,source});}
       const localWorker=readFileSync(fileURLToPath(new URL('./public/local-file-worker.js',import.meta.url)),'utf8');
-      const assets=Object.keys(bundle).filter(file=>/\.(js|mjs|css|wasm)$/.test(file)&&!file.startsWith('raw-')),version=stamp.update(localWorker).update(assets.join('\n')).update(readFileSync(fileURLToPath(new URL('../edgeone.json',import.meta.url)))).digest('hex').slice(0,12),precache=['/',...(showcase?['/en/','/about/','/en/about/','/lumina/','/en/lumina/','/site-notes.js']:[]),'/windows.html','/local-file-worker.js','/maps/land-110m.json','/site-glass.css','/site-glass.js','/manifest.webmanifest','/icon-192.png','/icon-512.png',...assets.map(file=>'/'+file)];
+      const assets=Object.keys(bundle).filter(file=>/\.(js|mjs|css|wasm)$/.test(file)&&!file.startsWith('raw-')),version=stamp.update(localWorker).update(assets.join('\n')).update(JSON.stringify(hosting)).digest('hex').slice(0,12),precache=['/',...(showcase?['/en/','/about/','/en/about/','/lumina/','/en/lumina/','/site-notes.js']:[]),'/windows.html','/local-file-worker.js','/maps/land-110m.json','/site-glass.css','/site-glass.js','/manifest.webmanifest','/icon-192.png','/icon-512.png',...assets.map(file=>'/'+file)];
       this.emitFile({type:'asset',fileName:'sw.js',source:`${localWorker}
 const CACHE='photo-browser-${version}',FILES=${JSON.stringify(precache)};
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));
