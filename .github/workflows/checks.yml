@@ -4,6 +4,8 @@ on:
     branches: [main, 'codex/**']
   pull_request:
     branches: [main]
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
 permissions:
   contents: read
 jobs:
