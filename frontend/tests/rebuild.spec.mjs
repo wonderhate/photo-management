@@ -66,6 +66,10 @@ for(const theme of ['dark','light'])for(const width of [1440,390])test(`rebuilt 
   await page.reload();await expect(page.locator('.photo-image').first()).toBeVisible();
   await page.goBack();await expect(page.locator('.archive-hero h1')).toBeVisible();
   await page.getByRole('button',{name:'进入照片库',exact:true}).click();
+  // Finish the route animation before exercising filters; a stationary pointer
+  // can reveal the inspector as photos move beneath it during the transition.
+  await page.mouse.move(1,1);await expect(page.locator('.workspace-transition')).toHaveAttribute('data-motion','idle');
+  const inspectorClose=page.getByRole('button',{name:'关闭照片信息',exact:true});if(await inspectorClose.isVisible())await inspectorClose.click();
   await page.getByRole('button',{name:'筛选',exact:true}).click();
   await page.locator('[data-facet=camera_model]').click();await page.locator('.facet-popover').getByRole('checkbox',{name:/^TEST CAMERA/}).check();await page.locator('.facet-popover').getByRole('button',{name:'关闭筛选',exact:true}).click();
   await expect(page.locator('.filter-chips')).toContainText('TEST CAMERA');
