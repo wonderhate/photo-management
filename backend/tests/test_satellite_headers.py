@@ -1,6 +1,7 @@
 """Map sources have explicit permissions; third-party scripts remain isolated."""
 import asyncio
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,24 @@ from fastapi import Request
 from fastapi.responses import Response
 
 from backend.app.main import SATELLITE_HEADERS, protect_local_requests
+
+
+def https_policy_sources(policy):
+    """Compare source lists for HTTPS hosting, not local HTTP documents.
+
+    CSP3 6.7.2.8 resolves a scheme-less host using the protected origin's
+    scheme. HTTPS cannot downgrade to HTTP (6.7.2.9). Keep the desktop
+    policy explicit because its protected document is served over HTTP.
+    """
+    directives = {}
+    for part in policy.split(';'):
+        name, *sources = part.strip().split()
+        assert name not in directives
+        directives[name] = tuple(
+            'https://' + source if re.fullmatch(r'[a-z0-9.-]+\.[a-z]{2,}', source) else source
+            for source in sources
+        )
+    return directives
 
 
 def response_headers(path):
@@ -41,7 +60,11 @@ def test_satellite_response_matches_public_host_policy(path):
         rule = next(rule for rule in rules if rule['source'] == path)
         expected = {header['key']: header['value'] for header in rule['headers']}
         for name, value in SATELLITE_HEADERS[path].items():
-            assert expected[name] == value
+            if file.parent.name == 'web' and name == 'Content-Security-Policy':
+                assert len(expected[name]) <= 1000  # EdgeOne response-header value limit.
+                assert https_policy_sources(expected[name]) == https_policy_sources(value)
+            else:
+                assert expected[name] == value
             assert actual[name] == value
 
 

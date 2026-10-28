@@ -11,6 +11,61 @@ import {createServer,loadConfigFromFile} from 'vite';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const files=['/maps/satellite.html','/maps/satellite.js','/maps/satellite.css'];
 
+// CSP3 6.7.2.8/.9: scheme-less hosts inherit the protected origin's scheme.
+// This normalization is valid for production HTTPS, not local HTTP preview.
+// Desktop's HTTP origin deliberately retains its explicit HTTPS policy.
+function httpsPolicySources(policy){
+  const directives={};
+  for(const part of policy.split(';')){
+    const [name,...sources]=part.trim().split(/\s+/);
+    assert.ok(!Object.hasOwn(directives,name),'duplicate CSP directive: '+name);
+    directives[name]=sources.map(source=>/^[a-z0-9.-]+\.[a-z]{2,}$/.test(source)?'https://'+source:source);
+  }
+  return directives;
+}
+
+test('production headers fit EdgeOne limits with the same exact HTTPS map permissions',()=>{
+  const webRules=JSON.parse(readFileSync(new URL('../../edgeone.json',import.meta.url),'utf8')).headers;
+  // Keep this contract inside the standalone web repository. Backend tests also
+  // compare the desktop policy, but web verification must not depend on it.
+  const tileHosts=['khm.google.com','khm.googleapis.com','khm0.google.com','khm0.googleapis.com','khm1.google.com','khm1.googleapis.com',
+    'khms0.google.com','khms0.googleapis.com','khms1.google.com','khms1.googleapis.com','khms2.google.com','khms2.googleapis.com','khms3.google.com','khms3.googleapis.com'].map(host=>'https://'+host);
+  const mapHosts=['https://maps.googleapis.com','https://mapsresources-pa.googleapis.com','https://maps.gstatic.com'];
+  const expectedMapPolicy={
+    'default-src':["'none'"],
+    'script-src':["'self'","'unsafe-eval'",'https://maps.googleapis.com','https://maps.gstatic.com','blob:'],
+    'worker-src':['blob:'],
+    'style-src':["'self'","'unsafe-inline'",'https://fonts.googleapis.com'],
+    'img-src':["'self'",'data:','blob:',...mapHosts,...tileHosts],
+    'connect-src':[...mapHosts,'https://csi.gstatic.com',...tileHosts],
+    'font-src':['https://fonts.gstatic.com'],
+    'frame-src':["'none'"],'object-src':["'none'"],'base-uri':["'none'"],
+    'frame-ancestors':["'self'"],'form-action':["'none'"],
+  };
+  for(const rule of webRules)for(const {key,value} of rule.headers){
+    assert.ok(key.length>=1&&key.length<=100,rule.source+' header key');
+    assert.ok(value.length>=1&&value.length<=1000,rule.source+' '+key+' exceeds EdgeOne limit');
+    assert.ok(/^[\x20-\x7e]+$/.test(value),rule.source+' '+key+' must be ASCII');
+  }
+  const headers=(rules,path)=>Object.fromEntries(rules.find(rule=>rule.source===path).headers.map(header=>[header.key,header.value]));
+  for(const path of files){
+    const web=headers(webRules,path);
+    assert.deepEqual(httpsPolicySources(web['Content-Security-Policy']),expectedMapPolicy,path);
+    assert.equal(web['Cross-Origin-Embedder-Policy'],'unsafe-none');
+    assert.equal(web['X-Frame-Options'],'SAMEORIGIN');
+    assert.equal(web['Referrer-Policy'],'strict-origin-when-cross-origin');
+    assert.ok(!web['Content-Security-Policy'].includes('*'));
+  }
+  const parent=headers(webRules,'/*'),policy=httpsPolicySources(parent['Content-Security-Policy']);
+  assert.equal(parent['Cross-Origin-Embedder-Policy'],'require-corp');
+  assert.equal(parent['Cross-Origin-Opener-Policy'],'same-origin');
+  assert.deepEqual(policy['script-src'],["'self'"]);
+  assert.deepEqual(policy['frame-src'],["'self'"]);
+  assert.deepEqual(policy['frame-ancestors'],["'none'"]);
+  assert.ok(!parent['Content-Security-Policy'].includes('google'));
+  assert.deepEqual(webRules.filter(rule=>rule.headers.some(header=>header.key==='Cross-Origin-Embedder-Policy'&&header.value==='unsafe-none')).map(rule=>rule.source),files);
+});
+
 async function generatedWorker(replacements=new Map()){
   const loaded=await loadConfigFromFile({command:'build',mode:'browser'},fileURLToPath(new URL('../vite.config.ts',import.meta.url)),root,'error');
   const plugin=loaded.config.plugins.flat(Infinity).find(plugin=>plugin?.name==='browser-local-assets');
@@ -45,7 +100,9 @@ test('development serves the isolated map document without injecting HMR or rela
     assert.equal(response.headers.get('referrer-policy'),'strict-origin-when-cross-origin');
     const csp=response.headers.get('content-security-policy');
     assert.ok(csp.includes("frame-ancestors 'self'"));
-    assert.ok(csp.includes('https://maps.googleapis.com'));
+    // Vite copies the production policy on a loopback HTTP preview. Its exact
+    // host list remains constrained, but HTTPS-only equivalence is tested above.
+    assert.ok(httpsPolicySources(csp)['script-src'].includes('https://maps.googleapis.com'));
     assert.ok(!csp.includes("connect-src 'self'"));
     assert.equal(await response.text(),readFileSync(new URL('../public'+path,import.meta.url),'utf8'));
   }
