@@ -179,3 +179,8 @@
 .public-home button.credit{padding:0;min-height:auto;text-align:left}
 .public-home button.credit:hover{color:var(--accent-soft)}
 .public-home .qq b{white-space:nowrap}
+.public-home .entry-support{max-width:48em;margin-top:18px;color:var(--muted);font-size:13px;line-height:1.9}
+.public-home .entry-support a{display:inline-flex;align-items:center;gap:5px;min-height:32px;text-decoration:underline;text-underline-offset:4px;color:var(--accent)}
+.public-home .hero .entry-support{color:#eee8dc;max-width:47em}
+.public-home .hero .entry-support a{color:#ffe6b5}
+@media(max-width:720px){.public-home .entry-support{font-size:13px}.public-home .nav{display:flex;order:3;flex-basis:100%;justify-content:space-between;gap:12px}.public-home .hdr-in{flex-wrap:wrap;padding-block:10px;gap:8px 14px}.public-home .nav a{font-size:12px;min-height:36px}}

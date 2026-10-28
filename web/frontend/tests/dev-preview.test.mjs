@@ -1,13 +1,19 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
+import {mkdir,mkdtemp,rm} from 'node:fs/promises';
+import {dirname,join} from 'node:path';
 import {createServer} from 'vite';
 import {chromium,expect} from '@playwright/test';
 
 test('development pages start under CSP with React refresh and local WebSocket access',async t=>{
   const root=fileURLToPath(new URL('../',import.meta.url));
-  const server=await createServer({root,mode:'showcase',server:{host:'127.0.0.1',port:5185,strictPort:true}});
-  t.after(()=>server.close());await server.listen();
+  // Other tests start Vite with another mode. A shared optimizer cache can turn
+  // valid module URLs into 504 Outdated Optimize Dep during parallel runs.
+  const artifactRoot=fileURLToPath(new URL('../../.test-artifacts/',import.meta.url));
+  await mkdir(artifactRoot,{recursive:true});const cacheDir=await mkdtemp(join(artifactRoot,'dev-preview-vite-'));
+  const server=await createServer({root,cacheDir,mode:'showcase',server:{host:'127.0.0.1',port:5185,strictPort:true}});
+  t.after(async()=>{await server.close();assert.equal(dirname(cacheDir),artifactRoot.replace(/[\\/]$/,''));await rm(cacheDir,{recursive:true,force:true});});await server.listen();
   const browser=await chromium.launch({channel:process.env.CI?undefined:'chrome',headless:true});
   t.after(()=>browser.close());
   const page=await browser.newPage(),errors=[];

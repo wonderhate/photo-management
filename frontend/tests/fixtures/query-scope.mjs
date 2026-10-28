@@ -1,8 +1,9 @@
+import {navigateWorkspace} from './workspace-navigation.mjs';
 import {expect} from '@playwright/test';
 export function readScopeURL(url){const u=new URL(url),search=u.hash?u.hash.slice(u.hash.indexOf('?')):u.search;return JSON.parse(new URLSearchParams(search).get('scope'));}
 export async function exerciseQueryScope(page,{lang='zh',rows,normal,second,rule,openSecond,openPerson,screenshot}){
   const text=(zh,en)=>lang==='en'?en:zh,names=ids=>ids.map(id=>rows.find(p=>p.id===id).file_name).sort(),seen=async ids=>expect.poll(async()=>(await page.locator('.photo-caption>span').allTextContents()).sort()).toEqual(names(ids));
-  const nav=name=>page.locator('.workspace-subnav').getByRole('button',{name,exact:true}).click(),bar=page.getByRole('region',{name:text('当前检索范围','Current search scope'),exact:true});
+  const nav=name=>navigateWorkspace(page,name),bar=page.getByRole('region',{name:text('当前检索范围','Current search scope'),exact:true});
   const input=page.getByRole('textbox',{name:text('搜索照片','Search photos'),exact:true}),mode=page.getByRole('combobox',{name:text('搜索方式','Search mode'),exact:true});
   async function search(value){await mode.selectOption('text');await input.fill(value);await input.press('Enter');}
   async function open(name){await nav(text('影集','Albums'));await page.locator('.album-card').filter({hasText:name}).locator('.album-cover').click();}

@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 
 import {execFileSync} from 'node:child_process';
@@ -72,7 +73,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     expect(response.headers()['x-content-type-options']).toBe('nosniff');
     expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
     await checkCard('.album-card');
-    if(width===390)await expect(page.locator('.workspace-subnav').getByRole('button',{name:'水印图库',exact:true})).toBeVisible();
+    if(width===390){await page.locator('.workspace-more-trigger').click();await expect(page.locator('.workspace-subnav').getByRole('button',{name:'水印图库',exact:true})).toBeVisible();await page.keyboard.press('Escape');}
     await page.goto('/faces');await checkCard('.face-card');
     await expect(page.locator('.face-card button')).toHaveText(['查看照片','实时人物照片','命名','删除人物','确认分组','新建人物影集']);
     await expect(page.locator('.face-card').getByRole('button',{name:'实时人物照片',exact:true})).toBeEnabled();
@@ -141,7 +142,7 @@ test('confirmed person can create and open a named album',async({page})=>{
   await create.click();await expect(page).toHaveURL(/page=photos/);
   expect(submitted).toEqual([{name:'家人影集',person_id:'test-person'},{name:'家人影集',person_id:'test-person'}]);
   await expect(page.getByRole('status')).toContainText('家人影集');
-  await page.locator('.workspace-subnav').getByRole('button',{name:'影集',exact:true}).click();
+  await navigateWorkspace(page,'影集');
   await expect(page.locator('.album-card h3')).toHaveText('家人影集');
   await expect(page.locator('.album-card p')).toContainText('81 次拍摄');
   await page.goto('/faces');await expect(create).toHaveCount(0);

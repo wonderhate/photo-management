@@ -23,6 +23,7 @@ async function mapFixture(root){
   await cp(fileURLToPath(new URL('../public/maps',import.meta.url)),join(root,'maps'),{recursive:true});
   await mkdir(join(root,'licenses'),{recursive:true});
   for(const name of ['nasa-blue-marble.json','leaflet-BSD-2-Clause.txt','leaflet-source.json'])await copyFile(fileURLToPath(new URL('../public/licenses/'+name,import.meta.url)),join(root,'licenses',name));
+  await cp(fileURLToPath(new URL('../public/demo',import.meta.url)),join(root,'demo'),{recursive:true});
 }
 
 test('public package validation accepts the complete registered map and its source record without making a release',async()=>{
@@ -30,9 +31,29 @@ test('public package validation accepts the complete registered map and its sour
   try{
     await mapFixture(root);
     for(const name of ['site-glass.css','site-glass.js','local-file-worker.js','assets/runtime.mjs','assets/runtime.wasm'])await writeFile(join(root,name),'synthetic public asset');
-    const result=validate(root);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/702 1/);
+    const result=validate(root);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/706 1/);
     await writeFile(join(root,'maps/private.json'),'synthetic private data');
     const rejected=validate(root);assert.notEqual(rejected.status,0);assert.match(rejected.stderr,/Unexpected public artifact: maps\/private\.json/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('public package keeps only registered demo outputs and rejects missing or changed provenance',async()=>{
+  const root=await fixture();
+  try{
+    await mapFixture(root);
+    for(const relative of ['demo/lumina-original.png','demo/lumina-adjusted.png','demo/lumina-framed.png','demo/source.json']){
+      const file=join(root,relative),original=await readFile(file);
+      await writeFile(file,'synthetic replacement');
+      const changed=validate(root);assert.notEqual(changed.status,0,relative);assert.match(changed.stderr,/Demo asset does not match its bundled source/);
+      await unlink(file);
+      const missing=validate(root);assert.notEqual(missing.status,0,relative);assert.match(missing.stderr,/Incomplete bundled demo assets/);
+      await writeFile(file,original);
+    }
+    for(const relative of ['demo/private.png','demo/extra.json']){
+      const file=join(root,relative);await writeFile(file,'synthetic unregistered file');
+      const result=validate(root);assert.notEqual(result.status,0);assert.match(result.stderr,/Unexpected public artifact/);await unlink(file);
+    }
+    assert.equal(validate(root).status,0);
   }finally{await rm(root,{recursive:true,force:true});}
 });
 

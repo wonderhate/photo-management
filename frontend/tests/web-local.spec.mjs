@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {exerciseLocationGuidance} from './fixtures/location-guidance.mjs';
 import {installOfflineEarthProbe,exerciseOfflineEarth} from './fixtures/offline-earth-map.mjs';
 import {installRegionalTiles,exerciseRegionalSatellite,syntheticArcGISKey,syntheticMapTilerKey} from './fixtures/regional-satellite.mjs';
 import {installSatelliteSDK,exerciseSatelliteMap,syntheticMapKey,assertMapPhotoFan} from './fixtures/satellite-map.mjs';
@@ -16,7 +17,10 @@ import {exerciseFacets} from './fixtures/facets.mjs';
 import {exerciseQueryScope} from './fixtures/query-scope.mjs';
 import {tagRows,exerciseTagSearch} from './fixtures/tag-search.mjs';
 const assets=fileURLToPath(new URL('../dist-web/assets/',import.meta.url));
-const apiModule='/assets/'+readdirSync(assets).find(f=>/^api-.*\.js$/.test(f));
+// Two api-* chunks can exist; select the browser contract, not hash-sort order.
+const apiFile=readdirSync(assets).find(f=>/^api-.*\.js$/.test(f)&&/export\s*\{[^}]*\bbrowserAPI\s*[,}]/.test(readFileSync(new URL('../dist-web/assets/'+f,import.meta.url),'utf8')));
+if(!apiFile)throw new Error('Built browserAPI export was not found.');
+const apiModule='/assets/'+apiFile;
 const mediaModule='/assets/'+readdirSync(assets).find(f=>/^photo-media-.*\.js$/.test(f));
 const toolModule='/assets/'+readdirSync(assets).find(f=>/^tool-preference-store-.*\.js$/.test(f));
 const albumModule='/assets/'+readdirSync(assets).find(f=>/^album-preference-store-.*\.js$/.test(f));
@@ -164,7 +168,7 @@ test.beforeEach(async({context})=>{
   });
 });
 
-async function navigate(page,name){await page.locator('.workspace-subnav').getByRole('button',{name,exact:true}).click();}
+async function navigate(page,name){const button=page.locator('.workspace-subnav').getByRole('button',{name,exact:true});if(!await button.isVisible())await page.locator('.workspace-more-trigger').click();await button.click();}
 async function open(page){await page.goto('/');await page.waitForFunction(()=>!!window.__synthetic);await expect(page.getByRole('button',{name:'新建本地图库',exact:true})).toBeVisible();await page.getByRole('button',{name:'新建本地图库',exact:true}).click();await expect(page.locator('.app-shell')).toBeVisible();}
 async function call(page,path,method='GET',body){return page.evaluate(async({module,path,method,body})=>(await import(module)).browserAPI(path,method,body),{module:apiModule,path,method,body});}
 async function imported(page){await open(page);const pick=await call(page,'/dialog/directory','POST');const job=await call(page,'/photos/import','POST',{paths:pick.paths,recursive:true});await expect.poll(async()=>(await call(page,'/jobs/'+job.id)).status,{timeout:20000}).toBe('completed');const result=await call(page,'/photos');expect(result.total).toBe(1);return result.photos[0];}
@@ -817,11 +821,24 @@ for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`lifecycle batch offline
   await call(page,'/locations/photos/'+p.id,'PUT',{source_hash:record.source_hash,expected_revision:0,operation:'set',value:{latitude:30,longitude:120,country:'China',city:'Hangzhou',label:'Lake',accuracy_m:100}});
   await page.evaluate(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);
   await page.setViewportSize({width,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/?page=locations');await page.reload();
-  await expect(page.locator('.locations-page')).toBeVisible();await page.getByRole('button',{name:lang==='zh'?'离线地图':'Offline map',exact:true}).click();await expect(page.locator('.map-cluster')).toHaveCount(1);await expect.poll(()=>page.locator('.photo-map svg path').count()).toBeGreaterThan(1);
+  await expect(page.locator('.locations-page')).toBeVisible();await page.getByRole('button',{name:lang==='zh'?'进阶设置':'Advanced settings',exact:true}).click();await page.locator('.map-other-styles > summary').click();await page.getByRole('button',{name:lang==='zh'?'轮廓地图':'Outline map',exact:true}).click();await expect(page.locator('.map-cluster')).toHaveCount(1);await expect.poll(()=>page.locator('.photo-map svg path').count()).toBeGreaterThan(1);
   const world=await page.locator('.photo-map svg').getAttribute('viewBox');await page.locator('.photo-map').focus();await page.keyboard.press('+');await expect(page.locator('.photo-map svg')).not.toHaveAttribute('viewBox',world);const zoomed=await page.locator('.photo-map svg').getAttribute('viewBox');await page.keyboard.press('ArrowRight');await expect(page.locator('.photo-map svg')).not.toHaveAttribute('viewBox',zoomed);await page.getByRole('button',{name:lang==='zh'?'全世界':'Whole world',exact:true}).click();await expect(page.locator('.photo-map svg')).toHaveAttribute('viewBox',world);
   await expect(page.locator('.map-cluster')).toHaveCount(1);await page.screenshot({path:info.outputPath('lifecycle-map.png'),fullPage:true});
 });
 
+
+
+for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`map task guidance and coordinate validation ${width} ${lang}`,async({page},info)=>{
+  await open(page);
+  await page.evaluate(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);
+  await page.setViewportSize({width,height:1100});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/?page=locations');await page.reload();
+  const guide=page.locator('.map-task-guide');await expect(guide).toHaveAttribute('data-state','import');
+  await expect(guide.getByRole('button',{name:lang==='zh'?'导入照片':'Import photos',exact:true})).toBeVisible();
+  const pick=await call(page,'/dialog/directory','POST'),job=await call(page,'/photos/import','POST',{paths:pick.paths});await expect.poll(async()=>(await call(page,'/jobs/'+job.id)).status).toBe('completed');
+  const photo=(await call(page,'/photos')).photos[0],hash=()=>page.evaluate(async()=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await(await(await window.__synthetic.originals.getFileHandle('synthetic.jpg')).getFile()).arrayBuffer()))].join(',')),before=await hash();
+  await page.reload();await exerciseLocationGuidance(page,{lang,photo,readLocation:()=>call(page,'/locations/photos/'+photo.id),screenshot:info.outputPath('location-guidance.png')});
+  await page.goto('/#/?page=locations');await expect(page.locator('.map-task-guide')).toHaveCount(0);expect((await call(page,'/locations/map')).located).toBe(1);expect(await hash()).toBe(before);
+});
 
 test('lifecycle batch publishes only selected derived pixels without linked private sources',async({page})=>{
   page.on('dialog',d=>d.accept());const p=await imported(page);await closeForOrdering(page);
@@ -907,7 +924,7 @@ test('browser offline satellite expands a real photo cluster into individual loc
   },base);
   await page.getByRole('button',{name:'打开本地图库或备份',exact:true}).click();await expect(page.locator('.app-shell')).toBeVisible();
   for(const id of ['earth-a','earth-b']){const record=await call(page,'/locations/photos/'+id);await call(page,'/locations/photos/'+id,'PUT',{source_hash:record.source_hash,expected_revision:0,operation:'set',value:{latitude:30,longitude:120,country:'China',city:'Hangzhou',label:'Lake',accuracy_m:100}});}
-  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/?page=locations');await page.reload();await page.getByRole('button',{name:'卫星地图',exact:true}).click();
+  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/?page=locations');await page.reload();await page.getByRole('button',{name:'地图',exact:true}).click();
   const pin=page.locator('.satellite-photo-pin');await expect(pin).toHaveCount(1);await expect(pin).toContainText('2');await pin.hover();await expect(page.locator('.map-photo-fan button')).toHaveCount(2);
   for(const img of await page.locator('.map-photo-fan button img').all())await expect.poll(()=>img.evaluate(node=>node.complete&&node.naturalWidth>0)).toBe(true);
   await assertMapPhotoFan(page);await page.locator('.leaflet-satellite-map').screenshot({path:info.outputPath('nasa-cluster-fan.png')});

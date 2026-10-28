@@ -1,8 +1,9 @@
+import {navigateWorkspace} from './workspace-navigation.mjs';
 import {expect} from '@playwright/test';
 
 export async function createRuleThroughUI(page,{lang='zh',prefix,name,screenshot}){
   const en=lang==='en',text=(zh,enText)=>en?enText:zh;
-  await page.locator('.workspace-subnav').getByRole('button',{name:text('影集','Albums'),exact:true}).click();
+  await navigateWorkspace(page,text('影集','Albums'));
   await page.getByRole('button',{name:text('新建条件集合','New rule collection'),exact:true}).click();
   const dialog=page.getByRole('dialog',{name:text('新建条件集合','New rule collection'),exact:true});
   await dialog.getByRole('textbox',{name:text('影集名称','Album Name'),exact:true}).fill(name);

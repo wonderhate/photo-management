@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {exerciseCollagePresets} from './fixtures/collage-presets-ui.mjs';
 import {browserApiModule} from './fixtures/browser-api-module.mjs';
 import {exerciseDepthUI} from './fixtures/vision-depth-ui.mjs';
@@ -561,7 +562,7 @@ for(const [width,lang,theme] of [[1440,'zh','dark'],[390,'en','light']])test(`ed
 test('watermark menu keeps undo, explicit save and the unsaved modal isolated from typing',async({page})=>{
   const photos=await setup(page),before=await sourceHash(page);await page.goto('/#/watermark/workshop?photo='+photos[0].id);const templates=page.locator('.template-tabs button');await expect(templates.first()).toBeVisible();await templates.nth(1).click();await page.locator('.draft-editor-bar small').click();await page.keyboard.press('Control+z');await expect(templates.first()).toHaveClass('active');await page.keyboard.press('Control+y');await expect(templates.nth(1)).toHaveClass('active');
   const title=page.getByRole('textbox',{name:'水印作品名称',exact:true});await title.fill('Local command frame');await title.press('Delete');await title.press('Control+s');expect((await manifest(page)).drafts).toHaveLength(0);await expect(templates.nth(1)).toHaveClass('active');
-  await page.locator('.workspace-subnav').getByRole('button',{name:'照片',exact:true}).click();const leave=page.getByRole('dialog',{name:'当前水印尚未保存',exact:true});await expect(leave).toBeVisible();await page.keyboard.press('Control+s');expect((await manifest(page)).drafts).toHaveLength(0);await page.keyboard.press('Escape');await expect(leave).toHaveCount(0);await expect(page).toHaveURL(/watermark\/workshop/);
+  await navigateWorkspace(page,'照片');const leave=page.getByRole('dialog',{name:'当前水印尚未保存',exact:true});await expect(leave).toBeVisible();await page.keyboard.press('Control+s');expect((await manifest(page)).drafts).toHaveLength(0);await page.keyboard.press('Escape');await expect(leave).toHaveCount(0);await expect(page).toHaveURL(/watermark\/workshop/);
   await page.getByRole('button',{name:'编辑操作菜单',exact:true}).click();await page.getByRole('menuitem',{name:'保存到水印图库',exact:true}).click();await expect.poll(async()=>(await manifest(page)).drafts.length).toBe(1);const draft=(await manifest(page)).drafts[0];expect(draft.name).toBe('Local command frame');expect(draft.settings_json.template).toBe('ambient');expect(await sourceHash(page)).toBe(before);expect((await call(page,'/photos')).photos).toHaveLength(3);
 });
 

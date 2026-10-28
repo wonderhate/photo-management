@@ -1,7 +1,7 @@
 // Delegated lighting for the public site only. No React lifecycle or network work.
 (()=>{
   const root='.public-site,.windows-download';
-  const surfaces='.hdr,.public-header,.contact,.tile-more,.feat article,.notes-grid article,.notes-contact,.public-search,.public-lumina,.public-photo-info,.public-lightbox-bar,.download-header,.download-package,.download-developer,.download-faq,.download-guide,.download-features article,.download-hero-art';
+  const surfaces='.hdr,.public-header,.contact,.tile-more,.feat article,.notes-grid article,.notes-contact,.public-search,.public-lumina,.public-photo-info,.public-lightbox-bar,.download-header,.download-package,.download-developer,.download-faq,.download-guide,.download-features article,.download-hero-art,.download-choice-card,.product-preview,.product-steps button';
   const preferences=['(prefers-reduced-motion: reduce)','(prefers-reduced-transparency: reduce)','(prefers-contrast: more)','(forced-colors: active)','(pointer: coarse)'].map(query=>matchMedia(query));
   let lit=null,frame=0,pending=null;
   function clear(){

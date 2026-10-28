@@ -47,7 +47,7 @@ export async function exerciseRegionalSatellite(page,probe,info,lang,{failures=f
   const position=()=>map.evaluate(node=>[node.dataset.latitude,node.dataset.longitude,node.dataset.zoom]);
   const ready=async provider=>{await expect(map).toHaveAttribute('data-provider',provider);await expect(map).toHaveAttribute('data-status','ready');await expect(onlineTiles().first()).toBeVisible();};
   async function configure(provider,value){
-    if(!await key().isVisible())await button('地图设置','Map settings').click();
+    if(!await key().isVisible())await button('进阶设置','Advanced settings').click();
     await expect(settings.locator('select')).toBeVisible();await settings.locator('select').selectOption(provider);await key().fill(value);await button('保存服务配置','Save service settings').click();
   }
   await page.emulateMedia({reducedMotion:'reduce'});await expect(page.locator('.photo-globe')).toHaveAttribute('data-texture','ready');expect(probe.requests).toHaveLength(0);
@@ -92,7 +92,7 @@ export async function exerciseRegionalSatellite(page,probe,info,lang,{failures=f
     probe.setMode('ready');await button('全世界','Whole world').click();await ready('nasa');await configure('maptiler',syntheticMapTilerKey);
   }else{await configure('maptiler',syntheticMapTilerKey);await ready('maptiler');}
   const atRest=probe.requests.length;await button('全世界','Whole world').click();await ready('nasa');expect(probe.requests.length).toBe(atRest);
-  if(!await key().isVisible())await button('地图设置','Map settings').click();await settings.locator('select').selectOption('maptiler');await button('移除高清 Key','Remove detail key').click();await ready('nasa');
+  if(!await key().isVisible())await button('进阶设置','Advanced settings').click();await settings.locator('select').selectOption('maptiler');await button('移除高清 Key','Remove detail key').click();await ready('nasa');
   expect(await page.evaluate(()=>localStorage.getItem('photo-maptiler-map-key-v1')||'')).toBe('');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   assertRegionalRequestPrivacy(probe);expect(await page.evaluate(()=>crossOriginIsolated)).toBe(true);
 }

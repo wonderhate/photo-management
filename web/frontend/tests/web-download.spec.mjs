@@ -6,13 +6,13 @@ test('Windows page is independent, responsive, bilingual and links to both relea
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await context.grantPermissions(['clipboard-read','clipboard-write']);
   await page.goto('/windows.html');
-  await expect(page.getByRole('heading',{name:'让光影， 在桌面延续。'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'光影集， 在自己的电脑上。'})).toBeVisible();
   await expect(page.getByText(release.developer.intro,{exact:true})).toBeVisible();
   await expect(page.getByText(release.developer.qq,{exact:true})).toBeVisible();
   await expect(page.locator('.download-developer-name')).toHaveText('Wonder');
   await expect(page.locator('.download-developer-background')).toHaveText('计算机专业');
   expect(await page.locator('.download-developer-background').evaluate(e=>e.getBoundingClientRect().bottom<=document.querySelector('.download-contact').getBoundingClientRect().top)).toBe(true);
-  expect(await page.locator('.download-bottom-grid').evaluate(e=>!!(e.compareDocumentPosition(document.getElementById('packages'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  expect(await page.locator('.download-bottom-grid').evaluate(e=>!!(e.compareDocumentPosition(document.getElementById('packages'))&Node.DOCUMENT_POSITION_PRECEDING))).toBe(true);
   expect(await page.locator('.download-developer-name').evaluate(e=>e.getBoundingClientRect().bottom<=document.querySelector('.download-contact').getBoundingClientRect().top)).toBe(true);
   await expect(page.locator('.browser-start')).toHaveCount(0);
   await expect(page.locator('.download-packages .download-version')).toContainText('v'+(release.displayVersion||release.version));
@@ -27,6 +27,10 @@ test('Windows page is independent, responsive, bilingual and links to both relea
   await page.screenshot({path:info.outputPath('windows-desktop-light.png'),fullPage:true,animations:'disabled'});
   await page.getByRole('button',{name:'切换到英文'}).click();
   await expect(page.getByRole('heading',{name:'Windows installer',exact:true})).toBeVisible();
+  await expect(page.locator('.download-back')).toHaveAttribute('href','https://photomanagement.online/en/');
+  await expect(page.locator('.download-back')).toHaveAttribute('target','_blank');
+  await expect(page.locator('.download-back')).toContainText('(new tab)');
+  await expect(page.locator('.download-footer a').last()).toHaveAttribute('href','/?local=1&lang=en#/');
   await page.setViewportSize({width:760,height:1000});
   await page.screenshot({path:info.outputPath('windows-tablet-english.png'),fullPage:true,animations:'disabled'});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -40,7 +44,7 @@ test('Windows page is independent, responsive, bilingual and links to both relea
   await page.getByRole('button',{name:'复制 QQ 号码'}).click();
   expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe(release.developer.qq);
   for(const file of release.files){
-    const link=page.locator(`a.download-button[download="${file.name}"]`),url=release.baseUrl+file.name;
+    const link=page.locator(`#packages a.download-button[download="${file.name}"]`),url=release.baseUrl+file.name;
     await expect(link).toHaveAttribute('href',url);
     expect(new URL(url).origin).toBe('https://ai.photomanagement.online');
     expect(new URL(url).pathname).toBe(`/downloads/${release.displayVersion}/${file.name}`);
@@ -70,11 +74,12 @@ test('workspace navigation opens the download page in a new tab and preserves th
   });
   await page.goto('/');await page.getByRole('button',{name:'新建本地图库',exact:true}).click();
   await expect(page.locator('.app-shell')).toBeVisible();
+  await page.getByRole('button',{name:'更多功能',exact:true}).click();
   const link=page.locator('.workspace-subnav .windows-download-link');
   await expect(link).toBeInViewport();await expect(link).toHaveAttribute('href','/windows.html?local=1');await expect(link).toHaveAttribute('target','_blank');
   await expect(page.locator('.workspace-subnav .workspace-portfolio-link')).toHaveCount(0);
   const box=await link.boundingBox();expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);
-  await page.keyboard.press('Tab');await link.focus();await expect(page.getByRole('tooltip')).toHaveText('Windows 版下载（新窗口）');
+  await link.focus();await expect(link).toBeFocused();await expect(link).toHaveAccessibleName('Windows 版下载（新窗口）');await expect(link).toContainText('Windows 下载');
   await page.screenshot({path:info.outputPath('windows-workspace-entry.png'),animations:'disabled'});
   const manifest=()=>page.evaluate(async()=>{
     const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('download-test-library');

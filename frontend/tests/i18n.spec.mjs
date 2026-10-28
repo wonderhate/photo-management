@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -108,7 +109,7 @@ test('English interface covers pages, dialogs and live language changes',async({
   await expect(page.getByAltText('Live watermark preview')).toBeVisible();
   const slider=page.locator('input[type=range]').first();await slider.focus();await slider.press('ArrowRight');
   const changedValue=await slider.inputValue();
-  await page.locator('.workspace-subnav').getByRole('button',{name:'Albums',exact:true}).click();
+  await navigateWorkspace(page,'Albums');
   await expect(page.getByRole('dialog',{name:'Unsaved Watermark'})).toBeVisible();
   await checkEnglish('unsaved watermark dialog');
   await page.getByRole('button',{name:'Continue Editing',exact:true}).click();

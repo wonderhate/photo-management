@@ -35,11 +35,23 @@ def bundled_map_paths():
     return paths
 
 
+def bundled_demo_paths():
+    """Allow only the registered procedural sample and its provenance record."""
+    public = ROOT / 'frontend/public'
+    metadata = json.loads((public / 'demo/source.json').read_text(encoding='utf-8'))
+    names = {entry['name'] for entry in metadata['files']}
+    expected = {'lumina-original.png', 'lumina-adjusted.png', 'lumina-framed.png'}
+    if names != expected or len(metadata['files']) != len(expected):
+        raise ValueError('Invalid bundled demo manifest.')
+    return {'demo/source.json'} | {'demo/' + name for name in names}
+
+
 def public_files(folder):
     if folder.is_symlink():
         raise ValueError('The public build directory must not be a symbolic link')
     base = folder.resolve()
     map_paths = bundled_map_paths()
+    demo_paths = bundled_demo_paths()
     files = []
     for path in sorted(folder.rglob('*')):
         name = path.relative_to(folder)
@@ -50,7 +62,7 @@ def public_files(folder):
         if (any(part.startswith('.') for part in name.parts)
                 or (len(name.parts) == 1 and name.name not in PUBLIC_FILES)
                 or (len(name.parts) > 1 and name.parts[0] not in PUBLIC_DIRS
-                    and name.as_posix() not in map_paths)
+                    and name.as_posix() not in map_paths | demo_paths)
                 or path.suffix.lower() in {'.db', '.sqlite', '.sqlite3', '.log', '.pem', '.key'}):
             raise ValueError(f'Unexpected public asset refused: {name}')
         if name.parts[0] == 'assets' and path.suffix not in {'.js', '.css'}:
@@ -62,12 +74,13 @@ def public_files(folder):
             if name.name not in {'index.js', 'worker.js', 'libraw.js', 'libraw.wasm'}:
                 raise ValueError(f'Unexpected RAW runtime asset refused: {name}')
             source = ROOT / 'frontend/node_modules/libraw-wasm/dist' / name.name
-        elif name.parts[0] in {'licenses', 'maps'}:
+        elif name.parts[0] in {'licenses', 'maps', 'demo'}:
             source = ROOT / 'frontend/public' / name
         if source is not None and (not source.is_file() or source.is_symlink()
-                                   or (name.parts[0] == 'maps' and not source.resolve().is_relative_to((ROOT / 'frontend/public').resolve()))
+                                   or (name.parts[0] in {'maps', 'demo'} and not source.resolve().is_relative_to((ROOT / 'frontend/public').resolve()))
                                    or source.read_bytes() != path.read_bytes()):
-            raise ValueError(f'Public asset does not match its bundled source: {name}')
+            kind = 'Demo' if name.as_posix() in demo_paths else 'Public'
+            raise ValueError(f'{kind} asset does not match its bundled source: {name}')
         if path.stat().st_size > 25 * 1024 * 1024:
             raise ValueError(f'Public asset exceeds the 25 MiB limit: {name}')
         files.append((path, name.as_posix()))
@@ -76,6 +89,8 @@ def public_files(folder):
     actual = {name for _, name in files}
     if any(name.startswith('maps/') for name in actual) and not map_paths.issubset(actual):
         raise ValueError('Incomplete offline map assets: ' + ', '.join(sorted(map_paths - actual)))
+    if not demo_paths.issubset(actual):
+        raise ValueError('Incomplete bundled demo assets: ' + ', '.join(sorted(demo_paths - actual)))
     return files
 
 
@@ -86,7 +101,11 @@ def self_test():
         folder = Path(tmp)
         assert folder.resolve().parent == test_root.resolve()
         (folder / 'index.html').write_text('synthetic', encoding='utf-8')
-        assert [name for _, name in public_files(folder)] == ['index.html']
+        for name in bundled_demo_paths():
+            path = folder / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_bytes((ROOT / 'frontend/public' / name).read_bytes())
+        assert {name for _, name in public_files(folder)} == {'index.html'} | bundled_demo_paths()
         for name in ['library.json', '.env', 'assets/personal.sqlite3', 'assets/personal.jpg']:
             path = folder / name
             path.parent.mkdir(exist_ok=True)

@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 import {synthetic,photos} from './fixtures/workspace.mjs';
 
@@ -5,7 +6,7 @@ test('comparison remembers linking across immediate navigation and reload withou
   const {errors}=await synthetic(page,{reducedMotion:'reduce'});await page.goto('/compare?ids=frame-0,frame-1');
   const sync=page.getByRole('button',{name:'同步视图',exact:true}),stages=page.locator('.compare-stage');await expect(stages).toHaveCount(2);
   await sync.click();await expect(sync).toHaveAttribute('aria-pressed','false');
-  await page.locator('.workspace-subnav').getByRole('button',{name:'照片',exact:true}).click();
+  await navigateWorkspace(page,'照片');
   await page.evaluate(()=>{history.pushState({},'','/compare?ids=frame-0,frame-1');dispatchEvent(new PopStateEvent('popstate'));});
   await expect(sync).toHaveAttribute('aria-pressed','false');
   await expect.poll(()=>stages.locator('img').evaluateAll(images=>images.length===2&&images.every(img=>img.complete&&img.naturalWidth>0&&parseFloat(img.style.width)>0))).toBe(true);

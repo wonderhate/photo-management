@@ -1,6 +1,6 @@
 # 开发与贡献
 
-当前版本为 2.7.2（公开试用）。先阅读 [开发交接文档](docs/development-handoff-2026-10-13.md)，再从最新 `main` 创建 `codex/` 功能分支。历史计划位于 `docs/history/`，不代表当前产品范围。
+当前版本为 2.7.3（公开试用）。先阅读 [开发交接文档](docs/development-handoff-2026-10-13.md)，再从最新 `main` 创建 `codex/` 功能分支。历史计划位于 `docs/history/`，不代表当前产品范围。
 
 ## 本地开发
 

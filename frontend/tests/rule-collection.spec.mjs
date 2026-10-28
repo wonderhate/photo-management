@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 import {createRuleThroughUI} from './fixtures/rule-collection.mjs';
 import {execFileSync} from 'node:child_process';
@@ -21,7 +22,7 @@ for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`rule collections compos
     await page.reload();await expect(card).toContainText(lang==='en'?'Rule collection':'条件集合');await card.getByRole('button',{name:lang==='en'?'Open Album ↗':'打开影集 ↗',exact:true}).click();
     await expect(page.locator('.photo-card')).toHaveCount(2);await expect(page.getByRole('combobox',{name:lang==='en'?'Photo Sort Order':'照片排序',exact:true}).locator('option[value="manual"]')).toHaveCount(0);
     const zero=page.locator('.photo-card').filter({hasText:photos[1].file_name});await zero.hover();const drawer=page.getByRole('complementary',{name:lang==='en'?'Hovered photo information':'悬停照片信息',exact:true});await expect(drawer).toBeVisible();await drawer.getByRole('button',{name:lang==='en'?'1 stars':'1 星',exact:true}).click();await expect(page.locator('.photo-card')).toHaveCount(1);
-    await drawer.getByRole('button',{name:lang==='en'?'Close photo information':'关闭照片信息',exact:true}).click();await page.locator('.workspace-subnav').getByRole('button',{name:lang==='en'?'Albums':'影集',exact:true}).click();await expect(card).toContainText(lang==='en'?'1 captures':'1 次拍摄');
+    await drawer.getByRole('button',{name:lang==='en'?'Close photo information':'关闭照片信息',exact:true}).click();await navigateWorkspace(page,lang==='en'?'Albums':'影集');await expect(card).toContainText(lang==='en'?'1 captures':'1 次拍摄');
     await card.getByRole('button',{name:lang==='en'?'Edit rules':'编辑条件',exact:true}).click();const dialog=page.getByRole('dialog',{name:lang==='en'?'Edit rule collection':'编辑条件集合',exact:true});await dialog.getByRole('textbox',{name:lang==='en'?'Album Name':'影集名称',exact:true}).fill('Edited '+width);await dialog.getByRole('button',{name:lang==='en'?'Save rule collection':'保存条件集合',exact:true}).click();await expect(dialog).not.toBeVisible();expect((await(await request.get('/api/albums/'+album.id)).json()).name).toBe('Edited '+width);expect(hashes()).toEqual(before);
   }finally{if(album)await request.delete('/api/albums/'+album.id);for(const p of photos)await request.delete('/api/photos/'+p.id+'?scope=file');expect(hashes()).toEqual(before);}
 });

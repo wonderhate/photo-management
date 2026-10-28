@@ -1,3 +1,4 @@
+import {navigateWorkspace} from './fixtures/workspace-navigation.mjs';
 import {test,expect} from './fixtures/native-runtime.mjs';
 import {synthetic,photos} from './fixtures/workspace.mjs';
 import {execFileSync} from 'node:child_process';
@@ -73,17 +74,17 @@ test('closed inspector ignores a delayed response from an older hovered photo',a
   await page.locator('.photo-card').nth(1).hover();await expect(drawer.locator('.inspector-file-name')).toHaveText(photos[1].file_name);
   release?.();await page.waitForTimeout(150);await expect(drawer.locator('.inspector-file-name')).toHaveText(photos[1].file_name);
   await drawer.getByRole('button',{name:'关闭照片信息'}).click();await expect(drawer).toHaveCount(0);
-  await page.locator('.photo-card').first().hover();await page.waitForTimeout(300);await page.locator('.workspace-subnav').getByRole('button',{name:'统计',exact:true}).click();
+  await page.locator('.photo-card').first().hover();await page.waitForTimeout(300);await navigateWorkspace(page,'统计');
   await page.waitForTimeout(1100);await expect(drawer).toHaveCount(0);
 });
 
-for(const [theme,width,lang] of [['dark',1440,'zh'],['light',390,'en'],['light',900,'en']])test(`icon navigation, startup and home return ${theme} ${width}`,async({page},info)=>{
+for(const [theme,width,lang] of [['dark',1440,'zh'],['light',390,'en'],['light',900,'en']])test(`labeled navigation, startup and home return ${theme} ${width}`,async({page},info)=>{
   const {errors}=await synthetic(page,{theme,width,lang});await page.goto('/');
   await expect(page.locator('.archive-hero')).toBeVisible();
   const nav=page.locator('.workspace-subnav'),label=lang==='en'?'Photos':'照片',button=nav.getByRole('button',{name:label,exact:true});
-  await expect(nav).toBeVisible();expect((await button.innerText()).trim()).toBe('');
-  await button.hover();await page.waitForTimeout(700);await expect(page.getByRole('tooltip')).toHaveCount(0);
-  await page.waitForTimeout(450);await expect(page.getByRole('tooltip')).toHaveText(label);
+  await expect(nav).toBeVisible();await expect(button).toHaveText(label);
+  const more=nav.locator('.workspace-more-trigger');await more.click();await expect(more).toHaveAttribute('aria-expanded','true');await expect(nav.getByRole('button',{name:lang==='en'?'Settings':'设置',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(more).toHaveAttribute('aria-expanded','false');await expect(more).toBeFocused();
+  await more.click();await page.locator('.archive-wordmark').click();await expect(more).toHaveAttribute('aria-expanded','false');
   await button.click();await expect(page.locator('.gallery-heading')).toBeVisible();await page.waitForTimeout(600);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   const palette=await page.evaluate(()=>{const s=getComputedStyle(document.documentElement);return ['--bg','--panel','--accent'].map(k=>s.getPropertyValue(k).trim());});
@@ -144,13 +145,13 @@ test('shortcut recording, scope conflicts and modal keys cannot trigger a select
   await page.addInitScript(()=>{localStorage.setItem('lang','zh');localStorage.setItem('onboarded','1');});
   let confirmations=0;page.on('dialog',async dialog=>{confirmations++;await dialog.dismiss();});
   await page.goto('/?page=photos');await page.locator('.select-box').first().click();
-  await page.locator('.workspace-subnav').getByRole('button',{name:'设置',exact:true}).click();
+  await navigateWorkspace(page,'设置');
   const previous=page.getByLabel('详情 · 上一张',{exact:true});await previous.focus();await previous.press('f');
   await expect(page.getByText('快捷键已用于：收藏 / 取消收藏',{exact:true})).toBeVisible();
   await previous.press('q');await expect(previous).toHaveValue('Q');await previous.press('Escape');await expect(previous).toHaveValue('Q');
   await previous.press('Tab');await expect(page.getByLabel('详情 · 下一张',{exact:true})).toBeFocused();
   await page.locator('.photography-space-link').focus();await page.keyboard.press('Delete');expect(confirmations).toBe(0);
-  await page.locator('.workspace-subnav').getByRole('button',{name:'照片',exact:true}).click();
+  await navigateWorkspace(page,'照片');
   await page.keyboard.press('?');await expect(page.getByRole('dialog',{name:'键盘快捷键',exact:true})).toBeVisible();
   await page.keyboard.press('Delete');expect(confirmations).toBe(0);await page.keyboard.press('Escape');
   await page.locator('.photography-space-link').focus();await page.keyboard.press('Delete');expect(confirmations).toBe(1);expect(digest()).toBe(before);

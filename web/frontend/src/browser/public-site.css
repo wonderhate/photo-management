@@ -186,3 +186,8 @@ body:has(.public-site){margin:0;background:#121512}
 .public-home .public-hero{height:auto;min-height:calc(100svh - 146px);max-height:none}
 .public-home .public-hero-copy{min-height:calc(100svh - 146px);padding-top:80px;padding-bottom:150px}
 @media(max-width:760px){.public-home .public-hero-copy{padding-top:48px;padding-bottom:160px}}
+.notes-demo article{padding:16px;min-width:0}
+.notes-demo img{aspect-ratio:3/2;object-fit:contain;background:var(--bg);margin-bottom:18px}
+.notes-demo .public-eyebrow{font-size:12px}
+.notes-implementation>summary{cursor:pointer;font-size:20px;line-height:1.6;color:var(--text)}
+.notes-implementation>summary:focus-visible{outline:2px solid var(--accent);outline-offset:6px}
