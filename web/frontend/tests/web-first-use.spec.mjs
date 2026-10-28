@@ -13,6 +13,13 @@ for(const [lang,width,theme]of [['zh',1440,'dark'],['en',390,'light']])test(`fir
  const saturation=page.getByLabel(lang==='zh'?'示例饱和度':'Demo saturation',{exact:true});await saturation.focus();await saturation.press('End');for(let i=0;i<35;i++)await saturation.press('ArrowLeft');
  await page.getByLabel(lang==='zh'?'示例边框':'Demo frame',{exact:true}).selectOption('dark');await expect(download).toBeEnabled();
  await expect(page.locator('.demo-stage img')).not.toHaveAttribute('src',initial);
+ const material=await page.evaluate(()=>({
+  panels:[...document.querySelectorAll('.demo-stage,.demo-controls')].map(panel=>{const style=getComputedStyle(panel);return {name:panel.className,material:panel.getAttribute('data-liquid-glass'),backdrop:style.backdropFilter,filter:style.filter};}),
+  image:(()=>{const image=document.querySelector('.demo-stage img'),style=getComputedStyle(image);return {excluded:image.hasAttribute('data-glass-exclude'),filter:style.filter,backdrop:style.backdropFilter};})()
+ }));
+ expect(material.panels).toHaveLength(2);for(const panel of material.panels){expect(panel.material).toBe('panel');expect(panel.backdrop).toMatch(/blur\([1-9][\d.]*px\)/);expect(panel.filter).toBe('none');}
+ expect(material.image).toEqual({excluded:true,filter:'none',backdrop:'none'});
+ await info.attach(`demo-material-${lang}`,{body:JSON.stringify(material,null,2),contentType:'application/json'});
  const displayed=await page.locator('.demo-stage img').evaluate(async image=>{const blob=await(await fetch(image.src)).blob();return [...new Uint8Array(await blob.arrayBuffer())];});
  const event=page.waitForEvent('download');await download.click();const file=await event;expect(file.suggestedFilename()).toBe('lumina-demo-edited.png');const bytes=readFileSync(await file.path());
  expect(bytes.subarray(0,8)).toEqual(Buffer.from([137,80,78,71,13,10,26,10]));expect(createHash('sha256').update(bytes).digest('hex')).toBe(createHash('sha256').update(Buffer.from(displayed)).digest('hex'));
