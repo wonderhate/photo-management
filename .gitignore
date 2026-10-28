@@ -21,6 +21,7 @@ uploads/
 thumbnails/
 signatures/
 !backend/app/assets/signatures/
+!web/assets/signatures/
 verification/
 *.log
 library-config.json
