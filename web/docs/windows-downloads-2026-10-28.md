@@ -1,5 +1,7 @@
 # Windows 2.7.0 下载与网站发布
 
+本文保留历次部署记录；当前为 **2.7.3 公开试用**，见文末的最新发布记录。
+
 正式站：https://photomanagement.online/；下载：https://photomanagement.online/windows.html；GitHub：https://github.com/wonderhate/photo-management/releases/tag/v2.7.0 。
 
 Windows 两种包使用真实版本号 2.7.0，文件名、长度、摘要以 `frontend/src/browser/windows-release.json` 为准。主下载为现有 `https://ai.photomanagement.online/downloads/2.7.0/`，GitHub 为备用。Linux 2.6.1 预览单独标记，不冒充新版 Windows。旧 1.0 下载和旧 Release 均保留。
@@ -28,3 +30,11 @@ Windows 为公开试用，覆盖安装、跨版本升级及卸载尚待验收；
 正式部署 `dprx8vykpso1`，网站 ZIP SHA-256 为 `0c2a5446990aa9997ba19ec51ac6f038f2d8e9b9fc7981f81dc458b0518104b0`。18 张照片及原有作品、导航、语言和主题逻辑保持一致；177 个公开文件的 SHA、JavaScript/WASM 类型和安全头全部通过，线上七条路由、窄屏、图库跳过和稍后导入提示、2.7.1 下载入口通过。两个 Windows 包在 GitHub、主机和服务卷内完整 SHA 一致，HTTPS HEAD 与首尾 Range 通过。
 
 Caddy 沿用历史命名的活动文件 `/config/Lumina-Caddyfile-2.7.0`，已热加载三个版本的精确文件允许列表；重建仍使用原 Compose 命令和命名卷。更新前备份为 `/config/Lumina-Caddyfile.before-2.7.1`。此次仅更新下载配置，没有重启中转。
+
+## 2.7.3 首次使用优化与发布 · 2026-10-29
+
+Windows 安装器与 ZIP 已更新为 2.7.3，正式直链位于 `https://ai.photomanagement.online/downloads/2.7.3/`，备用为 [GitHub v2.7.3](https://github.com/wonderhate/photo-management/releases/tag/v2.7.3)。文件名、长度和 SHA-256 以 `frontend/src/browser/windows-release.json` 为准；GitHub、下载主机与服务卷已完成完整摘要校验，旧版本及中转路由保留。
+
+现有 EdgeOne 项目的正式部署为 `dp4fo4qa0j6u`；网站 ZIP 为 46890803 字节，SHA-256 为 `675c88e636f9a893e8aed878d99081b8129325321957330a908b57da54e968de`。摄影展示、浏览器工具与 Windows 入口已梳理；新增免建库示例、文字导航、六张作品说明和两个主题系列，完善下载比较及地图空态。全站小范围指针光照和跳过建库后在导入时提示继续保留。
+
+正式域名 773 项 HTTP 检查与 10 项中英文浏览器流程全部通过，覆盖离线地图资源、公开照片、关键页面和脚本、响应类型与安全头、新旧下载包 HEAD／Range、窄屏和真实示例 PNG 导出。18 张作品保持原照片引用，41 张源 JPEG 哈希不变。仅在用户既有项目发布，没有更换域名或购买资源；Windows 继续标记公开试用，覆盖安装、跨版本升级和卸载尚待独立环境验收。
