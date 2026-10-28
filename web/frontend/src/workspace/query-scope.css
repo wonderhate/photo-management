@@ -1,0 +1,4 @@
+.query-scope-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin:10px 0 18px;padding:12px 0;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px}.query-scope-bar>div{display:flex;gap:8px;align-items:center;min-width:0}.query-scope-bar b{color:var(--text);max-width:260px;overflow-wrap:anywhere;font-weight:500}.query-scope-bar>div>span{white-space:nowrap}.query-scope-bar p{margin:0;overflow-wrap:anywhere;min-width:0;flex:1;line-height:1.7}.query-scope-bar>button{font-size:11px;padding:6px 9px;margin-left:auto}.query-scope-bar p[role=alert]{color:var(--text)}@media(max-width:600px){.query-scope-bar>p{flex-basis:100%}.query-scope-bar>button{margin-left:0}}
+.query-scope-bar>.person-scope-note{flex-basis:100%;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.person-scope-note p{flex-basis:360px}
+.person-scope-note button{font-size:11px;padding:6px 9px;max-width:100%;white-space:normal;overflow-wrap:anywhere}

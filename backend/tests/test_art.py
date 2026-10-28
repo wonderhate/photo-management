@@ -47,7 +47,7 @@ def provider(monkeypatch):
 
 
 def generate(client, photo_id, **layout):
-    response = client.post('/api/art/generate', json={'photo_id': photo_id, 'title_confirmed': True, 'layout': layout})
+    response = client.post('/api/art/generate', json={'cloud_confirmed': True, 'photo_id': photo_id, 'title_confirmed': True, 'layout': layout})
     assert response.status_code == 202, response.text
     job = wait_job(client, response.json())
     return client.get('/api/art/works/' + job['artwork_id']).json()
@@ -56,14 +56,14 @@ def generate(client, photo_id, **layout):
 def test_generate_title_edit_export_restart_migrate_delete(client, image_factory, provider, tmp_path):
     path, p = photo(client, image_factory)
     original = hashlib.sha256(path.read_bytes()).hexdigest()
-    titles = client.post('/api/art/titles', json={'photo_id': p['id'], 'keywords': '河边'}).json()
+    titles = client.post('/api/art/titles', json={'cloud_confirmed': True, 'photo_id': p['id'], 'keywords': '河边'}).json()
     assert wait_job(client, titles)['suggestions'][0]['title'] == '旅途一刻'
     sent = provider[0][1]['json']
     context = json.loads(sent['input']['messages'][0]['content'][1]['text'].split('\nContext: ')[1])
     assert set(context) == {'user_keywords', 'date_taken', 'language'}
     assert context['language'] == 'zh'
     assert '所有 title 标题和 evidence 说明必须使用简体中文' in sent['input']['messages'][0]['content'][1]['text']
-    assert client.post('/api/art/generate', json={'photo_id': p['id'], 'title_confirmed': False}).status_code == 422
+    assert client.post('/api/art/generate', json={'cloud_confirmed': True, 'photo_id': p['id'], 'title_confirmed': False}).status_code == 422
     work = generate(client, p['id'], title='旅途一刻', title_source='suggested', title_evidence='画面内容；未确认地点')
     assert work['layout']['title_evidence'] == '画面内容；未确认地点'
     assert len(provider) == 2 and work['width'] / work['height'] == 640 / 480
@@ -92,9 +92,9 @@ def test_generate_title_edit_export_restart_migrate_delete(client, image_factory
     assert excluded['success'] == 0
     assert client.delete('/api/photos/' + p['id']).status_code == 200
     orphan = client.get('/api/art/works/' + work['id']).json()
-    assert orphan['photo_id'] is None and client.get(orphan['poster_url']).status_code == 200
+    assert orphan['photo_id'] == p['id'] and client.get(orphan['poster_url']).status_code == 200
     assert client.delete('/api/art/works/' + work['id']).status_code == 200
-    assert not art.folder_for(work['id']).exists()
+    assert art.folder_for(work['id']).exists()  # Await explicit recoverable collection.
     assert client.get(a['url']).status_code == 200
     assert hashlib.sha256(path.read_bytes()).hexdigest() == original
 
@@ -120,7 +120,7 @@ def test_cancel_and_reject_duplicate_without_blocking_imports(client, image_fact
         assert release.wait(8)
         return original_request(*args, **kwargs)
     monkeypatch.setattr(art, 'request_api', blocked)
-    payload = {'photo_id': p['id'], 'title_confirmed': True}
+    payload = {'cloud_confirmed': True, 'photo_id': p['id'], 'title_confirmed': True}
     job = client.post('/api/art/generate', json=payload).json()
     try:
         assert entered.wait(3)
@@ -174,7 +174,7 @@ def test_provider_failure_redacts_key_and_does_not_retry(monkeypatch):
 def test_invalid_result_fails_without_artwork(client, image_factory, provider, monkeypatch):
     _, p = photo(client, image_factory)
     monkeypatch.setattr(art, 'request_api', lambda *a, **kw: {'data': []})
-    response = client.post('/api/art/generate', json={'photo_id': p['id'], 'title_confirmed': True}).json()
+    response = client.post('/api/art/generate', json={'cloud_confirmed': True, 'photo_id': p['id'], 'title_confirmed': True}).json()
     for _ in range(200):
         state = client.get('/api/jobs/' + response['id']).json()
         if state['status'] == 'failed': break
@@ -232,12 +232,12 @@ def test_legacy_drafts_gain_nullable_artwork_reference_with_backup(tmp_path):
     with sqlite3.connect(path) as db:
         db.execute('CREATE TABLE watermark_drafts (id TEXT PRIMARY KEY, name TEXT)')
         db.execute("INSERT INTO watermark_drafts VALUES ('old', 'Keep my design')")
-    assert migrate_database(path) == ['watermark_drafts.artwork_id']
+    assert migrate_database(path) == ['watermark_drafts.artwork_id', 'watermark_drafts.asset_variant_id']
     assert migrate_database(path) == []
     assert len(list((tmp_path / 'backups').glob('*.db'))) == 1
     with sqlite3.connect(path) as db:
         assert db.execute('SELECT name, artwork_id FROM watermark_drafts').fetchone() == ('Keep my design', None)
-        assert db.execute('PRAGMA foreign_key_list(watermark_drafts)').fetchone()[2] == 'artworks'
+        assert {row[2] for row in db.execute('PRAGMA foreign_key_list(watermark_drafts)')} == {'artworks', 'asset_variants'}
 
 
 @pytest.mark.parametrize('model,quality', [('qwen-image-3.0', 'low'), ('qwen-image-3.0', 'medium'), ('qwen-image-3.0-pro', 'high')])
@@ -245,7 +245,7 @@ def test_qwen_model_selection_reaches_generation(client, image_factory, provider
     _, p = photo(client, image_factory)
     assert client.put('/api/art/settings', json={'image_model': model}).status_code == 200
     assert client.get('/api/art/settings').json()['image_model'] == model
-    response = client.post('/api/art/generate', json={'photo_id': p['id'], 'title_confirmed': True, 'quality': quality}).json()
+    response = client.post('/api/art/generate', json={'cloud_confirmed': True, 'photo_id': p['id'], 'title_confirmed': True, 'quality': quality}).json()
     job = wait_job(client, response)
     work = client.get('/api/art/works/' + job['artwork_id']).json()
     assert work['generation']['model'] == model
@@ -321,11 +321,11 @@ def test_batch_upload_generate_then_optional_titles(client, image_factory, provi
     imported = wait_job(client, uploaded.json())
     ids = imported['photo_ids']
     assert len(ids) == 2 and imported['success'] == 2 and imported['skipped'] == 1
-    assert client.post('/api/art/batch', json={'photo_ids': []}).status_code == 422
-    assert client.post('/api/art/batch', json={'photo_ids': ids * 51}).status_code == 422
-    assert client.post('/api/art/batch', json={'photo_ids': [ids[0], 'missing']}).status_code == 400
+    assert client.post('/api/art/batch', json={'cloud_confirmed': True, 'photo_ids': []}).status_code == 422
+    assert client.post('/api/art/batch', json={'cloud_confirmed': True, 'photo_ids': ids * 51}).status_code == 422
+    assert client.post('/api/art/batch', json={'cloud_confirmed': True, 'photo_ids': [ids[0], 'missing']}).status_code == 400
     assert not provider
-    response = client.post('/api/art/batch', json={'photo_ids': [ids[0], ids[0], ids[1]],
+    response = client.post('/api/art/batch', json={'cloud_confirmed': True, 'photo_ids': [ids[0], ids[0], ids[1]],
                            'generate_titles': with_titles, 'language': 'en', 'layout': {'title': 'Do not repeat'}})
     assert response.status_code == 202, response.text
     job = wait_job(client, response.json())
@@ -360,7 +360,7 @@ def test_batch_retains_images_when_generation_or_titles_fail(client, image_facto
             raise ValueError('Image service unavailable')
         return original_request(**kwargs)
     monkeypatch.setattr(art, 'request_api', request)
-    job = wait_job(client, client.post('/api/art/batch', json={'photo_ids': ids, 'generate_titles': True}).json())
+    job = wait_job(client, client.post('/api/art/batch', json={'cloud_confirmed': True, 'photo_ids': ids, 'generate_titles': True}).json())
     assert job['success'] == 1 and job['failed'] == 1 and len(attempts) == 3
     assert job['results'][1]['error'] == 'Image service unavailable'
     result = job['results'][0]
@@ -384,12 +384,12 @@ def test_batch_cancel_keeps_finished_work_and_stops_remaining_requests(client, i
             assert release.wait(8)
         return original_request(**kwargs)
     monkeypatch.setattr(art, 'request_api', request)
-    payload = {'photo_ids': ids, 'generate_titles': True}
+    payload = {'cloud_confirmed': True, 'photo_ids': ids, 'generate_titles': True}
     job = client.post('/api/art/batch', json=payload).json()
     try:
         assert entered.wait(5)
         assert client.post('/api/art/batch', json=payload).status_code == 409
-        assert client.post('/api/art/generate', json={'photo_id': ids[0], 'title_confirmed': True}).status_code == 409
+        assert client.post('/api/art/generate', json={'cloud_confirmed': True, 'photo_id': ids[0], 'title_confirmed': True}).status_code == 409
         client.post('/api/jobs/' + job['id'] + '/cancel')
     finally:
         release.set()

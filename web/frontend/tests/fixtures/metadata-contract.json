@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "camera facts and southern DMS",
+      "tags": {
+        "IFD0:Make": "SONY",
+        "IFD0:Model": "Camera A",
+        "ExifIFD:LensModel": "50mm",
+        "ExifIFD:ISO": 400,
+        "ExifIFD:FNumber": "28/10",
+        "ExifIFD:ExposureTime": "1/125",
+        "ExifIFD:FocalLength": 50,
+        "ExifIFD:FocalLengthIn35mmFormat": 75,
+        "ExifIFD:DateTimeOriginal": "2026:10:22 19:23:45+08:00",
+        "IFD0:Orientation": 6,
+        "File:ImageWidth": 640,
+        "File:ImageHeight": 480,
+        "GPS:GPSLatitude": [
+          34,
+          30,
+          0
+        ],
+        "GPS:GPSLatitudeRef": "S",
+        "GPS:GPSLongitude": [
+          123,
+          15,
+          0
+        ],
+        "GPS:GPSLongitudeRef": "W",
+        "GPS:GPSAltitude": 20,
+        "GPS:GPSAltitudeRef": 1
+      },
+      "expected": {
+        "camera_make": "SONY",
+        "camera_model": "Camera A",
+        "lens_model": "50mm",
+        "iso": 400,
+        "f_number": 2.8,
+        "exposure_seconds": 0.008,
+        "exposure_time": "1/125",
+        "focal_length": 50,
+        "focal_length_35mm": 75,
+        "date_taken": "2026-10-22T19:23:45",
+        "orientation": 6,
+        "width": 640,
+        "height": 480,
+        "gps_latitude": -34.5,
+        "gps_longitude": -123.25,
+        "gps_altitude": -20
+      }
+    },
+    {
+      "name": "fractional second is not rounded to one second",
+      "tags": {
+        "ExposureTime": 0.8,
+        "DateTimeOriginal": "2024-02-29T23:59:59-07:00",
+        "GPSLatitude": 0,
+        "GPSLongitude": 0,
+        "ISO": 100.5
+      },
+      "expected": {
+        "exposure_seconds": 0.8,
+        "exposure_time": "0.8",
+        "date_taken": "2024-02-29T23:59:59",
+        "gps_latitude": 0,
+        "gps_longitude": 0
+      }
+    },
+    {
+      "name": "XMP does not change source geometry",
+      "tags": {
+        "XMP-exif:ISOSpeedRatings": "200",
+        "XMP-tiff:Orientation": 6,
+        "XMP-tiff:ImageWidth": 999,
+        "XMP-tiff:ImageHeight": 999,
+        "XMP-exif:GPSLatitude": "34,30.0S",
+        "XMP-exif:GPSLongitude": "123,15.0W",
+        "XMP-xmp:Rating": 5,
+        "XMP-dc:subject": [
+          "external"
+        ]
+      },
+      "expected": {
+        "iso": 200,
+        "gps_latitude": -34.5,
+        "gps_longitude": -123.25
+      }
+    },
+    {
+      "name": "invalid dates fall back without timezone conversion",
+      "tags": {
+        "DateTimeOriginal": "2023:02:29 18:00:00",
+        "CreateDate": "2026-10-22T07:08:09Z",
+        "ExposureTime": "0.3",
+        "GPSLatitude": [
+          34,
+          61,
+          0
+        ],
+        "GPSLatitudeRef": "N",
+        "GPSLongitude": 181
+      },
+      "expected": {
+        "date_taken": "2026-10-22T07:08:09",
+        "exposure_seconds": 0.3,
+        "exposure_time": "0.3"
+      }
+    },
+    {
+      "name": "booleans blanks nonfinite and integers are not fabricated",
+      "tags": {
+        "Make": false,
+        "Model": "  ",
+        "ISO": "1e30",
+        "FNumber": "",
+        "ExposureTime": "NaN",
+        "FocalLength": "1/0",
+        "Orientation": 9,
+        "GPSAltitude": "Infinity",
+        "ImageWidth": 20000,
+        "ImageHeight": 20000
+      },
+      "expected": {}
+    },
+    {
+      "name": "original group precedes XMP and aliases agree",
+      "tags": {
+        "XMP-tiff:Model": "external",
+        "IFD0:Model": "original",
+        "FocalLengthIn35mmFilm": "85",
+        "ExposureTime": "33333/1000000",
+        "latitude": -34.5,
+        "longitude": -123.25,
+        "GPSAltitude": 20,
+        "GPSAltitudeRef": 1.0
+      },
+      "expected": {
+        "camera_model": "original",
+        "focal_length_35mm": 85,
+        "exposure_seconds": 0.033333,
+        "exposure_time": "1/30",
+        "gps_latitude": -34.5,
+        "gps_longitude": -123.25,
+        "gps_altitude": -20
+      }
+    },
+    {
+      "name": "standard EXIF precedes approximate maker values regardless of JSON order",
+      "tags": {
+        "Canon:ExposureTime": 0.014328188175073,
+        "Canon:FNumber": 3.56359487256136,
+        "ExifIFD:ExposureTime": 0.0125,
+        "ExifIFD:FNumber": 3.5
+      },
+      "expected": {
+        "exposure_seconds": 0.0125,
+        "exposure_time": "1/80",
+        "f_number": 3.5
+      }
+    },
+    {
+      "name": "year zero is not an EXIF capture year",
+      "tags": {
+        "DateTimeOriginal": "0000:01:01 00:00:00"
+      },
+      "expected": {}
+    }
+  ],
+  "shutters": [
+    [
+      0.8,
+      "0.8"
+    ],
+    [
+      0.3,
+      "0.3"
+    ],
+    [
+      0.5,
+      "1/2"
+    ],
+    [
+      0.008,
+      "1/125"
+    ],
+    [
+      0.033333,
+      "1/30"
+    ],
+    [
+      1.3,
+      "1.3"
+    ],
+    [
+      30,
+      "30"
+    ],
+    [
+      0,
+      null
+    ],
+    [
+      -1,
+      null
+    ],
+    [
+      1000000,
+      "1e+6"
+    ]
+  ]
+}

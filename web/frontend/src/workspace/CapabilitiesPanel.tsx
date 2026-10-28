@@ -1,0 +1,36 @@
+import {useEffect,useRef,useState} from 'react';
+import {readCapabilities} from '../core/capability-adapter';
+import {capabilityIds} from '../core/capabilities';
+import type {Capabilities,CapabilityId,CapabilityReason,CapabilityAction} from '../core/capabilities';
+import {bt} from '../browser/text';
+import {message} from '../api';
+import type {Page} from '../routes';
+
+const labels:Record<CapabilityId,[string,string]>={library:['图库保存','Library storage'],darkroom:['本机暗房','Local darkroom'],raw:['RAW 显影','RAW development'],watermark:['水印渲染','Watermark rendering'],semantic:['本地语义搜索','Local semantic search'],faces:['本地人物分析','Local face analysis'],watercolor:['水彩转绘','Watercolor generation'],titles:['标题建议','Title suggestions'],batchWatercolor:['批量水彩','Batch watercolor'],filePicker:['照片选择器','Photo picker'],directoryPicker:['原片目录选择器','Original folder picker']};
+const reasons:Record<CapabilityReason,[string,string]>={
+  ready:['可以使用。','Ready to use.'],dependency_missing:['缺少可选依赖，请查看对应功能的安装说明。','Optional dependencies are missing. Open the feature for setup instructions.'],
+  model_loading:['模型正在准备，请稍候再刷新。','The model is being prepared. Refresh when it finishes.'],model_error:['模型加载失败，可在对应功能中查看错误并重新加载。','Model loading failed. Open the feature to inspect the error and load it again.'],model_not_loaded:['模型尚未加载；可选择仅使用本地缓存。','The model is not loaded. You can choose to use the local cache only.'],
+  weights_not_loaded:['模型文件已找到，首次分析时检查并加载。','Model files were found. They will be checked and loaded on the first analysis.'],weights_missing:['模型文件尚未准备，请在人物页面手动下载。','Model files are missing. Start the download from the People page.'],
+  cloud_not_checked:['配置已就绪；连通性、模型权限与费用以实际请求为准。','Configured. Connectivity, model access and charges are checked by the actual request.'],credential_error:['无法读取已保存的凭证，请重新配置。','The saved credential cannot be read. Configure it again.'],credential_missing:['请先配置此服务的独立密钥。','Configure a separate key for this service first.'],relay_missing:['请先配置 AI 中转地址；保存密钥不能代替中转配置。','Configure the AI relay URL first. Saving a key does not configure a relay.'],
+  picker_not_checked:['选择时调用系统窗口；失败后仍可填写原片路径。','The system picker opens on selection. You can enter original paths if it fails.'],picker_unavailable:['此环境无法打开目录窗口，请使用可用的选文件或路径输入。','This environment cannot open a folder picker. Use file selection or path input.'],runtime_unsupported:['当前浏览器版尚未提供，请使用桌面或本机服务版。','This browser release does not provide this feature. Use the desktop or local backend version.'],
+  worker_missing:['此浏览环境缺少本机图像处理需要的能力。','This browser environment lacks the required local image processing capabilities.'],wasm_missing:['当前浏览器不支持 WebAssembly，RAW 显影暂不可用。','This browser does not support WebAssembly. RAW development is unavailable.'],raw_isolation_missing:['站点隔离配置不完整，RAW 显影暂不可用；普通照片不受影响。','Site isolation is incomplete. RAW development is unavailable; standard photos are unaffected.'],decoder_not_checked:['解码器按需加载；实际格式支持以打开文件后的结果为准。','The decoder loads on demand. Format support is checked when a file is opened.'],
+  library_permission:['图库写入授权不可用，请关闭后重新授权打开。','Library write permission is unavailable. Close the library and reopen it with permission.'],source_permission_on_action:['点击选择时再授权，不提前访问原片目录。','Permission is requested when you select a source. Original folders are not accessed in advance.'],status_unavailable:['暂时无法读取状态，请刷新；现有基础操作继续保留。','Status is temporarily unavailable. Refresh to check again. Existing basic controls remain available.']};
+const actions:Record<CapabilityAction,[string,string]>={'semantic-settings':['本地模型设置','Local model settings'],faces:['人物与模型','People and models'],watercolor:['AI 服务设置','AI service settings'],'manual-paths':['查看路径输入说明','Path input help'],desktop:['查看本机版说明','Local version help'],'site-headers':['查看 RAW 配置要求','RAW setup requirements'],'reconnect-library':['查看重新授权说明','Reauthorization help']};
+
+export default function CapabilitiesPanel({onPage}:{onPage?:(page:Page)=>void}){
+  const [open,setOpen]=useState(false),[state,setState]=useState<Capabilities|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(false),[refresh,setRefresh]=useState(0),[help,setHelp]=useState<CapabilityAction|null>(null);
+  const generation=useRef(0);
+  useEffect(()=>{if(!open)return;const token=++generation.current,controller=new AbortController();setLoading(true);setError('');void readCapabilities(controller.signal).then(value=>{if(token===generation.current)setState(value);}).catch(e=>{if(!controller.signal.aborted&&token===generation.current)setError(message(e));}).finally(()=>{if(token===generation.current)setLoading(false);});return()=>{generation.current++;controller.abort();};},[open,refresh]);
+  function action(id:CapabilityAction){
+    if(id==='semantic-settings'){document.getElementById('local-model-settings')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});return;}
+    if(id==='faces'||id==='watercolor'){onPage?.(id==='faces'?'faces':'watercolor');return;}
+    setHelp(id);
+  }
+  return <details className="settings-card capability-panel" onToggle={e=>setOpen(e.currentTarget.open)}><summary>{bt('设备与功能状态','Device and feature status')}</summary>{open&&<>
+    <p className="muted">{bt('检查只读取状态，不下载模型、不请求目录授权、不发送照片。','Checking reads status only. It does not download models, request folder access or send photos.')}</p>
+    <button disabled={loading} onClick={()=>setRefresh(v=>v+1)}>{bt(loading?'正在检查…':'刷新状态',loading?'Checking…':'Refresh status')}</button>
+    {error&&<p className="error-box" role="alert">{error}</p>}
+    {state&&<ul className="capability-list">{capabilityIds.map(id=>{const item=state.items[id];return <li key={id} data-capability={id} data-state={item.state} data-runnable={String(item.runnable)}><div><b>{bt(...labels[id])}</b><span className="status-pill">{bt(...(item.state==='available'?['可用','Available']:item.state==='degraded'?['部分就绪','Partly ready']:['不可用','Unavailable']) as [string,string])}</span></div><p>{bt(...reasons[item.reason])}</p>{item.execution==='cloud'&&<small>{bt('仅在明确提交所选图片后请求云端，可能计费。','Cloud requests run only after you submit selected images and may incur charges.')}</small>}<div className="button-row">{item.actions.map(id=><button key={id} className="quiet" onClick={()=>action(id)}>{bt(...actions[id])}</button>)}</div></li>;})}</ul>}
+    {help&&<p className="capability-help" role="status">{bt(...(help==='manual-paths'?['在“导入照片”中填写绝对路径，每行一个；原片保留在原处。','Enter absolute paths in Import Photos, one per line. Originals stay in place.']:help==='site-headers'?['RAW 需要支持 Worker、WebAssembly 和跨源隔离的新版浏览器；请检查本机服务或网站的隔离响应头。','RAW requires a current browser with Workers, WebAssembly and cross-origin isolation. Check the local service or site isolation headers.']:help==='reconnect-library'?['先保存正在编辑的作品，在本地图库设置中关闭图库，再选择原图库目录重新授权。','Save your edits, close the library in local library settings, then select the original library directory and grant access again.']:['Windows 桌面版与本机服务版提供本地语义搜索和人物分析。原片留在设备上；浏览器本地图库不能直接作为桌面 SQLite 库打开。','The Windows desktop and local backend versions provide local semantic search and face analysis. Originals stay on your device. A browser library cannot be opened directly as a desktop SQLite library.']) as [string,string])}</p>}
+  </>}</details>;
+}

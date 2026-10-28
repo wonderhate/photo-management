@@ -1,0 +1,27 @@
+{
+  "name": "lumina-web",
+  "version": "2.7.1",
+  "private": true,
+  "description": "Lumina browser-local photo library and public photography showcase",
+  "scripts": {
+    "setup": "npm ci --prefix frontend",
+    "dev": "node frontend/node_modules/vite/bin/vite.js frontend --host 127.0.0.1 --mode showcase",
+    "build": "npm run build:showcase",
+    "build:web": "npm run build:web --prefix frontend",
+    "build:showcase": "node --experimental-strip-types frontend/scripts/build-showcase.mjs",
+    "preview": "node frontend/tests/web-server.mjs --relay",
+    "preview:web": "npm run preview",
+    "preview:showcase": "node frontend/tests/web-server.mjs --showcase",
+    "author": "node --experimental-strip-types frontend/scripts/local-publisher.mjs --open",
+    "author:library": "npm run build:web && node frontend/tests/web-server.mjs --local",
+    "package:web": "python frontend/scripts/package-showcase.py",
+    "test": "npm run test:frontend",
+    "test:frontend": "node --experimental-strip-types --test frontend/tests/*.test.*",
+    "test:web": "node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.web.config.ts",
+    "test:showcase": "node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.showcase.config.ts",
+    "test:author": "node --experimental-strip-types frontend/tests/local-publisher-ui.mjs",
+    "test:relay": "python -m unittest cloud_relay.test_relay",
+    "test:web:cloud": "node frontend/tests/web-cloud-check.mjs",
+    "test:web:fixtures": "node frontend/tests/fetch-raw-fixtures.mjs"
+  }
+}

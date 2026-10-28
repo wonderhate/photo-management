@@ -1,0 +1,41 @@
+{
+  "dji": {
+    "fc9113": "DJI Air 3S",
+    "fc9184": "DJI Air 3S",
+    "fc8282": "DJI Air 3",
+    "fc8284": "DJI Air 3",
+    "fc3411": "DJI Air 2S",
+    "fc3170": "DJI Mavic Air 2",
+    "fc2103": "DJI Mavic Air",
+    "fc4382": "DJI Mavic 3 Pro",
+    "fc4370": "DJI Mavic 3 Pro",
+    "fc4170": "DJI Mavic 3",
+    "fc2204": "DJI Mavic 2 Zoom",
+    "fc220": "DJI Mavic Pro",
+    "fc8482": "DJI Mini 4 Pro",
+    "fc3582": "DJI Mini 3 Pro",
+    "fc3682": "DJI Mini 3",
+    "fc7303": "DJI Mini 2",
+    "fc7503": "DJI Mini 2 SE",
+    "fc7203": "DJI Mini",
+    "fc1102": "DJI Spark",
+    "fc8485": "DJI Avata 2",
+    "fc8183": "DJI Avata",
+    "pp-101": "DJI Osmo Pocket 3",
+    "dji pocket": "DJI Pocket 2",
+    "osmo pocket": "DJI Osmo Pocket",
+    "ot110": "DJI Osmo Pocket",
+    "ac004": "DJI Osmo Action 5 Pro",
+    "ac003": "DJI Osmo Action 4",
+    "ac002": "DJI Osmo Action 3",
+    "mc211": "DJI Action 2"
+  },
+  "hasselblad": {
+    "l1d-20c": "DJI Mavic 2 Pro",
+    "l2d-20c": "DJI Mavic 3"
+  },
+  "panasonic": {
+    "dc-s5m2": "Panasonic Lumix DC-S5 II",
+    "dc-s5m2x": "Panasonic Lumix DC-S5 IIX"
+  }
+}

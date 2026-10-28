@@ -1,4 +1,4 @@
-param([string]$Compiler)
+﻿param([string]$Compiler)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 if (!$Compiler) {
@@ -9,6 +9,8 @@ if (!$Compiler) { throw 'Install Inno Setup 7 or pass -Compiler with the ISCC.ex
 $package = Join-Path $PSScriptRoot 'releases/windows/PhotoCollection'
 $exe = Join-Path $package 'PhotoCollection.exe'
 if (!(Test-Path -LiteralPath $exe)) { throw 'Run build-windows.ps1 first.' }
+& (Join-Path $PSScriptRoot '.venv/Scripts/python.exe') desktop/release_audit.py $package
+if ($LASTEXITCODE) { throw 'Release privacy/resource audit failed; rebuild the public package.' }
 $version = (Get-Item -LiteralPath $exe).VersionInfo.ProductVersion
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'The executable must have a valid product version.' }
 $bootstrap = Join-Path $PSScriptRoot '.cache/packaging/MicrosoftEdgeWebview2Setup.exe'

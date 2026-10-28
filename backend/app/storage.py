@@ -58,6 +58,7 @@ def save_paths(path: Path, current: dict, value: dict, locked: list[str], fallba
     with lock:
         requested = validate_paths(value,current,locked)
         config = read_config(path,fallback) | current
+        if config.get('pending_catalog'):raise ValueError('请先取消待切换图库，再修改目录迁移设置')
         config.pop('pending_paths',None)
         if requested != current: config['pending_paths'] = requested
         write_config(path,config)
@@ -66,6 +67,7 @@ def save_paths(path: Path, current: dict, value: dict, locked: list[str], fallba
 
 def apply_pending(path: Path, config: dict, locked: list[str]) -> tuple[dict,str | None]:
     if not config.get('pending_paths'): return config,None
+    if config.get('pending_catalog'):return config,'目录迁移与图库选择冲突，继续使用原图库'
     try:
         current = {key:config[key] for key in FIELDS}
         requested = validate_paths(config['pending_paths'],current,locked)

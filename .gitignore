@@ -21,6 +21,7 @@ uploads/
 thumbnails/
 signatures/
 !backend/app/assets/signatures/
+!web/assets/signatures/
 verification/
 *.log
 library-config.json
@@ -29,3 +30,5 @@ sample-vertical.jpg
 releases/
 desktop/build/
 desktop/dist/
+frontend/dist-web/
+frontend/dist-showcase/

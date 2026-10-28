@@ -1,0 +1,51 @@
+services:
+  relay:
+    build:
+      context: ..
+      dockerfile: cloud_relay/Dockerfile
+    environment:
+      PHOTO_RELAY_ORIGIN: https://photomanagement.online
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      core: 0
+    logging:
+      driver: none
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import json,urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:9000/health',timeout=3))['status']=='ready'"
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+  https:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+      - caddy_config:/config
+    depends_on:
+      relay:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+
+volumes:
+  certificates:
+  caddy_config:

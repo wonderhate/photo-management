@@ -1,0 +1,98 @@
+{
+  "valid": [
+    {
+      "name": "identity",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n",
+      "title": "Identity #1",
+      "size": 2
+    },
+    {
+      "name": "bom-cr-domain",
+      "text": "﻿# comment\rTITLE Warm\rLUT_3D_SIZE 2\rDOMAIN_MIN -.2 0 0\rDOMAIN_MAX 1.2 1 1\r0 0 0\r1 0 0\r0 1 0\r1 1 0\r0 0 1\r1 0 1\r0 1 1\r1 1 1",
+      "title": "Warm",
+      "size": 2
+    },
+    {
+      "name": "range-late-vendor",
+      "text": "LUT_3D_SIZE 2\nVENDOR_KEY ignored\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\nLUT_3D_INPUT_RANGE 0.1 0.9\n",
+      "title": "",
+      "size": 2
+    },
+    {
+      "name": "out-of-gamut",
+      "text": "LUT_3D_SIZE 2\n-1e0 .0 2e0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1",
+      "title": "",
+      "size": 2
+    }
+  ],
+  "invalid": [
+    {
+      "name": "empty",
+      "text": ""
+    },
+    {
+      "name": "missing-size",
+      "text": "0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1"
+    },
+    {
+      "name": "small",
+      "text": "LUT_3D_SIZE 1\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1"
+    },
+    {
+      "name": "large",
+      "text": "LUT_3D_SIZE 66\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1"
+    },
+    {
+      "name": "shaper",
+      "text": "LUT_1D_SIZE 2\nTITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n"
+    },
+    {
+      "name": "row-short",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n"
+    },
+    {
+      "name": "row-long",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n0 0 0\n"
+    },
+    {
+      "name": "nan",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\nNaN 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n"
+    },
+    {
+      "name": "inf",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\nInfinity 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n"
+    },
+    {
+      "name": "overflow",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n1e99 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n"
+    },
+    {
+      "name": "hex",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0xff 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n"
+    },
+    {
+      "name": "extra-column",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n"
+    },
+    {
+      "name": "duplicate-size",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\nLUT_3D_SIZE 2\n"
+    },
+    {
+      "name": "bad-domain",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\nDOMAIN_MAX 0 1 1\n"
+    },
+    {
+      "name": "ambiguous-domain",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\nDOMAIN_MIN 0 0 0\nLUT_3D_INPUT_RANGE 0 1\n"
+    },
+    {
+      "name": "nul",
+      "text": "TITLE \"Identity #1\"\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1\n\u0000"
+    },
+    {
+      "name": "bad-title",
+      "text": "TITLE \"unclosed\nLUT_3D_SIZE 2\n0 0 0\n1 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 1\n0 1 1\n1 1 1"
+    }
+  ]
+}

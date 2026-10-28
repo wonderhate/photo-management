@@ -58,7 +58,7 @@ def test_legacy_draft_defaults_restore_preview_and_export(client,image_factory):
     assert abs(options['info_bar_ratio']-1/6)<1e-6
     cached=client.get(recovered['preview_url']);assert cached.status_code==200
     after=client.get('/api/watermark/drafts/'+create['id']).json()
-    assert '-modern_info_bar-' in after['preview_path'] and not classic.exists()
+    assert '-modern_info_bar-' in after['preview_path'] and classic.exists()
     assert after['revision']==recovered['revision']
     preview=client.post('/api/watermark/preview',json={'photo_id':photo['id'],'options':options})
     exported=client.post('/api/watermark/drafts/'+create['id']+'/export',json={})

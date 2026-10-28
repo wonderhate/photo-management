@@ -1,0 +1,17 @@
+ai.photomanagement.online {
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+    }
+
+    @relay path /health /cloud-art
+    handle @relay {
+        reverse_proxy relay:9000 {
+            stream_timeout 15m
+        }
+    }
+    handle {
+        respond "Not found" 404
+    }
+}

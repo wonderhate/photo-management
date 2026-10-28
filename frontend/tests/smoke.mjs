@@ -13,7 +13,7 @@ try{
   await page.screenshot({path:path.join(output,'gallery.png'),fullPage:true});
   const count=await page.locator('.photo-card').count();
   if(count<1)throw new Error('No migrated photos rendered');
-  await page.locator('.photo-image').first().click();
+  await page.locator('.photo-image').first().dblclick();
   await page.locator('.photo-detail').waitFor();
   await page.screenshot({path:path.join(output,'detail.png'),fullPage:true});
   await page.getByRole('button',{name:'制作水印',exact:true}).click();

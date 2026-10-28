@@ -4,6 +4,9 @@ on:
     branches: [main, 'codex/**']
   pull_request:
     branches: [main]
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+  PHOTO_TEST_PYTHON: python
 permissions:
   contents: read
 jobs:
@@ -23,18 +26,23 @@ jobs:
       - run: npm ci --prefix frontend
       - run: node --experimental-strip-types --test frontend/tests/*.test.*
       - run: npm run build --prefix frontend
+      - run: python -m pytest backend/tests -q
+      - run: python -m unittest desktop.test_icon
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: npx playwright test
-        working-directory: frontend
+      - name: Install video regression tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Fetch pinned RAW test fixtures
+        run: npm run test:web:fixtures
+      - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: theme-regression-results
           path: verification/theme
           retention-days: 7
-      - run: python -m pytest backend/tests -q
-      - run: python -m unittest desktop.test_icon
   windows-scripts:
     runs-on: windows-latest
     steps:
@@ -49,3 +57,18 @@ jobs:
             if ($errors.Count) { throw ($errors | Out-String) }
             Write-Host "$($_.Name): parsed"
           }
+
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+      - run: npm ci --prefix web/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: web/frontend
+      - run: npm --prefix web test
+      - run: npm --prefix web run build

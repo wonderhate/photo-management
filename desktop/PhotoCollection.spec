@@ -12,6 +12,7 @@ icon = application_icon(root / '.cache' / 'packaging')
 datas = [(str(root/'frontend'/'dist'), 'frontend/dist'),
          (str(icon), 'desktop'),
          (str(root/'backend'/'app'/'assets'), 'backend/app/assets'),
+         (str(root/'backend'/'app'/'vision_models.json'), 'backend/app'),
          (str(root/'.cache'/'packaging'/'build-id.txt'), 'backend')]
 for package in ('transformers', 'huggingface_hub', 'safetensors', 'tokenizers'):
     datas += copy_metadata(package)

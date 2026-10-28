@@ -23,15 +23,23 @@ from .schemas import ImportRequest, PhotoUpdate, SmartRequest, AlbumRequest, Wat
 from .models import FacePerson, DetectedFace
 from .config import storage_paths, save_storage_paths, cancel_storage_paths
 from .schemas import StoragePathsRequest
+from .schemas import PhotoQueryRequest
+from .schemas import AlbumDeleteRequest
+from .schemas import AnnotationResult
+from .services import album_service
+from .services import rating_service
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     initialize()
+    from .models import LibraryProfile
+    with Session() as session:runtime_control.bind_library(session.get(LibraryProfile,1).library_id)
     jobs.recover()
     if AUTOLOAD_AI and any(MODELS.glob('models--OFA-Sys--chinese-clip-vit-base-patch16/snapshots/*')):
         ai.start(False)
-    scan_service.start()
-    yield
+    scan_service.start_monitor()
+    try:yield
+    finally:scan_service.stop_monitor()
 
 from backend.version import VERSION,build_id
 BUILD_ID=build_id()
@@ -42,7 +50,46 @@ from .face_routes import router as face_router
 app.include_router(face_router)
 from .art_routes import router as art_router
 app.include_router(art_router)
-app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'], allow_methods=['GET','POST','PATCH','DELETE','PUT'], allow_headers=['Content-Type'])
+from .ai_routes import router as ai_router
+app.include_router(ai_router)
+from .vision_routes import router as vision_router
+app.include_router(vision_router)
+from .mcp_routes import router as mcp_router
+app.include_router(mcp_router)
+from .editor_routes import router as editor_router
+app.include_router(editor_router)
+from .collage_routes import router as collage_router
+app.include_router(collage_router)
+from .collage_output_routes import router as collage_output_router
+app.include_router(collage_output_router)
+from .lut_routes import router as lut_router
+app.include_router(lut_router)
+from .display_routes import router as display_router
+app.include_router(display_router)
+from .workspace_routes import router as workspace_router
+app.include_router(workspace_router)
+from .file_action_routes import router as file_action_router
+app.include_router(file_action_router)
+from .video_routes import router as video_router
+app.include_router(video_router)
+from .similarity_routes import router as similarity_router
+app.include_router(similarity_router)
+from .location_routes import router as location_router
+app.include_router(location_router)
+from .raw_source_routes import router as raw_source_router
+app.include_router(raw_source_router)
+from .removal_routes import router as removal_router
+app.include_router(removal_router)
+from .source_routes import router as source_router
+app.include_router(source_router)
+from .asset_routes import router as asset_router
+app.include_router(asset_router)
+from .frame_routes import router as frame_router
+app.include_router(frame_router)
+from .catalog_routes import router as catalog_router
+from . import runtime_control
+app.include_router(catalog_router)
+app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'], allow_methods=['GET','POST','PATCH','DELETE','PUT'], allow_headers=['Content-Type','X-PhotoCollection-Session','X-PhotoCollection-Library'], expose_headers=['X-PhotoCollection-Session','X-PhotoCollection-Library'])
 
 @app.middleware('http')
 async def protect_local_requests(request: Request, call_next):
@@ -55,13 +102,39 @@ async def protect_local_requests(request: Request, call_next):
         response = JSONResponse({'detail':'本机照片服务不接受代理转发'}, status_code=403)
     elif request.method not in ('GET','HEAD','OPTIONS') and origin and origin not in allowed and origin != str(request.base_url).rstrip('/'):
         response = JSONResponse({'detail':'禁止来自其他网站的本地操作'}, status_code=403)
+    elif request.url.path.startswith('/api/') and (request.headers.get('x-photocollection-session',runtime_control.session_id)!=runtime_control.session_id or request.query_params.get('pc_session',runtime_control.session_id)!=runtime_control.session_id or runtime_control.library_id is not None and request.headers.get('x-photocollection-library',runtime_control.library_id)!=runtime_control.library_id):
+        response=JSONResponse({'detail':'图库已切换，请刷新页面后继续'},status_code=409)
     else:
-        response = await call_next(request)
+        mutation=request.url.path.startswith('/api/') and request.method not in ('GET','HEAD','OPTIONS')
+        switching=mutation and request.url.path=='/api/workspace/catalogs/activate'
+        entered=False;reserved=False
+        try:
+            if switching:runtime_control.begin_switch();reserved=True
+            elif mutation:runtime_control.enter_mutation();entered=True
+            response=await call_next(request)
+            if switching and response.status_code>=400:runtime_control.release_switch()
+        except ValueError as error:
+            if reserved:runtime_control.release_switch()
+            response=JSONResponse({'detail':str(error)},status_code=409)
+        except Exception:
+            if switching:runtime_control.release_switch()
+            raise
+        finally:
+            if entered:runtime_control.leave_mutation()
     response.headers['X-Content-Type-Options'] = 'nosniff'
+    if request.url.path.startswith('/api/'):
+        response.headers['X-PhotoCollection-Session']=runtime_control.session_id
+        if runtime_control.library_id:response.headers['X-PhotoCollection-Library']=runtime_control.library_id
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
     if response.headers.get('content-type', '').startswith('text/html') and request.url.path not in ('/docs', '/redoc', '/docs/oauth2-redirect'):
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    if request.url.path.startswith('/assets/vision-worker-'):
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; object-src 'none'"
+    if request.url.path in {'/raw-1.6.0/'+name for name in ('index.js','worker.js','libraw.js','libraw.wasm')}:
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'"
     return response
 
 @app.exception_handler(ValueError)
@@ -73,6 +146,10 @@ from fastapi.exception_handlers import request_validation_exception_handler
 
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, error: RequestValidationError):
+    if request.url.path.startswith('/api/editor/'):
+        return JSONResponse({'detail':'编辑参数无效，请检查源文件和参数'},status_code=422)
+    if request.url.path.startswith('/api/ai/') or request.url.path == '/api/workspace/settings-transfer':
+        return JSONResponse({'detail':'Invalid AI configuration or settings package.'},status_code=422)
     if request.url.path == '/api/art/settings':
         # Pydantic error inputs can contain submitted credentials; never echo them to the UI.
         return JSONResponse({'detail': 'Invalid AI settings; check model names and API key format'}, status_code=422)
@@ -110,7 +187,7 @@ def scan_library(force: bool = False):
     return scan_service.start(force)
 
 @app.post('/api/dialog/{kind}')
-def picker(kind: Literal['files','directory']):
+def picker(kind: Literal['files','videos','directory','catalog','lut-directory']):
     creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
     if getattr(sys, 'frozen', False):
         with TemporaryDirectory(prefix='photo-picker-') as directory:
@@ -145,8 +222,8 @@ def upload_photos(files: list[UploadFile] = File(...)):
     return jobs.submit('import', import_service.import_paths, paths, False, False, True)
 
 @app.get('/api/jobs')
-def recent_jobs():
-    return jobs.recent()
+def recent_jobs(summary: bool = False):
+    return jobs.recent(summary=summary)
 
 @app.get('/api/jobs/{job_id}')
 def get_job(job_id: str):
@@ -160,13 +237,23 @@ def cancel_job(job_id: str):
     if not result: raise HTTPException(404, '任务不存在或服务已重启')
     return result
 
+@app.get('/api/jobs/{job_id}/children')
+def job_children(job_id: str, page: int = 1, page_size: int = 20):
+    if page<1 or not 1<=page_size<=100:raise ValueError('分页参数超出范围')
+    if not jobs.get(job_id):raise HTTPException(404,'任务不存在或服务已重启')
+    return jobs.children(job_id,page,page_size)
+
+@app.get('/api/tasks/resources')
+def task_resources():
+    return jobs.resources()
+
 def ordered_photos(request: Request, sort: str, direction: str):
+    from .services.photo_order import ordered
     q = library_service.query_photos(filters(request), 'capture')
-    if sort == 'manual' and request.query_params.get('album_id'):
-        positions = select(Photo.capture_group_id.label('gid'), func.min(AlbumPhoto.position).label('pos')).join(AlbumPhoto, AlbumPhoto.photo_id == Photo.id).where(AlbumPhoto.album_id == request.query_params['album_id']).group_by(Photo.capture_group_id).subquery()
-        return q.join(positions, positions.c.gid == Photo.capture_group_id).order_by(positions.c.pos, Photo.id)
-    column = {'date_taken':Photo.date_taken, 'created_at':Photo.created_at, 'file_name':Photo.file_name}.get(sort, Photo.date_taken)
-    return q.order_by(column.asc() if direction == 'asc' else column.desc(), Photo.id)
+    if q.get_execution_options().get('pc_text_query'):
+        from .services.text_index import schedule
+        schedule()
+    return ordered(q, sort, direction, q.get_execution_options().get('pc_album_id'))
 
 @app.get('/api/photos')
 def get_photos(request: Request, page: int = 1, page_size: int = 80, sort: str = 'date_taken', direction: str = 'desc'):
@@ -177,15 +264,31 @@ def get_photos(request: Request, page: int = 1, page_size: int = 80, sort: str =
         photos = session.scalars(q.offset((page-1)*page_size).limit(page_size)).all()
         return {'photos':library_service.serialize(session, photos), 'total':total, 'page':page, 'page_size':page_size}
 
+@app.get('/api/facets/{field}')
+def facet_options(field: str,request: Request,q: str='',page: int=1,page_size: int=60,count_mode: str='capture'):
+    from .services.facet_service import options
+    return options(filters(request),field,q,page,page_size,count_mode)
+
+
 @app.get('/api/filter-options')
-def filter_options():
+def filter_options(request: Request,include_tags: bool=True):
+    values=filters(request);values.pop('include_tags',None);base=library_service.query_photos(values).with_only_columns(Photo.id).order_by(None).correlate(None) if values else None
     with Session() as session:
         result = {}
         for field in ['camera_model','lens_model','focal_length','f_number','iso','exposure_seconds']:
-            column = getattr(Photo, field)
-            result[field] = list(session.scalars(select(column).where(column.is_not(None)).distinct().order_by(column)))
-        result['tags'] = list(session.scalars(select(Tag.name).order_by(Tag.name)))
+            column = getattr(Photo, field);statement=select(column).where(column.is_not(None))
+            if base is not None:statement=statement.where(Photo.id.in_(base))
+            result[field] = list(session.scalars(statement.distinct().order_by(column)))
+        if include_tags:
+            tags=select(Tag.name)
+            if base is not None:tags=tags.join(PhotoTag).where(PhotoTag.photo_id.in_(base)).distinct()
+            result['tags'] = list(session.scalars(tags.order_by(Tag.name)))
         return result
+
+@app.get('/api/tags')
+def search_tags(request: Request,q: str='',page: int=1,page_size: int=60,order: str='name'):
+    from .services.tag_service import options
+    return options(filters(request),q,page,page_size,order)
 
 @app.get('/api/photos/ids')
 def photo_ids(request: Request, sort: str = 'date_taken', direction: str = 'desc'):
@@ -197,6 +300,16 @@ def photo_ids(request: Request, sort: str = 'date_taken', direction: str = 'desc
 def search_parse(q: str):
     with Session() as session:
         return nl_search.parse(q, session)
+
+@app.get('/api/search/index')
+def text_index_status():
+    from .services.text_index import status
+    return status()
+
+@app.post('/api/search/index/rebuild')
+def text_index_rebuild():
+    from .services.text_index import schedule
+    return schedule(True)
 
 @app.post('/api/photos/by-ids')
 def photos_by_ids(payload: IdsRequest):
@@ -218,18 +331,36 @@ def photo_detail(photo_id: str):
     with Session() as session:
         return library_service.serialize(session, [photo_or_404(session, photo_id)], True)[0]
 
+@app.post('/api/photos/{photo_id}/rating/refresh')
+def refresh_photo_rating(photo_id: str):
+    return rating_service.refresh(photo_id)
+
 @app.patch('/api/photos/{photo_id}')
 def update_photo(photo_id: str, payload: PhotoUpdate):
     with Session() as session:
         photo = photo_or_404(session, photo_id)
+        if 'user_description' in payload.model_fields_set:photo.user_description=payload.user_description.strip() if payload.user_description is not None else None
         if payload.favorite is not None: photo.favorite = payload.favorite
-        if 'rating' in payload.model_fields_set: photo.rating = payload.rating
+        if 'flag' in payload.model_fields_set:photo.flag=payload.flag or 'unmarked'
+        if 'rating' in payload.model_fields_set: photo.rating = payload.rating;photo.rating_source='manual'
         if payload.color_label is not None:
             photo.color_label = None if payload.color_label == 'none' else payload.color_label
         if payload.tags is not None: library_service.set_tags(session, photo, payload.tags)
+        if payload.add_tags or payload.remove_tags or payload.restore_ai_tags:
+            from .services.annotation_service import edit_tags
+            edit_tags(session,photo,additions=payload.add_tags or [],removals=payload.remove_tags or [],restore=payload.restore_ai_tags or [])
         photo.updated_at = now()
         session.commit()
         return library_service.serialize(session, [photo], True)[0]
+
+@app.post('/api/photos/{photo_id}/annotation')
+def save_photo_annotation(photo_id: str, payload: AnnotationResult):
+    from .services.annotation_service import save_result
+    with Session() as session:
+        photo=photo_or_404(session,photo_id)
+        save_result(session,photo,payload)
+        session.commit()
+        return library_service.serialize(session,[photo],True)[0]
 
 @app.post('/api/photos/batch-edit')
 def batch_edit_photos(payload: BatchEditRequest):
@@ -237,17 +368,17 @@ def batch_edit_photos(payload: BatchEditRequest):
         photos = session.scalars(select(Photo).where(Photo.id.in_(payload.photo_ids))).all()
         if not photos: raise HTTPException(404, '未找到照片')
         for photo in photos:
+            if 'user_description' in payload.model_fields_set:photo.user_description=payload.user_description.strip() if payload.user_description is not None else None
+            if 'flag' in payload.model_fields_set:photo.flag=payload.flag or 'unmarked'
             if payload.favorite is not None: photo.favorite = payload.favorite
-            if payload.rating is not None: photo.rating = payload.rating
-            if payload.clear_rating: photo.rating = None
+            if payload.rating is not None: photo.rating = payload.rating;photo.rating_source='manual'
+            if payload.clear_rating: photo.rating = None;photo.rating_source='manual'
             if payload.color_label is not None:
                 photo.color_label = None if payload.color_label == 'none' else payload.color_label
             if payload.clear_color_label: photo.color_label = None
             if payload.add_tags or payload.remove_tags:
-                existing = set(session.scalars(select(Tag.name).join(PhotoTag).where(PhotoTag.photo_id == photo.id)))
-                additions = {name.strip()[:100] for name in payload.add_tags or [] if name.strip()}
-                removals = {name.strip()[:100] for name in payload.remove_tags or [] if name.strip()}
-                library_service.set_tags(session, photo, sorted((existing | additions) - removals))
+                from .services.annotation_service import edit_tags
+                edit_tags(session,photo,additions=payload.add_tags or [],removals=payload.remove_tags or [])
             photo.updated_at = now()
         session.commit()
         return {'updated': len(photos)}
@@ -321,7 +452,7 @@ def lenses(request: Request):
 
 @app.get('/api/reports/lenses/{lens_name}')
 def lens_detail(lens_name: str, request: Request):
-    return stats_service.lens_lifecycle(lens_name, count_mode(request))
+    return stats_service.lens_lifecycle(lens_name, count_mode(request), filters(request))
 
 @app.get('/api/reports/lenses/{lens_name}/monthly')
 def lens_month(lens_name: str, request: Request, year: int, month: int):
@@ -332,15 +463,24 @@ def lens_year(lens_name: str, request: Request, year: int):
     return stats_service.report(year, None, filters(request) | {'lens_model':lens_name}, count_mode(request))
 
 def album_dict(session, album: Album) -> dict:
-    result = {c.name:getattr(album,c.name) for c in Album.__table__.columns}
-    result['count'] = session.scalar(select(func.count(func.distinct(Photo.capture_group_id))).join(AlbumPhoto, AlbumPhoto.photo_id == Photo.id).where(AlbumPhoto.album_id == album.id))
-    result['cover_id'] = album.cover_photo_id or session.scalar(select(AlbumPhoto.photo_id).where(AlbumPhoto.album_id == album.id).order_by(AlbumPhoto.position).limit(1))
-    return result
+    return album_service.summaries(session,[album])[0]
 
 @app.get('/api/albums')
 def albums():
     with Session() as session:
-        return [album_dict(session,a) for a in session.scalars(select(Album).order_by(Album.created_at.desc()))]
+        return album_service.summaries(session,list(session.scalars(select(Album).order_by(Album.created_at.desc()))))
+
+@app.post('/api/albums/batch-delete')
+def delete_albums(payload: AlbumDeleteRequest):
+    with Session() as session:return album_service.remove(session,payload.ids)
+
+@app.get('/api/albums/{album_id}/recent')
+def album_recent(album_id: str,page: int=1,page_size: int=24):
+    if page<1 or not 1<=page_size<=100:raise ValueError('分页参数超出范围')
+    with Session() as session:
+        album=session.get(Album,album_id)
+        if not album:raise HTTPException(404,'影集不存在')
+        return album_service.recent_photos(session,album,page,page_size)
 
 @app.post('/api/albums/smart/preview')
 def smart_preview(payload: SmartRequest):
@@ -349,7 +489,16 @@ def smart_preview(payload: SmartRequest):
         ids = [m['photo_id'] for m in matches]
         photos = session.scalars(select(Photo).where(Photo.id.in_(ids))).all()
         records = {p['id']:p for p in library_service.serialize(session, photos)}
-        return {'model':ai.model_name,'candidates':[records[m['photo_id']] | {'similarity_score':m['similarity_score']} for m in matches if m['photo_id'] in records]}
+        return {'model':ai.model_name,'model_revision':ai.model_revision,'candidates':[records[m['photo_id']] | {'similarity_score':m['similarity_score']} for m in matches if m['photo_id'] in records]}
+
+@app.post('/api/albums/rules/preview')
+def rule_preview(payload: PhotoQueryRequest):
+    from .services.photo_order import ordered
+    q=library_service.query_photos({'query':payload.query})
+    with Session() as session:
+        total=session.scalar(select(func.count()).select_from(q.subquery()))
+        photos=session.scalars(ordered(q,'date_taken','desc').limit(12)).all()
+        return {'total':total,'candidates':library_service.serialize(session,photos)}
 
 @app.post('/api/albums')
 @app.post('/api/albums/smart/create')
@@ -388,9 +537,7 @@ def album_delete(album_id: str):
     with Session() as session:
         album = session.get(Album,album_id)
         if not album: raise HTTPException(404,'影集不存在')
-        session.delete(album)
-        session.commit()
-        return {'ok':True}
+        album_service.remove(session,[album_id]);return {'ok':True}
 
 @app.post('/api/albums/{album_id}/rerun')
 def rerun_album(album_id: str):
@@ -398,17 +545,39 @@ def rerun_album(album_id: str):
         album = session.get(Album,album_id)
         if not album or album.type != 'smart': raise HTTPException(404,'智能影集不存在')
         payload = SmartRequest(keywords=album.keywords, match_mode=album.match_mode, threshold=album.threshold, max_results=album.max_results)
-    return smart_preview(payload)
+    result=smart_preview(payload)
+    with Session() as session:
+        # Re-matching is a read-only proposal. Keep previously confirmed members
+        # visible and selected, including manual additions below the threshold.
+        if not session.get(Album,album_id):raise HTTPException(404,'智能影集不存在')
+        previous=session.scalars(select(Photo).join(AlbumPhoto,AlbumPhoto.photo_id==Photo.id).where(
+            AlbumPhoto.album_id==album_id).order_by(AlbumPhoto.position,Photo.id)).all()
+        retained=library_service.serialize(session,previous)
+        seen={p.capture_group_id for p in previous}
+        scores={p['capture_group_id']:p.get('similarity_score') for p in result['candidates']}
+        for row in retained:
+            score=scores.get(row['capture_group_id'])
+            if score is not None:row['similarity_score']=score
+        result['candidates']=retained+[p for p in result['candidates'] if p['capture_group_id'] not in seen]
+        result['selected_photo_ids']=[p.id for p in previous]
+        return result
 
 @app.put('/api/albums/{album_id}/photos')
 def replace_album_photos(album_id: str, payload: AlbumRequest):
     with Session() as session:
         album = session.get(Album,album_id)
         if not album: raise HTTPException(404,'影集不存在')
-        session.execute(delete(AlbumPhoto).where(AlbumPhoto.album_id==album_id))
+        if album.type=='rule':raise ValueError('条件集合按规则更新，请编辑条件')
+        previous={m.photo_id:m for m in session.scalars(select(AlbumPhoto).where(AlbumPhoto.album_id==album_id))}
         existing = set(session.scalars(select(Photo.id).where(Photo.id.in_(payload.photo_ids))))
-        for photo_id in existing: session.add(AlbumPhoto(album_id=album_id,photo_id=photo_id,similarity_score=payload.scores.get(photo_id)))
+        for photo_id,member in previous.items():
+            if photo_id not in existing:session.delete(member)
+        for photo_id in existing:
+            if photo_id in previous:
+                if photo_id in payload.scores:previous[photo_id].similarity_score=payload.scores[photo_id]
+            else:session.add(AlbumPhoto(album_id=album_id,photo_id=photo_id,similarity_score=payload.scores.get(photo_id)))
         album.updated_at=now()
+        album.name=payload.name
         session.commit()
         return album_dict(session,album)
 
@@ -417,6 +586,10 @@ def update_album(album_id: str, payload: AlbumUpdate):
     with Session() as session:
         album = session.get(Album,album_id)
         if not album: raise HTTPException(404,'影集不存在')
+        if payload.name is not None:album.name=payload.name
+        if 'query' in payload.model_fields_set:
+            if album.type!='rule':raise ValueError('普通影集和语义影集不能改为条件集合')
+            album.query=payload.query
         if payload.person_id is not None:
             if album.type!='normal':raise ValueError('人物影集请使用普通影集')
             if not session.get(FacePerson,payload.person_id):raise HTTPException(404,'人物不存在')
@@ -434,6 +607,7 @@ def order_album(album_id: str, payload: AlbumOrderRequest):
     with Session() as session:
         album = session.get(Album,album_id)
         if not album: raise HTTPException(404,'影集不存在')
+        if album.type=='rule':raise ValueError('条件集合按规则更新，请编辑条件')
         members = {m.photo_id:m for m in session.scalars(select(AlbumPhoto).where(AlbumPhoto.album_id==album_id))}
         position = 0
         for photo_id in payload.photo_ids:
@@ -487,23 +661,28 @@ def export_file(filename: str):
 
 @app.get('/api/timeline')
 def timeline(request: Request):
-    return timeline_service.get_timeline_hierarchy(count_mode(request))
+    return timeline_service.get_timeline_hierarchy(count_mode(request),filters(request))
+
+
+@app.get('/api/timeline/unknown')
+def timeline_unknown(request: Request, page: int = 1, page_size: int = 80):
+    return timeline_service.unknown_photos(count_mode=count_mode(request),filters=filters(request),page=page,page_size=page_size)
 
 @app.get('/api/timeline/heatmap/{year}')
 def timeline_heatmap(year: int, request: Request):
-    return timeline_service.get_calendar_heatmap(year, count_mode(request))
+    return timeline_service.get_calendar_heatmap(year, count_mode(request),filters(request))
 
 @app.get('/api/timeline/{year}')
 def timeline_year(year: int, request: Request, page: int = 1, page_size: int = 80):
-    return timeline_service.date_photos(year, page=page, page_size=page_size, count_mode=count_mode(request))
+    return timeline_service.date_photos(year, page=page, page_size=page_size, count_mode=count_mode(request),filters=filters(request))
 
 @app.get('/api/timeline/{year}/{month}')
 def timeline_month(year: int, month: int, request: Request, page: int = 1, page_size: int = 80):
-    return timeline_service.date_photos(year, month, page=page, page_size=page_size, count_mode=count_mode(request))
+    return timeline_service.date_photos(year, month, page=page, page_size=page_size, count_mode=count_mode(request),filters=filters(request))
 
 @app.get('/api/timeline/{year}/{month}/{day}')
 def timeline_day(year: int, month: int, day: int, request: Request, page: int = 1, page_size: int = 80):
-    return timeline_service.date_photos(year, month, day, page=page, page_size=page_size, count_mode=count_mode(request))
+    return timeline_service.date_photos(year, month, day, page=page, page_size=page_size, count_mode=count_mode(request),filters=filters(request))
 
 @app.get('/api/compare')
 def compare_photos(ids: str):
@@ -542,6 +721,8 @@ def create_face_person(payload: FacePersonCreate):
 @app.patch('/api/faces/persons/{person_id}')
 def rename_face_person(person_id: str, payload: FacePersonRename):
     with Session() as session:
+        from .services.face_management import active_person
+        active_person(session,person_id)
         person = session.get(FacePerson, person_id)
         if not person: raise HTTPException(404, '人物不存在')
         if session.scalar(select(FacePerson.id).where(FacePerson.name==payload.name,FacePerson.id!=person_id)):raise HTTPException(409,'人物名称已存在')
@@ -554,10 +735,8 @@ def delete_face_person(person_id: str):
     with Session() as session:
         person = session.get(FacePerson, person_id)
         if not person: raise HTTPException(404, '人物不存在')
-        from .models import DetectedFace
-        for face in session.scalars(select(DetectedFace).where(DetectedFace.person_id==person_id)):
-            face.person_id=None;face.confirmed=False
-        session.delete(person)
+        from .services.face_management import delete_person
+        delete_person(session,person_id)
         session.commit()
         return {'ok': True}
 
@@ -600,7 +779,14 @@ if dist.exists():
     @app.get('/timeline')
     @app.get('/compare')
     @app.get('/faces')
+    @app.get('/tools')
+    @app.get('/tools/darkroom')
+    @app.get('/tools/analyze')
+    @app.get('/tools/raw')
+    @app.get('/tools/edit')
     def frontend_page():
         return FileResponse(dist / 'index.html')
 
+    app.mount('/local-assets/brand_logos', StaticFiles(directory=Path(__file__).parent/'assets'/'brand_logos'), name='local-brand-assets')
+    app.mount('/local-assets/signatures', StaticFiles(directory=Path(__file__).parent/'assets'/'signatures'), name='local-signature-assets')
     app.mount('/', StaticFiles(directory=dist, html=True), name='frontend')

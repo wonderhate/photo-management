@@ -1,0 +1,10 @@
+.frame-editor>details,.frame-editor>label,.frame-editor>.two-columns{margin-top:14px}
+.frame-editor details>label,.frame-editor details>.button-row{margin-top:10px}
+.frame-editor summary{cursor:pointer;line-height:1.6;color:var(--text)}
+.frame-editor .frame-layer{padding:9px;border:1px solid var(--line);border-radius:6px;margin-top:10px}
+.frame-logo-preview{display:flex;align-items:center;gap:12px;margin-top:12px}
+.frame-logo-preview img{max-width:90px;max-height:64px;object-fit:contain;border:1px solid var(--line);border-radius:4px}
+.frame-logo-preview small{overflow-wrap:anywhere;max-width:calc(100% - 100px);color:var(--muted)}
+.frame-asset-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.frame-asset-row>span{overflow-wrap:anywhere;min-width:0}
+.frame-editor .button-row button{font-size:11px;padding:7px 9px}

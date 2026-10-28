@@ -1,0 +1,34 @@
+{
+  "version": "2.7.1",
+  "displayVersion": "2.7.1",
+  "baseUrl": "https://ai.photomanagement.online/downloads/2.7.1/",
+  "fallbackBaseUrl": "https://github.com/wonderhate/photo-management/releases/download/v2.7.1/",
+  "releaseUrl": "https://github.com/wonderhate/photo-management/releases/tag/v2.7.1",
+  "developer": {
+    "name": "Wonder",
+    "intro": "欢迎大家参与改进",
+    "qq": "1706023204"
+  },
+  "files": [
+    {
+      "kind": "installer",
+      "name": "PhotoCollection-Setup-2.7.1-x64.exe",
+      "bytes": 276171455,
+      "sha256": "643c0993bf6d98c4d453415b618ab9d699c5680cb5710934f14e4bd896734216"
+    },
+    {
+      "kind": "zip",
+      "name": "PhotoCollection-Windows-2.7.1.zip",
+      "bytes": 313374662,
+      "sha256": "5e20c44fe37fc095556dfd6cd275698c6b997f2c1846dc825b231494a67e2503"
+    }
+  ],
+  "linux": {
+    "name": "PhotoCollection-Linux-2.6.1-x64.tar.gz",
+    "bytes": 624753887,
+    "sha256": "afeb8b36394a5c9be7235787586aeb99abee7075e9458fbcaaeb4a24e98b3f30",
+    "url": "https://github.com/wonderhate/photo-management/releases/download/v2.6.1/PhotoCollection-Linux-2.6.1-x64.tar.gz",
+    "sumUrl": "https://github.com/wonderhate/photo-management/releases/download/v2.6.1/PhotoCollection-Linux-2.6.1-x64.tar.gz.sha256",
+    "glibc": "2.35"
+  }
+}

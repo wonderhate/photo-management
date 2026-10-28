@@ -20,13 +20,15 @@ export function useWatermarkDraft({active,options,setOptions,draftId,onSaved,gua
   const record=useRef<WatermarkDraft|null>(null);
   const pending=useRef<Promise<WatermarkDraft>|null>(null);
   const loaded=useRef('');
+  const epoch=useRef(0),mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;epoch.current++;};},[]);
   const latest=()=>JSON.stringify({settings_json:current.current.options,name:current.current.name});
   const dirty=()=>record.current ? latest()!==saved.current : JSON.stringify(current.current.options)!==baseline.current || !!current.current.name;
   useEffect(()=>{
     if(!draftId || loaded.current===draftId)return;
-    let alive=true;setLoading(true);
+    const generation=++epoch.current;let alive=true;setLoading(true);
     api<WatermarkDraft>('/watermark/drafts/'+draftId).then(d=>{
-      if(!alive)return;loaded.current=d.id;record.current=d;setDraft(d);setOptions(d.settings_json);setName(d.name);
+      if(!alive||generation!==epoch.current)return;loaded.current=d.id;record.current=d;setDraft(d);setOptions(d.settings_json);setName(d.name);
       saved.current=JSON.stringify({settings_json:d.settings_json,name:d.name});setState('已保存');
     }).catch(e=>{if(alive){setState('加载失败：'+message(e));notify(message(e))}}).finally(()=>{if(alive)setLoading(false)});
     return()=>{alive=false};
@@ -34,7 +36,9 @@ export function useWatermarkDraft({active,options,setOptions,draftId,onSaved,gua
   useEffect(()=>{if(!draftId&&!record.current)baseline.current=JSON.stringify(current.current.options)},[active]);
 
   async function save():Promise<WatermarkDraft> {
+    if(!mounted.current||draftId&&loaded.current!==draftId)throw new Error(t('编辑会话已切换，请重新打开作品。'));
     if(pending.current){await pending.current;if(record.current&&!dirty())return record.current;return save()}
+    const generation=epoch.current;
     const c=current.current,existing=record.current;
     if(existing&&!dirty())return existing;
     if(!c.active&&!existing)throw new Error(t("请先选择照片"));
@@ -44,12 +48,14 @@ export function useWatermarkDraft({active,options,setOptions,draftId,onSaved,gua
     const promise=api<WatermarkDraft>('/watermark/drafts'+(existing?'/'+existing.id:''),existing?'PUT':'POST',body);
     pending.current=promise;
     try {
-      const d=await promise;record.current=d;loaded.current=d.id;setDraft(d);
+      const d=await promise;
+      if(!mounted.current||generation!==epoch.current)throw new Error(t('编辑会话已切换，请重新打开作品。'));
+      record.current=d;loaded.current=d.id;setDraft(d);
       // Do not overwrite edits made while this request was in flight.
       if(current.current.name===c.name){current.current.name=d.name;setName(d.name)}
       saved.current=JSON.stringify({settings_json:c.options,name:d.name});
       onSaved(d.id);setState('已保存');return d;
-    }catch(e){setState('保存失败：'+message(e));throw e}finally{pending.current=null}
+    }catch(e){if(mounted.current&&generation===epoch.current)setState('保存失败：'+message(e));throw e}finally{if(pending.current===promise)pending.current=null}
   }
   async function flush():Promise<WatermarkDraft>{let d=await save();while(dirty())d=await save();return d}
   useEffect(()=>{
@@ -72,7 +78,7 @@ export function useWatermarkDraft({active,options,setOptions,draftId,onSaved,gua
   });
   function defaults(values:Partial<WatermarkOptions>){if(!draftId&&!record.current&&!dirty()){const next={...current.current.options,...values};baseline.current=JSON.stringify(next);setOptions(next)}}
   async function ready(){const d=await flush();const next=await api<WatermarkDraft>('/watermark/drafts/'+d.id+'/status','PATCH',{status:'ready'});record.current=next;setDraft(next);notify(t("已标记为待导出"))}
-  function reset(){record.current=null;loaded.current='';setDraft(null);setName('');saved.current='';baseline.current=JSON.stringify(current.current.options);setState('')}
+  function reset(){epoch.current++;record.current=null;loaded.current='';setDraft(null);setName('');saved.current='';baseline.current=JSON.stringify(current.current.options);setState('')}
   const dialog=leave&&<Modal title={t("当前水印尚未保存")} onClose={()=>{leave(false);setLeave(null)}}>
     <div className="draft-dialog"><p>{t("将编辑保存到水印图库，下次可以继续修改。")}</p>{state.startsWith('保存失败')&&<p className="error-box">{t(state)}</p>}
     <div className="button-row"><button onClick={()=>{leave(false);setLeave(null)}}>{t("继续编辑")}</button>

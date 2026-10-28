@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'./tests',testMatch:['public-showcase.spec.mjs','site-glass.spec.mjs','website-integration.spec.mjs'],workers:1,outputDir:'../.test-artifacts/public-browser-results',use:{baseURL:'http://127.0.0.1:4186',channel:process.env.CI?undefined:'chrome',headless:true,serviceWorkers:'block',trace:'off'},webServer:{command:'node frontend/tests/web-server.mjs --showcase --test',cwd:'..',url:'http://127.0.0.1:4186',reuseExistingServer:false}});

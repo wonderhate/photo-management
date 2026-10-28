@@ -1,0 +1,545 @@
+{
+  "rows": [
+    {
+      "id": "a",
+      "file_name": "Facet-a.jpg",
+      "camera_model": "SONY",
+      "lens_model": "85mm",
+      "iso": 100,
+      "rating": 0,
+      "flag": "picked",
+      "width": 640,
+      "height": 480,
+      "date_taken": "2026-01-01T00:00:00",
+      "tags": [
+        "旅行",
+        "人像"
+      ],
+      "favorite": true,
+      "is_raw": false,
+      "color_label": "red",
+      "file_format": "JPG"
+    },
+    {
+      "id": "b",
+      "file_name": "Facet-b.jpg",
+      "camera_model": "Canon",
+      "lens_model": "24mm",
+      "iso": 400,
+      "rating": null,
+      "flag": "rejected",
+      "width": 480,
+      "height": 640,
+      "date_taken": "2026-01-01T23:59:59.999",
+      "tags": [
+        "旅行"
+      ],
+      "favorite": false,
+      "is_raw": false,
+      "color_label": null,
+      "file_format": "JPG"
+    },
+    {
+      "id": "c",
+      "file_name": "Facet-c.jpg",
+      "camera_model": "SONY",
+      "lens_model": "85mm",
+      "iso": 800,
+      "rating": 5,
+      "flag": "unmarked",
+      "width": 600,
+      "height": 600,
+      "date_taken": "2026-01-02T00:00:00",
+      "tags": [
+        "人像"
+      ],
+      "favorite": false,
+      "is_raw": true,
+      "color_label": "blue",
+      "file_format": "RAW"
+    },
+    {
+      "id": "d",
+      "file_name": "Facet-d.jpg",
+      "camera_model": null,
+      "lens_model": null,
+      "iso": null,
+      "rating": null,
+      "flag": "unmarked",
+      "width": null,
+      "height": null,
+      "date_taken": null,
+      "tags": [],
+      "favorite": false,
+      "is_raw": false,
+      "color_label": null,
+      "file_format": "JPG"
+    },
+    {
+      "id": "e",
+      "file_name": "Facet-e.jpg",
+      "camera_model": "SONY",
+      "lens_model": "35mm",
+      "iso": 200,
+      "rating": 4,
+      "flag": "picked",
+      "width": 640,
+      "height": 480,
+      "date_taken": "2026-01-01T12:00:00",
+      "tags": [
+        "旅行",
+        "风光"
+      ],
+      "favorite": true,
+      "is_raw": false,
+      "color_label": "red",
+      "file_format": "JPG"
+    }
+  ],
+  "cases": [
+    {
+      "name": "camera any",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "camera_model",
+            "op": "in",
+            "values": [
+              "SONY",
+              "Canon"
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "c",
+        "e"
+      ]
+    },
+    {
+      "name": "camera excluded includes missing",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "camera_model",
+            "op": "in",
+            "values": [
+              "SONY"
+            ],
+            "exclude": true
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "d"
+      ]
+    },
+    {
+      "name": "camera value or missing",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "camera_model",
+            "op": "in",
+            "values": [
+              "Canon"
+            ],
+            "missing": true
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "d"
+      ]
+    },
+    {
+      "name": "tags all",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "tag",
+            "op": "in",
+            "values": [
+              "旅行",
+              "人像"
+            ],
+            "match": "all"
+          }
+        ]
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "tags any",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "tag",
+            "op": "in",
+            "values": [
+              "旅行",
+              "人像"
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "c",
+        "e"
+      ]
+    },
+    {
+      "name": "tags excluded",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "tag",
+            "op": "in",
+            "values": [
+              "旅行"
+            ],
+            "exclude": true
+          }
+        ]
+      },
+      "ids": [
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "no tags",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "tag",
+            "op": "in",
+            "values": [],
+            "missing": true
+          }
+        ]
+      },
+      "ids": [
+        "d"
+      ]
+    },
+    {
+      "name": "numeric inclusive",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "iso",
+            "op": "range",
+            "min": 200,
+            "max": 800
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "c",
+        "e"
+      ]
+    },
+    {
+      "name": "numeric or missing",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "iso",
+            "op": "range",
+            "min": 200,
+            "max": 800,
+            "missing": true
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "c",
+        "d",
+        "e"
+      ]
+    },
+    {
+      "name": "zero rating",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "rating",
+            "op": "in",
+            "values": [
+              0
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "a"
+      ]
+    },
+    {
+      "name": "unrated",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "rating",
+            "op": "in",
+            "values": [],
+            "missing": true
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "d"
+      ]
+    },
+    {
+      "name": "not zero",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "rating",
+            "op": "in",
+            "values": [
+              0
+            ],
+            "exclude": true
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "c",
+        "d",
+        "e"
+      ]
+    },
+    {
+      "name": "day includes fractional last second",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "date_taken",
+            "op": "range",
+            "min": "2026-01-01",
+            "max": "2026-01-01"
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "e"
+      ]
+    },
+    {
+      "name": "day exclusion includes missing",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "date_taken",
+            "op": "range",
+            "min": "2026-01-01",
+            "max": "2026-01-01",
+            "exclude": true
+          }
+        ]
+      },
+      "ids": [
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "landscape",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "orientation",
+            "op": "in",
+            "values": [
+              "landscape"
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "e"
+      ]
+    },
+    {
+      "name": "portrait square",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "orientation",
+            "op": "in",
+            "values": [
+              "portrait",
+              "square"
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "c"
+      ]
+    },
+    {
+      "name": "missing shape",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "orientation",
+            "op": "in",
+            "values": [],
+            "missing": true
+          }
+        ]
+      },
+      "ids": [
+        "d"
+      ]
+    },
+    {
+      "name": "not square",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "orientation",
+            "op": "in",
+            "values": [
+              "square"
+            ],
+            "exclude": true
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "d",
+        "e"
+      ]
+    },
+    {
+      "name": "false boolean",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "favorite",
+            "op": "in",
+            "values": [
+              false
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "combined",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "camera_model",
+            "op": "in",
+            "values": [
+              "SONY"
+            ]
+          },
+          {
+            "field": "rating",
+            "op": "range",
+            "min": 4
+          },
+          {
+            "field": "tag",
+            "op": "in",
+            "values": [
+              "旅行"
+            ]
+          }
+        ]
+      },
+      "ids": [
+        "e"
+      ]
+    },
+    {
+      "name": "exclusive numeric bounds",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "iso",
+            "op": "range",
+            "min": 100,
+            "min_exclusive": true,
+            "max": 400,
+            "max_exclusive": true
+          }
+        ]
+      },
+      "ids": [
+        "e"
+      ]
+    },
+    {
+      "name": "exclusive next day",
+      "state": {
+        "version": 1,
+        "items": [
+          {
+            "field": "date_taken",
+            "op": "range",
+            "min": "2026-01-01",
+            "max": "2026-01-02",
+            "max_exclusive": true
+          }
+        ]
+      },
+      "ids": [
+        "a",
+        "b",
+        "e"
+      ]
+    }
+  ]
+}

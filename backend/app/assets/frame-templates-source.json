@@ -1,0 +1,8 @@
+{
+  "source": "https://github.com/YIWANG3/AfterFrame",
+  "commit": "26e19935469e696133088b798f23b5b3654d910f",
+  "path": "apps/desktop/src/components/editor/frameTemplates.js",
+  "license": "MIT",
+  "license_copy": "frontend/public/licenses/AfterFrame-MIT.txt",
+  "adaptation": "Template layout data only; fonts resolved from PhotoCollection bundled fonts. RGBA text colors normalized to hexadecimal colors plus layer opacity. Renderers and UI implemented locally."
+}

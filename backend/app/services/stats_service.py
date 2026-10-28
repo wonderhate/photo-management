@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+from calendar import monthrange
 from datetime import date, datetime, timedelta
 from math import log, sqrt
 from sqlalchemy import select, func
@@ -6,12 +7,14 @@ from ..models import Session, Photo
 from ..config import settings
 from .library_service import query_photos
 from .exif_service import shutter
+from .analysis_scope import period, counting
 
 FIELDS = ['id', 'date_taken', 'camera_model', 'lens_model', 'focal_length', 'f_number', 'iso', 'exposure_seconds']
 APERTURES = [1, 1.2, 1.4, 1.8, 2, 2.8, 4, 5.6, 8, 11, 16, 22, 32, 45, 64]
 
-def rows(filters: dict, count_mode: str) -> list[dict]:
+def rows(filters: dict, count_mode: str, lens: str | None = None) -> list[dict]:
     q = query_photos(filters, count_mode).with_only_columns(*(getattr(Photo, f) for f in FIELDS))
+    if lens is not None:q=q.where(Photo.lens_model==lens)
     with Session() as session:
         return [dict(r) for r in session.execute(q).mappings()]
 
@@ -92,11 +95,11 @@ def statistics(filters: dict, count_mode: str, mode: str = 'grouped') -> dict:
 def report(year: int, month: int | None, filters: dict, count_mode: str) -> dict:
     start = date(year, month or 1, 1)
     end = date(year + 1, 1, 1) if not month or month == 12 else date(year, month + 1, 1)
-    period_filter = filters | {'date_from': start.isoformat(), 'date_to': (end - timedelta(days=1)).isoformat()}
+    period_filter = period(filters,start.isoformat(),(end - timedelta(days=1)).isoformat())
     data = rows(period_filter, count_mode)
     summary = summarize(data)
-    summary['files'] = len(rows(period_filter, 'file'))
-    summary['captures'] = len(rows(period_filter, 'capture'))
+    summary['files'] = len(rows(counting(period_filter,'file'), 'file'))
+    summary['captures'] = len(rows(counting(period_filter,'capture'), 'capture'))
     lenses = histogram(data, 'lens_model', 'exact')
     timeline = []
     keys = [f'{year}-{m:02}' for m in range(1, 13)] if month is None else [(start + timedelta(days=i)).isoformat() for i in range((end-start).days)]
@@ -128,11 +131,11 @@ def report(year: int, month: int | None, filters: dict, count_mode: str) -> dict
                 charts={f: histogram(data, f) for f in ['focal_length', 'f_number', 'iso', 'exposure_seconds']},
                 cover_id=data[0]['id'] if data else None)
 
-def lens_lifecycle(name: str, count_mode: str) -> dict:
-    data = rows({'lens_model': name}, count_mode)
+def lens_lifecycle(name: str, count_mode: str, filters: dict | None = None) -> dict:
+    data = rows(filters or {}, count_mode, name)
     days = sorted({r['date_taken'][:10] for r in data if r['date_taken']})
     today = date.today()
-    recent = (today.replace(year=today.year - 1, day=min(today.day, 28))).isoformat()
+    recent = today.replace(year=today.year - 1, day=min(today.day, monthrange(today.year-1,today.month)[1])).isoformat()
     months = Counter(r['date_taken'][:7] for r in data if r['date_taken'])
     gaps = [(date.fromisoformat(b)-date.fromisoformat(a)).days for a,b in zip(days, days[1:])]
     if days:

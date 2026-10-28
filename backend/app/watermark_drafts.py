@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.responses import Response
 from io import BytesIO
 from .schemas import WatermarkOptions
-from sqlalchemy import select, func, or_, cast, String
+from sqlalchemy import select, func, or_, cast, String, text
 from .models import Session, Photo, WatermarkDraft, now
 from .draft_schemas import DraftCreate, DraftUpdate, DraftStatus, DraftExport, DraftBatchExport, DraftRelocate
 from .services import watermark_draft_service as service, jobs
@@ -63,8 +63,11 @@ def listing(status: str = '', watermark_type: str = '', search: str = '', sort: 
 
 @router.post('/batch-export', status_code=202)
 def batch_export(payload: DraftBatchExport):
-    return jobs.submit('export', service.batch_export, list(dict.fromkeys(payload.draft_ids)),
-                       payload.model_dump(exclude={'draft_ids'}, exclude_none=True))
+    ids = list(dict.fromkeys(payload.draft_ids))
+    with service.lock:
+        snapshots = service.export_snapshots(ids)
+        return jobs.submit('export', service.batch_export, ids,
+                           payload.model_dump(exclude={'draft_ids'}, exclude_none=True), snapshots)
 
 @router.get('/{draft_id}')
 def detail(draft_id: str):
@@ -109,7 +112,7 @@ def delete(draft_id: str):
 def duplicate(draft_id: str):
     with service.lock, Session() as session:
         original = service.get_draft(session, draft_id)
-        draft = WatermarkDraft(photo_id=original.photo_id, artwork_id=original.artwork_id, capture_group_id=original.capture_group_id,
+        draft = WatermarkDraft(photo_id=original.photo_id, artwork_id=original.artwork_id, asset_variant_id=original.asset_variant_id, capture_group_id=original.capture_group_id,
             name=(original.name[:176]+' 副本'), watermark_type=original.watermark_type,
             template_id=original.template_id, settings_json=original.settings_json.copy(), source_json=original.source_json.copy())
         session.add(draft)
@@ -117,7 +120,8 @@ def duplicate(draft_id: str):
         # Copy the cached preview without expensive rendering, including offline originals.
         if original.preview_path and Path(original.preview_path).is_file():
             import shutil
-            suffix = '-'+service.PREVIEW_LAYOUT if service.PREVIEW_LAYOUT in Path(original.preview_path).name else ''
+            layout = service.preview_layout(original)
+            suffix = '-'+layout if layout in Path(original.preview_path).name else ''
             target = Path(original.preview_path).parent / f'{draft.id}{suffix}.webp'
             shutil.copyfile(original.preview_path, target)
             draft.preview_path = str(target)
@@ -137,7 +141,7 @@ def status(draft_id: str, payload: DraftStatus):
 def preview_file(draft_id: str):
     with service.lock, Session() as session:
         draft = service.get_draft(session, draft_id)
-        if not draft.preview_path or service.PREVIEW_LAYOUT not in Path(draft.preview_path).name:
+        if not draft.preview_path or service.preview_layout(draft) not in Path(draft.preview_path).name:
             service.save_preview_commit(session, draft, True)
         if not draft.preview_path or not Path(draft.preview_path).is_file():
             raise HTTPException(404, '预览尚不可用')
@@ -172,6 +176,8 @@ def relocate(draft_id: str, payload: DraftRelocate):
         raise ValueError('文件不存在')
     with service.lock, Session() as session:
         draft = service.get_draft(session, draft_id)
+        if draft.asset_variant_id:
+            raise HTTPException(409, '编辑副本来源固定，请从备份恢复对应作品文件')
         with path.open('rb') as stream:
             if draft.artwork_id:
                 raise HTTPException(409, '水彩来源固定为创建水印时的版本，请恢复对应作品文件')
@@ -179,11 +185,20 @@ def relocate(draft_id: str, payload: DraftRelocate):
         if digest != draft.source_json.get('file_hash'):
             raise ValueError('所选文件与原始照片内容不一致，请选择同一张原图的新位置')
         import_one(path)
-        photo = session.scalar(select(Photo).where(Photo.file_hash == digest))
+        session.execute(text('BEGIN IMMEDIATE'))
+        photo = session.scalar(select(Photo).where(Photo.file_hash == digest).execution_options(include_removed=True))
         if not photo:
             raise ValueError('无法关联原始照片')
         session.refresh(photo)
+        from .services.import_service import file_hash
+        if file_hash(path)!=digest:raise ValueError('所选文件与原始照片内容不一致，请选择同一张原图的新位置')
+        if photo.removed_at:
+            # A saved draft may reconnect its source without restoring it to
+            # normal browsing or replacing its archived ID and relationships.
+            photo.removed_original_path=str(path)
+            photo.source_directory=str(path.parent).casefold()
         draft.photo_id = photo.id
         draft.capture_group_id = photo.capture_group_id
         draft.source_json = service.source_snapshot(photo)
+        if photo.removed_at:draft.source_json=draft.source_json|{'file_path':str(path)}
         return service.save_preview_commit(session, draft, True)

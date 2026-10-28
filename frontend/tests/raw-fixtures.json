@@ -1,0 +1,26 @@
+[
+  {
+    "name": "sample.CR2",
+    "url": "https://raw.githubusercontent.com/letmaik/rawpy/main/test/M0054341_01_00005.cr2",
+    "bytes": 8996956,
+    "sha256": "add8183e643d98d5b07479d50bf5591838451d43449fd3399e2f146cf19beb8d"
+  },
+  {
+    "name": "sample.NEF",
+    "url": "https://raw.githubusercontent.com/letmaik/rawpy/main/test/iss030e122639.NEF",
+    "bytes": 10656312,
+    "sha256": "5922721d13f11795557d97fdeb0a60b900086c402bc82a848ff280d15b99ffd4"
+  },
+  {
+    "name": "sample.ARW",
+    "url": "https://raw.githubusercontent.com/ybouane/LibRaw-Wasm/v1.6.0/example-sony.ARW",
+    "bytes": 31793152,
+    "sha256": "3b4dca9296944931a0deb4b6456685985e326aef884c32d9c5df4fc9f64d7e2c"
+  },
+  {
+    "name": "sample.DNG",
+    "url": "https://raw.githubusercontent.com/ybouane/LibRaw-Wasm/v1.6.0/test/integration/lossy.dng",
+    "bytes": 4600,
+    "sha256": "79bcc394fb79103022e314c5f841cbddf4f4acdcb2b1680c78d574719be7a85a"
+  }
+]

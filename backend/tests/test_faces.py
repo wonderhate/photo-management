@@ -8,7 +8,7 @@ from test_library import import_paths,wait_job
 def test_face_cluster_confirm_reassign_and_safe_delete(client,image_factory,monkeypatch):
     originals=[image_factory('one.jpg'),image_factory('two.jpg',color=(1,2,3))]
     import_paths(client,originals)
-    vector=np.array([1,0,0],dtype='float32').tobytes().hex()
+    vector=np.array([1]+[0]*127,dtype='float32').tobytes().hex()
     calls=[]
     def detect(path):
         calls.append(path)
@@ -16,7 +16,7 @@ def test_face_cluster_confirm_reassign_and_safe_delete(client,image_factory,monk
     monkeypatch.setattr(face_service,'is_available',lambda:True)
     monkeypatch.setattr(face_service,'detect_faces',detect)
     job=client.post('/api/faces/analyze',json={}).json()
-    assert wait_job(client,job)['success']==2
+    completed=wait_job(client,job);assert completed['success']==2,completed['errors']
     people=client.get('/api/faces/persons').json();assert len(people)==1 and people[0]['photo_count']==2
     person=people[0]['id']
     assert client.get('/api/faces/persons/'+person+'/photos?page_size=1').json()['total']==2
@@ -38,6 +38,29 @@ def test_face_cluster_confirm_reassign_and_safe_delete(client,image_factory,monk
 def test_faces_unavailable_is_not_no_face_result(client,monkeypatch):
     monkeypatch.setattr(face_service,'is_available',lambda:False)
     assert client.post('/api/faces/analyze',json={}).status_code==503
+
+
+def test_person_snapshot_survives_live_reassignment_and_reanalysis(client,image_factory,monkeypatch):
+    originals=[image_factory('snapshot-a.jpg'),image_factory('snapshot-b.jpg',color=(50,80,120))]
+    before=[hashlib.sha256(p.read_bytes()).hexdigest() for p in originals]
+    import_paths(client,originals)
+    vector=np.array([1]+[0]*127,dtype='float32').tobytes().hex()
+    monkeypatch.setattr(face_service,'is_available',lambda:True)
+    monkeypatch.setattr(face_service,'detect_faces',lambda path:[{'encoding':vector,'location':{'left':.1,'right':.8,'top':.1,'bottom':.8}}])
+    wait_job(client,client.post('/api/faces/analyze',json={}).json())
+    person=client.get('/api/faces/persons').json()[0]['id']
+    client.post('/api/faces/persons/'+person+'/confirm')
+    album=client.post('/api/albums',json={'name':'人物快照','person_id':person}).json()
+    saved=client.get('/api/photos/ids',params={'album_id':album['id']}).json()['ids']
+    other=client.post('/api/faces/persons',json={'name':'另一个人'}).json()['id']
+    face=client.get('/api/faces/review',params={'person_id':person}).json()['faces'][0]
+    assert client.patch('/api/faces/detections/'+face['id'],json={'person_id':other}).status_code==200
+    assert client.get('/api/photos',params={'person_id':person}).json()['total']==1
+    assert client.get('/api/photos/ids',params={'album_id':album['id']}).json()['ids']==saved
+    wait_job(client,client.post('/api/faces/analyze',json={}).json())
+    assert client.get('/api/photos/ids',params={'album_id':album['id']}).json()['ids']==saved
+    assert client.get('/api/albums/'+album['id']).json()['person_id']==person
+    assert before==[hashlib.sha256(p.read_bytes()).hexdigest() for p in originals]
 
 
 def test_confirmed_person_album_includes_all_captures_and_preserves_originals(client,image_factory,tmp_path):

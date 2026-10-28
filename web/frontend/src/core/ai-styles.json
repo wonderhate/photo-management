@@ -1,0 +1,152 @@
+[
+  {
+    "id": "ink",
+    "name_zh": "水墨",
+    "name_en": "Ink wash",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Restrained monochrome ink washes, dry brush edges and generous breathing room."
+  },
+  {
+    "id": "oil",
+    "name_zh": "油画",
+    "name_en": "Oil painting",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Layered oil paint, visible impasto, carefully modelled light and restrained palette."
+  },
+  {
+    "id": "gouache",
+    "name_zh": "水粉",
+    "name_en": "Gouache",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Opaque gouache, flat matte pigment, softly simplified shapes."
+  },
+  {
+    "id": "pencil",
+    "name_zh": "铅笔",
+    "name_en": "Pencil",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Graphite pencil drawing with delicate cross hatching and natural paper grain."
+  },
+  {
+    "id": "charcoal",
+    "name_zh": "炭笔",
+    "name_en": "Charcoal",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Expressive charcoal study with broad tonal masses and soft smudged transitions."
+  },
+  {
+    "id": "pastel",
+    "name_zh": "粉彩",
+    "name_en": "Pastel",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Soft pastel pigments with velvety edges and delicate broken color."
+  },
+  {
+    "id": "linocut",
+    "name_zh": "版画",
+    "name_en": "Linocut",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Two-color linocut print with bold carved lines and tactile ink coverage."
+  },
+  {
+    "id": "etching",
+    "name_zh": "蚀刻",
+    "name_en": "Etching",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Fine etched lines and tonal hatching on warm printmaking paper."
+  },
+  {
+    "id": "woodblock",
+    "name_zh": "木版",
+    "name_en": "Woodblock",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Traditional woodblock print with simplified color planes and hand printed texture."
+  },
+  {
+    "id": "cyanotype",
+    "name_zh": "蓝晒",
+    "name_en": "Cyanotype",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Cyanotype photographic print in deep Prussian blue and white."
+  },
+  {
+    "id": "duotone",
+    "name_zh": "双色",
+    "name_en": "Duotone",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Restrained editorial duotone in charcoal and warm ochre."
+  },
+  {
+    "id": "risograph",
+    "name_zh": "孔版印刷",
+    "name_en": "Risograph",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Two-ink risograph print with subtle grain and slight registration shifts."
+  },
+  {
+    "id": "comic",
+    "name_zh": "漫画",
+    "name_en": "Comic",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Clear comic ink drawing with restrained cel shading and faithful subject placement."
+  },
+  {
+    "id": "line",
+    "name_zh": "线描",
+    "name_en": "Line drawing",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Continuous fine line drawing with minimal shading and no added typography."
+  },
+  {
+    "id": "pixel",
+    "name_zh": "像素",
+    "name_en": "Pixel art",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Carefully composed pixel art with a limited palette and readable silhouettes."
+  },
+  {
+    "id": "paper",
+    "name_zh": "纸艺",
+    "name_en": "Paper cut",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Layered cut-paper shapes with gentle paper relief shadows."
+  },
+  {
+    "id": "mosaic",
+    "name_zh": "马赛克",
+    "name_en": "Mosaic",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Small colored mosaic tiles preserving the scene composition and main subjects."
+  },
+  {
+    "id": "stained-glass",
+    "name_zh": "彩玻璃",
+    "name_en": "Stained glass",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Luminous stained glass panels with thin dark leading and coherent subject shapes."
+  },
+  {
+    "id": "embroidery",
+    "name_zh": "刺绣",
+    "name_en": "Embroidery",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Tactile embroidery stitches on plain fabric, retaining subject silhouettes."
+  },
+  {
+    "id": "clay",
+    "name_zh": "黏土",
+    "name_en": "Clay",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Handcrafted matte clay miniature with soft studio light and visible handmade texture."
+  },
+  {
+    "id": "miniature",
+    "name_zh": "微缩",
+    "name_en": "Miniature",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Detailed physical miniature, subtle depth of field, original camera perspective."
+  },
+  {
+    "id": "noir",
+    "name_zh": "黑白电影",
+    "name_en": "Film noir",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Cinematic monochrome, rich shadows and subtle silver grain."
+  },
+  {
+    "id": "vintage",
+    "name_zh": "复古胶片",
+    "name_en": "Vintage film",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Gentle analog grain, muted warm color and soft highlight roll-off."
+  },
+  {
+    "id": "dream",
+    "name_zh": "柔光梦境",
+    "name_en": "Soft dream",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Soft luminous atmosphere and delicate bloom without inventing new subjects."
+  },
+  {
+    "id": "botanical",
+    "name_zh": "自然图鉴",
+    "name_en": "Naturalist study",
+    "prompt": "Restyle the supplied photograph. Preserve its main subjects, arrangement and viewpoint. Do not add text or logos. Precise naturalist illustration with delicate pigment and carefully observed detail."
+  }
+]

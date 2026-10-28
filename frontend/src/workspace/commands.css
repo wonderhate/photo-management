@@ -1,0 +1,7 @@
+.command-menu{position:fixed;z-index:20000;width:min(330px,calc(100vw - 16px));max-height:calc(100dvh - 16px);overflow:auto;padding:6px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 32px #0003;outline:none}
+:root:root[data-theme] .command-menu button{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:7px 9px;border:0;border-radius:4px;background:transparent;color:var(--text);text-align:left;font-size:12px}
+:root:root[data-theme] .command-menu button:is(:hover,:focus-visible){background:var(--surface);outline:1px solid var(--accent);outline-offset:-1px}
+.command-menu button:disabled{opacity:.4;cursor:default}
+.command-check{width:16px;flex:none;color:var(--accent)}
+.command-menu kbd{margin-left:auto;white-space:nowrap;font:11px var(--font-sans);color:var(--muted);background:transparent;border:0}
+.command-menu-trigger{flex:none}

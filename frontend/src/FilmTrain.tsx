@@ -1,5 +1,7 @@
+import MediaImage from './media/MediaImage';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {api} from './api';
+import {photoURL} from './runtime';
 import {t} from './i18n';
 import type {Photo} from './types';
 
@@ -62,7 +64,7 @@ export default function FilmTrain({ids,current,cache,playing,speed,onAdvance}:{i
     <div ref={track} className="film-track">{frames.map((id,i)=>{
       const photo=photos[id];
       return <figure key={id} className={'film-frame'+(id===current.id?' active':'')} data-frame={String((source.indexOf(id)+1)).padStart(2,'0')} data-photo-id={id}>
-        <img src={photo?.preview_url||'/api/photos/'+id+'/preview'} alt={photo?.file_name||t('照片')} width={photo?.width||1200} height={photo?.height||800} onLoad={()=>align.current()} onError={e=>{e.currentTarget.alt=photo?.preview_error||t('照片预览不可用');align.current();}} aria-current={i===middle?'true':undefined}/>
+        <MediaImage mediaPriority={1} src={photo?.preview_url||photoURL(id,'preview')} alt={photo?.file_name||t('照片')} width={photo?.width||1200} height={photo?.height||800} onLoad={()=>align.current()} onError={e=>{e.currentTarget.alt=photo?.preview_error?t(photo.preview_error):t('照片预览不可用');align.current();}} aria-current={i===middle?'true':undefined}/>
       </figure>;
     })}</div>
   </div>;

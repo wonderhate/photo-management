@@ -1,0 +1,19 @@
+import {useEffect,useRef,useState} from 'react';
+import {ArchiveRestore} from 'lucide-react';
+import {api,message} from '../api';
+import {bt} from '../browser/text';
+import './removed-photos.css';
+type Row={id:string;file_name:string;file_path:string;removed_at:string;capture_group_id:string};
+type Result={items:Row[];total:number;page:number;page_size:number};
+export default function RemovedPhotos({notify,onRestored}:{notify:(text:string)=>void;onRestored:()=>void}){
+  const [expanded,setExpanded]=useState(false),[page,setPage]=useState(1),[revision,setRevision]=useState(0),[result,setResult]=useState<Result|null>(null),[selected,setSelected]=useState<Set<string>>(new Set()),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const mounted=useRef(true);useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  useEffect(()=>{if(!expanded)return;const controller=new AbortController();setResult(null);setSelected(new Set());setError('');void api<Result>('/removals/photos?page='+page,'GET',undefined,controller.signal).then(v=>{if(controller.signal.aborted)return;if(page>1&&!v.items.length){setPage(Math.max(1,Math.ceil(v.total/v.page_size)));return;}setResult(v);}).catch(e=>{if(!controller.signal.aborted)setError(message(e));});return()=>controller.abort();},[expanded,page,revision]);
+  async function restore(ids:string[]){if(busy||!ids.length)return;setBusy(true);setError('');try{const value=await api<{restored:number}>('/removals/photos/restore','POST',{ids});if(mounted.current){setRevision(v=>v+1);onRestored();notify(bt(`已恢复 ${value.restored} 条照片记录。`,`Restored ${value.restored} photo records.`));}}catch(e){if(mounted.current)setError(message(e));}finally{if(mounted.current)setBusy(false);}}
+  return <section className="settings-card removed-photos"><header><ArchiveRestore size={20}/><div><h3>{bt('已移出的照片记录','Removed photo records')}</h3><p>{bt('原片保留在原处；恢复后沿用原有 ID、影集顺序和作品关联。','Originals remain in place. Restoring retains existing IDs, collection order and artwork links.')}</p></div></header><details open={expanded} onToggle={e=>setExpanded(e.currentTarget.open)}><summary>{bt('查看与恢复记录','View and restore records')}</summary>{expanded&&<>
+    <p className="muted">{bt('重复扫描不会自动重新导入这些照片。这里不删除原片，也不清空移出历史；派生文件的回收单独处理。','Repeated scans do not automatically reimport these photos. Originals and removal history are kept; generated-file recycling is separate.')}</p>
+    {!result&&!error&&<p role="status">{bt('正在读取移出记录…','Loading removed records…')}</p>}
+    {result&&<><div className="button-row"><span>{result.total} {bt('条记录','records')}</span><button disabled={busy||!result.items.length} onClick={()=>setSelected(new Set(result.items.map(r=>r.id)))}>{bt('选择本页','Select page')}</button><button disabled={busy||!selected.size} onClick={()=>void restore([...selected])}>{bt('恢复所选记录','Restore selected records')}</button><button disabled={busy} onClick={()=>setRevision(v=>v+1)}>{bt('刷新','Refresh')}</button></div><ul>{result.items.map(row=><li key={row.id}><label><input type="checkbox" disabled={busy} checked={selected.has(row.id)} onChange={e=>setSelected(before=>{const next=new Set(before);if(e.target.checked)next.add(row.id);else next.delete(row.id);return next;})}/><span><b>{row.file_name}</b><small>{row.file_path}</small><small>{row.removed_at}</small></span></label><button disabled={busy} onClick={()=>void restore([row.id])}>{bt('恢复','Restore')}</button></li>)}</ul>{!result.total&&<p>{bt('暂无移出记录。','No removed records.')}</p>}<div className="button-row"><button disabled={busy||page<=1} onClick={()=>setPage(v=>v-1)}>{bt('上一页','Previous')}</button><span>{page} / {Math.max(1,Math.ceil(result.total/result.page_size))}</span><button disabled={busy||page*result.page_size>=result.total} onClick={()=>setPage(v=>v+1)}>{bt('下一页','Next')}</button></div></>}
+    {error&&<p className="error-box" role="alert">{error}</p>}
+  </>}</details></section>;
+}

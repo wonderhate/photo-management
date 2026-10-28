@@ -36,11 +36,11 @@ def test_persistent_draft_duplicate_preview_and_safe_delete(client,image_factory
     opts = copy['settings_json'] | {'template':'frame','theme':'black'}
     changed = client.put('/api/watermark/drafts/'+copy['id'],json={'revision':copy['revision'],'settings_json':opts}).json()
     assert changed['preview_path'] != copy['preview_path']
-    assert not Path(copy['preview_path']).exists()
+    assert Path(copy['preview_path']).exists()  # Released previews await explicit recycling.
     assert client.get('/api/watermark/drafts/'+d['id']).json()['settings_json']['template']=='ambient'
     assert client.put('/api/watermark/drafts/'+copy['id'],json={'revision':copy['revision'],'name':'stale'}).status_code == 409
     assert client.delete('/api/watermark/drafts/'+d['id']).status_code==200
-    assert not preview.exists() and path.is_file()
+    assert preview.exists() and path.is_file()
     assert Path(changed['preview_path']).exists()
 
 def test_each_draft_uses_own_design_and_export_tracking(client,image_factory):
@@ -79,10 +79,12 @@ def test_missing_source_retained_relocated_and_library_removal(client,image_fact
     assert not r.json()['source_missing']
     assert client.delete('/api/photos/'+photo['id']).status_code==200
     orphan=client.get('/api/watermark/drafts/'+d['id']).json()
-    assert orphan['photo_id'] is None and orphan['source_missing'] and Path(orphan['preview_path']).exists()
+    assert orphan['photo_id']==photo['id'] and not orphan['source_missing'] and Path(orphan['preview_path']).exists()
     r=client.post('/api/watermark/drafts/'+d['id']+'/relocate',json={'path':str(moved)})
     assert r.status_code==200,r.text
     assert not r.json()['source_missing'] and moved.is_file()
+    assert client.get('/api/photos').json()['total']==0
+    assert client.get('/api/removals/photos').json()['items'][0]['id']==photo['id']
 
 def test_filters_sort_pagination_and_unicode_metadata(client,image_factory):
     path=image_factory();import_paths(client,[path]);photo=client.get('/api/photos').json()['photos'][0]

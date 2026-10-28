@@ -12,6 +12,10 @@ from .export_registry import register
 
 def render(photo: Photo, options: dict, preview: bool = False) -> Image.Image:
     options = WatermarkOptions.model_validate(options).model_dump()
+    if options.get('frame_v2') is not None and options['template']=='frame':
+        from ..watermark import frame_v2_renderer
+        with frame_v2_renderer.source_image(photo.file_path) as image:
+            return frame_v2_renderer.render(image,options['frame_v2'],1200 if preview else options['long_edge'])
     source = Path(photo.preview_path) if preview and photo.preview_path else Path(photo.file_path)
     if not source.is_file():
         raise ValueError('原图已移动或删除；请重新导入新位置以关联文件')
@@ -37,41 +41,40 @@ def export_one(photo_id: str, options: dict, index: int = 1, output_directory: s
     return export_source(photo, options, index, output_directory)
 
 
-def export_source(photo, options: dict, index: int = 1, output_directory: str | None = None) -> dict:
-    image = render(photo, options)
-    extension = options['format']
-    values = dict(original=Path(photo.file_name).stem, date=(photo.date_taken or photo.created_at)[:10],
-                  camera=photo.camera_model or 'camera', index=str(index).zfill(3))
-    name = options['filename_template']
-    for key, value in values.items():
-        name = name.replace('{' + key + '}', value)
-    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', name).strip('. ')[:160] or 'photo_watermark'
-    name = re.sub(r'\.(jpg|jpeg|png)$', '', name, flags=re.I)
-    if name.split('.')[0].upper() in {'CON','PRN','AUX','NUL',*[f'COM{i}' for i in range(1,10)],*[f'LPT{i}' for i in range(1,10)]}:
-        name = '_' + name
-    folder = Path(output_directory) if output_directory else EXPORTS
-    if not folder.is_absolute():
-        raise ValueError('输出目录必须是绝对路径')
-    folder = folder.resolve()
-    folder.mkdir(parents=True, exist_ok=True)
-    for counter in range(100000):
-        target = folder / f'{name}{"_"+str(counter) if counter else ""}.{extension}'
-        try:
-            with target.open('xb') as stream:
-                image.save(stream, 'JPEG' if extension == 'jpg' else 'PNG', quality=options['quality'])
-            return dict(file_name=target.name, path=str(target), url=register(target), width=image.width, height=image.height)
-        except FileExistsError:
-            continue
-    raise ValueError('导出文件名冲突过多')
+def export_source(photo, options: dict, index: int = 1, output_directory: str | None = None, job_id=None) -> dict:
+    from .safe_image_export import publish_image, digest
+    options=WatermarkOptions.model_validate(options).model_dump()
+    check=(lambda:jobs.check(job_id)) if job_id else (lambda:None)
+    source=Path(photo.file_path)
+    if not source.is_file():raise ValueError('原图已移动或删除；请重新导入新位置以关联文件')
+    before=digest(source,check)
+    expected=getattr(photo,'file_hash',None)
+    if expected and before!=expected:raise ValueError('The source photo changed. Reopen it before saving.')
+    values=dict(original=Path(photo.file_name).stem,date=(photo.date_taken or photo.created_at)[:10],camera=photo.camera_model or 'camera',index=str(index).zfill(3))
+    name=options['filename_template']
+    for key,value in values.items():name=name.replace('{'+key+'}',value)
+    with render(photo,options) as image:
+        check()
+        if digest(source,check)!=before:raise ValueError('The source photo changed. Reopen it before saving.')
+        result=publish_image(image,Path(output_directory) if output_directory else EXPORTS,name,options['format'],options['quality'],check)
+    return {**result,'source_sha256':before}
+
 
 def batch_export(job_id: str, ids: list[str], options: dict) -> None:
+    from .frame_batch import snapshot,options_for
+    context=snapshot()
     results, errors = [], []
     jobs.update(job_id, total=len(ids))
     for index, photo_id in enumerate(ids, 1):
         jobs.check(job_id)
         jobs.update(job_id, current=photo_id)
         try:
-            results.append(export_one(photo_id, options, index))
+            with Session() as session:
+                photo=session.get(Photo,photo_id)
+                if not photo:raise ValueError('照片记录不存在')
+                current_options=options_for(photo,options,context)
+            results.append(export_source(photo,current_options,index,job_id=job_id))
+        except jobs.JobCancelled:raise
         except Exception as error:
             errors.append(str(error))
         jobs.update(job_id, processed=index, success=len(results), failed=len(errors), errors=errors, results=results)

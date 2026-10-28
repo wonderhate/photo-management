@@ -18,6 +18,8 @@ $package = Join-Path $PSScriptRoot 'releases\windows\PhotoCollection'
 Copy-Item -Path README.md, LICENSE -Destination $package
 New-Item -ItemType Directory -Force (Join-Path $package 'docs') | Out-Null
 Copy-Item -Path docs/README.md, docs/development-handoff-2026-10-13.md, docs/storage-paths.md, docs/watercolor-usage.md, docs/watermark-reference-analysis.md -Destination (Join-Path $package 'docs')
+& $python desktop/release_audit.py $package --write-manifest
+if ($LASTEXITCODE) { throw 'Release privacy/resource audit failed.' }
 # Private library configuration is opt-in and is never included in the distributable ZIP.
 $publicFiles = Get-ChildItem -LiteralPath $package | Where-Object { $_.Name -ne 'library-config.json' } | Select-Object -ExpandProperty FullName
 Compress-Archive -Path $publicFiles -DestinationPath releases/PhotoCollection-Windows.zip -Force

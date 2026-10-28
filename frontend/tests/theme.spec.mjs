@@ -1,9 +1,37 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures/native-runtime.mjs';
 
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
+
+// Translucent surfaces need the painted substrate, not the raw RGBA fill, for
+// contrast. Hide only the text (preserving its geometry), sample the resulting
+// screenshot, and compare the foreground against several points under it.
+async function renderedCardContrast(card){
+  const labels=await card.evaluate(card=>{
+    const bounds=card.getBoundingClientRect(),canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+    const context=canvas.getContext('2d'),elements=[...card.querySelectorAll('h3,p')].filter(element=>element.textContent.trim());
+    const labels=elements.map(element=>{
+      const box=element.getBoundingClientRect();context.clearRect(0,0,1,1);context.fillStyle=getComputedStyle(element).color;context.fillRect(0,0,1,1);
+      return {foreground:[...context.getImageData(0,0,1,1).data],points:[.2,.5,.8].flatMap(x=>[.25,.5,.75].map(y=>[Math.floor(box.left-bounds.left+box.width*x),Math.floor(box.top-bounds.top+box.height*y)]))};
+    });
+    card.__contrastProbe=elements.map(element=>({element,value:element.style.getPropertyValue('visibility'),priority:element.style.getPropertyPriority('visibility')}));
+    elements.forEach(element=>element.style.setProperty('visibility','hidden','important'));
+    return labels;
+  });
+  let image;
+  try{image=await card.screenshot({animations:'disabled',scale:'css'});}
+  finally{await card.evaluate(card=>{for(const {element,value,priority} of card.__contrastProbe||[]){if(value)element.style.setProperty('visibility',value,priority);else element.style.removeProperty('visibility');}delete card.__contrastProbe;});}
+  const backgrounds=JSON.parse(execFileSync(process.env.PHOTO_TEST_PYTHON||'python',['-c',
+    "import io,json,sys; from PIL import Image; image=Image.open(io.BytesIO(sys.stdin.buffer.read())).convert('RGB'); points=json.loads(sys.argv[1]); print(json.dumps([[image.getpixel((max(0,min(image.width-1,x)),max(0,min(image.height-1,y)))) for x,y in label] for label in points]))",
+    JSON.stringify(labels.map(label=>label.points))],{input:image,encoding:'utf8'}));
+  const luminance=rgb=>rgb.map(value=>{value/=255;return value<=.04045?value/12.92:((value+.055)/1.055)**2.4}).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
+  return labels.map((label,index)=>Math.min(...backgrounds[index].map(background=>{
+    const alpha=label.foreground[3]/255,foreground=label.foreground.slice(0,3).map((value,i)=>value*alpha+background[i]*(1-alpha));
+    const a=luminance(foreground),b=luminance(background);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  })));
+}
 
 // Render the production UI with synthetic API data; never connect to a photo library.
 for(const theme of ['light','dark'])for(const width of [1440,390]){
@@ -14,7 +42,7 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     await page.setViewportSize({width,height:1000});
     await page.addInitScript(theme=>{localStorage.setItem('theme',theme);localStorage.setItem('onboarded','1')},theme);
     const responses={
-      '/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},
+      '/workspace':{library_id:'synthetic-library',preferences:{}},'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},
       '/library/scan':{job:null},'/jobs':[],
       '/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[]},
       '/albums':[{id:'test-album',name:'测试影集',type:'normal',count:3,keywords:[],cover_id:null}],
@@ -23,21 +51,19 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     };
     await page.route('**/api/**',async route=>{
       const key=new URL(route.request().url()).pathname.slice(4);
+      if(key==='/health')return route.fulfill({json:{status:'ok'}});
+      if(key==='/agent/settings')return route.fulfill({json:{enabled:false,scopes:['read']}});
       if(!(key in responses))errors.push(`Unexpected API request: ${key}`);
       await route.fulfill({json:responses[key]??{}});
     });
     async function checkCard(selector){
       const card=page.locator(selector).first();await expect(card).toBeVisible();
       const result=await card.evaluate(card=>{
-        const rgb=color=>color.match(/[\d.]+/g).slice(0,3).map(Number);
-        const luminance=color=>rgb(color).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
-        const background=luminance(getComputedStyle(card).backgroundColor);
-        const contrast=[...card.querySelectorAll('h3,p')].map(el=>{const text=luminance(getComputedStyle(el).color);return(Math.max(text,background)+.05)/(Math.min(text,background)+.05)});
         const bounds=card.getBoundingClientRect();
         const controlsFit=[...card.querySelectorAll('button')].every(el=>{const rect=el.getBoundingClientRect();return rect.left>=bounds.left&&rect.right<=bounds.right+.5&&rect.top>=bounds.top&&rect.bottom<=bounds.bottom+.5});
-        return{contrast,controlsFit,overflow:card.scrollWidth>card.clientWidth};
+        return{controlsFit,overflow:card.scrollWidth>card.clientWidth};
       });
-      for(const ratio of result.contrast)expect(ratio).toBeGreaterThanOrEqual(4.5);
+      for(const ratio of await renderedCardContrast(card))expect(ratio).toBeGreaterThanOrEqual(4.5);
       expect(result.controlsFit).toBe(true);expect(result.overflow).toBe(false);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
       await page.screenshot({path:testInfo.outputPath(`${selector.slice(1)}.png`),fullPage:true});
@@ -46,17 +72,21 @@ for(const theme of ['light','dark'])for(const width of [1440,390]){
     expect(response.headers()['x-content-type-options']).toBe('nosniff');
     expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
     await checkCard('.album-card');
-    if(width===390){await page.getByRole('button',{name:'打开导航',exact:true}).click();await expect(page.locator('.sidebar nav .nav-child')).toBeVisible();await page.keyboard.press('Escape')}
+    if(width===390)await expect(page.locator('.workspace-subnav').getByRole('button',{name:'水印图库',exact:true})).toBeVisible();
     await page.goto('/faces');await checkCard('.face-card');
-    await expect(page.locator('.face-card button')).toHaveCount(5);
+    await expect(page.locator('.face-card button')).toHaveText(['查看照片','实时人物照片','命名','删除人物','确认分组','新建人物影集']);
+    await expect(page.locator('.face-card').getByRole('button',{name:'实时人物照片',exact:true})).toBeEnabled();
     expect(await page.locator('.face-card').evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft))).toBeGreaterThanOrEqual(14);
     // These comma-separated light selectors used to contain literal "L" prefixes.
     await page.goto('/?page=photos');
+    // Navigation resolves before React applies the persisted theme. Sample the
+    // requested palette only after that initialization, then compare controls.
+    await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
     const foreground=await page.evaluate(()=>getComputedStyle(document.documentElement).color);
     await expect(page.getByRole('combobox',{name:'照片排序'})).toHaveCSS('color',foreground);
     await page.getByRole('button',{name:'网格显示设置',exact:true}).click();
     const panel=await page.locator('.display-panel').evaluate(el=>getComputedStyle(el).getPropertyValue('--panel').trim());
-    expect(await page.locator('.display-panel').evaluate(el=>{const probe=document.createElement('div');probe.style.background='var(--panel)';el.append(probe);const expected=getComputedStyle(probe).backgroundColor;probe.remove();return getComputedStyle(el).backgroundColor===expected})).toBe(true);
+    expect(await page.locator('.display-panel').evaluate(el=>{const style=getComputedStyle(el);return style.getPropertyValue('--glass-surface').trim()!==''&&/blur\(/.test(style.backdropFilter||style.webkitBackdropFilter||'none')})).toBe(true);
     await page.getByRole('button',{name:'最近操作',exact:true}).click();
     expect(await page.locator('.recent-panel').evaluate((el,panel)=>getComputedStyle(el).getPropertyValue('--panel').trim()===panel,panel)).toBe(true);
     expect(errors).toEqual([]);
@@ -69,13 +99,15 @@ test('confirmed person can create and open a named album',async({page})=>{
   page.on('pageerror',error=>errors.push(String(error)));
   await page.addInitScript(()=>{localStorage.setItem('onboarded','1')});
   const responses={
-    '/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},
+    '/workspace':{library_id:'synthetic-library',preferences:{}},'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},
     '/library/scan':{job:null},'/jobs':[],
     '/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[],total:0},
     '/faces/status':{available:true,dependency:true,cached:true},
   };
   await page.route('**/api/**',async route=>{
     const request=route.request(),key=new URL(request.url()).pathname.slice(4);
+    if(key==='/health')return route.fulfill({json:{status:'ok'}});
+    if(key==='/agent/settings')return route.fulfill({json:{enabled:false,scopes:['read']}});
     if(key==='/faces/persons')return route.fulfill({json:[person,{id:'empty',name:'空人物',photo_count:0,pending:0}]});
     if(key==='/faces/persons/test-person/confirm'){person.pending=0;return route.fulfill({json:{ok:true}})}
     if(key==='/albums'&&request.method()==='POST'){
@@ -109,7 +141,7 @@ test('confirmed person can create and open a named album',async({page})=>{
   await create.click();await expect(page).toHaveURL(/page=photos/);
   expect(submitted).toEqual([{name:'家人影集',person_id:'test-person'},{name:'家人影集',person_id:'test-person'}]);
   await expect(page.getByRole('status')).toContainText('家人影集');
-  await page.locator('.sidebar nav').getByRole('button',{name:'影集',exact:true}).click();
+  await page.locator('.workspace-subnav').getByRole('button',{name:'影集',exact:true}).click();
   await expect(page.locator('.album-card h3')).toHaveText('家人影集');
   await expect(page.locator('.album-card p')).toContainText('81 次拍摄');
   await page.goto('/faces');await expect(create).toHaveCount(0);
@@ -127,10 +159,12 @@ test('mobile English person card opens existing albums without recreating them',
   let creates=0;const opened=[],linked=[];
   await page.route('**/api/**',async route=>{
     const key=new URL(route.request().url()).pathname.slice(4);
+      if(key==='/health')return route.fulfill({json:{status:'ok'}});
+      if(key==='/agent/settings')return route.fulfill({json:{enabled:false,scopes:['read']}});
     if(key==='/albums'&&route.request().method()==='POST')creates++;
-    if(key==='/photos/ids')opened.push(new URL(route.request().url()).searchParams.get('album_id'));
+    if(key==='/photos/ids'){const q=new URL(route.request().url()).searchParams;opened.push(q.has('scope')?JSON.parse(q.get('scope')).base.album_id:q.get('album_id'));}
     if(key==='/albums/portrait-2'&&route.request().method()==='PATCH'){linked.push(route.request().postDataJSON());return route.fulfill({json:albums[1]})}
-    const values={'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},'/library/scan':{job:null},'/jobs':[],'/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[]},'/faces/status':{available:true,dependency:true,cached:true},'/faces/persons':[{id:'person',name:'Mira',photo_count:2,pending:0,albums:albums.map(({id,name})=>({id,name}))}],'/albums':albums,'/albums/portrait-2':albums[1]};
+    const values={'/workspace':{library_id:'synthetic-library',preferences:{}},'/settings':{count_mode:'capture',scan_paths:[]},'/filter-options':{},'/library/scan':{job:null},'/jobs':[],'/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[]},'/faces/status':{available:true,dependency:true,cached:true},'/faces/persons':[{id:'person',name:'Mira',photo_count:2,pending:0,albums:albums.map(({id,name})=>({id,name}))}],'/albums':albums,'/albums/portrait-2':albums[1]};
     if(!(key in values))errors.push(key);
     await route.fulfill({json:values[key]??{}});
   });
@@ -181,13 +215,18 @@ test('storage directories can be selected, saved for restart and cancelled',asyn
   page.on('pageerror',error=>errors.push(String(error)));
   await page.addInitScript(()=>{localStorage.setItem('onboarded','1')});
   const responses={
-    '/settings':{...current,focal_bands:[24,35,60,100,200],count_mode:'capture',preview_preference:'jpeg',thumbnail_quality:85,export_format:'jpg',export_quality:95,export_long_edge:4096},
+    '/workspace':{library_id:'synthetic-library',preferences:{}},'/settings':{...current,focal_bands:[24,35,60,100,200],count_mode:'capture',preview_preference:'jpeg',thumbnail_quality:85,export_format:'jpg',export_quality:95,export_long_edge:4096},
     '/filter-options':{},'/plugins':[], '/library/scan':{job:null},'/jobs':[],
     '/ai/status':{status:'unavailable',indexed:0},'/photos/ids':{ids:[],total:0},
     '/dialog/directory':{paths:['D:/New Photo Library']},
+    '/search/index':{available:true,indexed:0,total:0,pending:0,job_id:null,error:null},
+    '/faces/import-policy':{enabled:false,available:false,reason:'models_unavailable'},
+    '/workspace/catalogs':{current:{path:current.data_dir,name:'Photo Library',library_id:'synthetic-library',photo_count:0,schema_version:3},recent:[],pending:null,locked:false,migration_pending:false,managed_restart:false,switching:false,error:null},
   };
   await page.route('**/api/**',async route=>{
     const request=route.request(),key=new URL(request.url()).pathname.slice(4);
+    if(key==='/health')return route.fulfill({json:{status:'ok'}});
+    if(key==='/agent/settings')return route.fulfill({json:{enabled:false,scopes:['read']}});
     if(key==='/library/paths'){
       if(request.method()==='PUT'){
         submitted.push(request.postDataJSON());
@@ -274,7 +313,7 @@ test('all pages and watermark workflow under production CSP',async({page,request
     expect(response.status()).toBe(200);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('main')).toBeVisible();
-    await expect(page.locator('.sidebar-note p')).toHaveText('收集光，收藏爱');
+    await expect(page.locator('.workspace-subnav')).toBeVisible();
     await checkLightSurfaces(path);
     if(path==='/?page=stats'){
       await page.locator('.recharts-bar-rectangle').first().hover();
@@ -292,7 +331,7 @@ test('all pages and watermark workflow under production CSP',async({page,request
     if(['/timeline','/?page=reports','/?page=settings'].includes(path))await page.screenshot({path:testInfo.outputPath(`light-${path.includes('settings')?'settings':path.includes('reports')?'reports':'timeline'}.png`),fullPage:true});
   }
   await page.goto('/?page=photos');
-  await page.locator('.photo-image').first().click();
+  await page.locator('.photo-image').first().dblclick();
   await expect(page.locator('.detail-image')).toBeVisible();
   await checkLightSurfaces('photo detail');
   await page.screenshot({path:testInfo.outputPath('light-detail.png'),fullPage:true});

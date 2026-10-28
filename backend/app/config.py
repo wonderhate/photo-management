@@ -3,6 +3,7 @@ import os
 import sys
 from pathlib import Path
 from . import storage
+from . import catalog
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT.parent
@@ -24,6 +25,7 @@ LEGACY_CONFIG_FILE = Path(sys.executable).parent / 'library-config.json' if FROZ
 LOCAL_CONFIG = storage.read_config(LOCAL_CONFIG_FILE,LEGACY_CONFIG_FILE)
 LOCKED_STORAGE = [key for key,env in [('data_dir','PHOTO_DATA_DIR'),('models_dir','PHOTO_MODELS_DIR'),('exports_dir','PHOTO_EXPORT_DIR')] if env in os.environ]
 LOCAL_CONFIG, STORAGE_ERROR = storage.apply_pending(LOCAL_CONFIG_FILE,LOCAL_CONFIG,LOCKED_STORAGE)
+LOCAL_CONFIG, CATALOG_ERROR = catalog.apply_pending(LOCAL_CONFIG_FILE,LOCAL_CONFIG,LOCKED_STORAGE)
 # Explicit environment libraries (including tests) are isolated from machine defaults.
 USE_LOCAL_CONFIG = 'PHOTO_DATA_DIR' not in os.environ
 DATA = Path(os.environ.get('PHOTO_DATA_DIR', LOCAL_CONFIG.get('data_dir', USER_ROOT / 'data'))).resolve()
@@ -43,6 +45,7 @@ DEFAULTS = {
     'ai_model': 'OFA-Sys/chinese-clip-vit-base-patch16',
     'export_format': 'jpg', 'export_quality': 95, 'export_long_edge': 4096,
     'focal_bands': [24, 35, 60, 100, 200],
+    'auto_face_analysis': False,
     'art_image_model': 'qwen-image-3.0', 'art_title_model': 'qwen3-vl-plus',
 }
 
@@ -87,5 +90,6 @@ def cancel_storage_paths() -> dict:
     STORAGE_ERROR = None
     return storage_paths()
 
-RAW_EXTENSIONS = {'.arw', '.cr2', '.cr3', '.nef', '.raf', '.dng', '.orf', '.rw2', '.pef'}
+RAW_EXTENSIONS = {'.dng','.cr2','.cr3','.crw','.nef','.nrw','.arw','.sr2','.raf','.rw2','.orf','.pef',
+                  '.srw','.raw','.3fr','.iiq','.erf','.kdc','.dcr','.mef','.mos','.mrw','.x3f'}
 EXTENSIONS = RAW_EXTENSIONS | {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.heic', '.heif', '.webp', '.avif'}

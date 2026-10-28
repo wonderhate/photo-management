@@ -1,0 +1,12 @@
+{
+  "values": [[0,0],[5,5],[" 0 ",0],["5",5],["3.0",null],["-1",null],[-1,null],[6,null],[true,null],[null,null],[[],null],["",null],["5e0",null],[2.5,null]],
+  "cases": [
+    {"raw":{},"expected":{"rating":null,"rating_source":"none"}},
+    {"raw":{"Rating":"5","XMP-fake:Rating":"4"},"expected":{"rating":null,"rating_source":"none"}},
+    {"raw":{"xmp-embedded:XMP-xmp:Rating":"4"},"expected":{"rating":4,"rating_source":"xmp-embedded"}},
+    {"raw":{"exiftool:XMP-xmp:Rating":3},"expected":{"rating":3,"rating_source":"xmp-embedded"}},
+    {"raw":{"xmp-embedded:XMP-xmp:Rating":"5","xmp-sidecar:XMP-xmp:Rating":"0"},"expected":{"rating":0,"rating_source":"xmp-sidecar"}},
+    {"raw":{"xmp-embedded:XMP-xmp:Rating":"2","xmp-sidecar:XMP-xmp:Rating":"-1"},"expected":{"rating":2,"rating_source":"xmp-embedded"}},
+    {"raw":{"xmp-sidecar:XMP-xmp:Rating":"6"},"expected":{"rating":null,"rating_source":"none"}}
+  ]
+}

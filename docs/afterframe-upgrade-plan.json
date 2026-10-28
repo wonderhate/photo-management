@@ -1,0 +1,2737 @@
+{
+  "schema_version": 1,
+  "afterframe_commit": "26e19935469e696133088b798f23b5b3654d910f",
+  "scope": "All 99 decisions plus UI six-point revision; no original-file deletion or automatic paid calls",
+  "features": [
+    {
+      "id": "AF01",
+      "domain": "架构存储",
+      "feature": "项目图库/Catalog",
+      "photocollection_now": "Windows SQLite库与目录迁移；纯Web目录清单",
+      "afterframe_now": "每项目.afcatalog",
+      "decision": "保留PC并增强",
+      "implementation": "新增已有图库选择/独立空库/最近库，以受管理进程重开隔离状态；保留原复制迁库入口与schema迁移",
+      "acceptance": "切库隔离任务/缓存，所有旧库与原片保留",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "backend/app/models.py: LibraryProfile 保存稳定 UUID；schema 3 幂等迁移和初始化生成身份，复制迁库保持身份，合并保留目标身份。",
+        "backend/tests/test_workspace_preferences.py: 真实SQLite复制/升级/合并身份与工程视图关系检查。",
+        "browser/storage.ts + task-service.ts: 提交绑定图库ID/原目录/会话代次；同页关闭先保存设置/取消状态、清会话密钥，迟到Worker与排队提交不写新库；web-editor.spec.mjs实测切库及重开隔离。",
+        "catalog.py / catalog_routes.py: 只读检查已有库、新建独立UUID空库、最近20库及各库导出/扫描设置、迁移互斥、选择token/身份复核、失败保留旧选择；旧库不复制或删除。",
+        "runtime_control.py / jobs.py / desktop/launcher.py: 保存与任务屏障、冻结新任务/写入、结束旧服务后以原端口重开进程；普通uvicorn不擅自结束服务。",
+        "api.ts / main.py: 本机请求绑定图库与进程会话，媒体和导出链接带会话；回到相同图库UUID也拒绝旧窗口请求，模型/缓存通过新进程隔离。",
+        "test_catalogs.py: 六项检查含真实受管理启动器A→B→A、原片hash、稳定UUID/新会话、照片/已完成任务/视图设置与千问凭证隔离、旧请求拒绝、空库/占用/环境锁/保存失败/替换与损坏目标。",
+        "完整后端117/逻辑38/桌面界面75/独立浏览器48项通过；Catalog中英文、坏状态隔离与旧迁库回归有专门界面用例。"
+      ],
+      "progress_note": "当前支持运行时已实现图库选择和隔离；桌面托管实例安全重开，普通本机服务按原方式重启，浏览器同页开关库。真实WebView与新安装包的发行验收归M7，不声称在已加载进程内热换数据库。"
+    },
+    {
+      "id": "AF02",
+      "domain": "导入媒体",
+      "feature": "RAW读取与入库",
+      "photocollection_now": "桌面rawpy；Web暗房16位LibRaw-WASM，Web图库未批量RAW",
+      "afterframe_now": "LibRaw/嵌入JPEG/完整解码",
+      "decision": "融合，以PC显影为准",
+      "implementation": "浏览快路径优先嵌入JPEG；编辑保持16位线性源；补Web RAW批量索引",
+      "acceptance": "不得用JPEG冒充RAW源，原片hash不变",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "browser/raw-file.ts + raw-decode.ts + worker.ts + api.ts：RAW批量登记完整SHA/元数据，is_raw与原始字节/关联目录保持；浏览优先LibRaw嵌入JPEG/位图、缺失回退完整16位显影；480/1600派生图与完整源尺寸分离。",
+        "edit-worker.ts与RAW入库共享原有16位线性sRGB/相机白平衡/noAutoBright解码，不用嵌入图替换编辑源；水印和公开图也可由完整RAW生成8位派生文件。",
+        "images.ts活动RAW取消终止Worker，原非RAW取消保留原预算语义；API在RAW预览发布前复核原片hash，旧库/已删除记录保护保持。App多选/目录支持RAW与RAW筛选，HEIF/TIFF及自动RAW+JPG配对明确仍待。",
+        "web-editor.spec.mjs新增4项覆盖CR2/NEF/ARW/DNG、逐原片/托管副本hash、嵌入及完整显影回退、16位工程来源、取消/重扫、源变拒绝、竖幅嵌入JPEG及16位暗房、损坏RAW不阻塞有效文件；4项已通过。",
+        "实际竖幅样例证明LibRaw 1.6 metadata尺寸已经方向归一，修正二次交换宽高；exifr保留数值枚举，避免方向转为文本。display Worker缓存版本升至2，旧解码版本不混用。",
+        "raw_preview_worker.py / raw_preview_service.py / import_service.py：Native RAW逐张spawn、30ms检查取消、180s超时与256MiB/100MP边界；现有render名额/导出优先、完整hash与stat/当前记录复核后发布临时JPEG，取消/删除/失败清理；RAW完整源尺寸与嵌入图分离。",
+        "thumbnail_service.py复用先嵌入后解包的只读RAW解码；公共CR2完整rawpy报错但嵌入图可用，回归证明不能提前unpack；编辑仍走独立完整16位源。Native/Browser RAW扩展名范围一致，实际支持取决于各自解码版本。",
+        "backend/tests/test_raw_import.py六项：四格式实际进程/竖幅、物理终止与导出让行/切库屏障、重扫修复、同大小同mtime原片变化拒绝、删除记录不复活、超时与文件上限；与progressive/display共21项通过。",
+        "2026-10-22最终完整后端139、逻辑62、Native界面107全部通过；Web此前完整73通过，最终源码相关RAW/真实16位离线/持久缓存11项再验通过。最终Native/Web两生产构建、icon1和diff检查通过。"
+      ],
+      "progress_note": "两个当前支持运行时的RAW批量入库/快预览/取消与16位编辑源已验收；扩展名可选不保证所有相机支持。更多真实机型、设备内存/WebView/发行归M7，跨源RAW匹配及HEIF/TIFF范围另行登记，未以样例代替完整硬件验收。"
+    },
+    {
+      "id": "AF03",
+      "domain": "导入媒体",
+      "feature": "EXIF/器材/色彩信息",
+      "photocollection_now": "ExifRead/Pillow/rawpy，Web exifr",
+      "afterframe_now": "ExifTool主读、Pillow回退",
+      "decision": "融合",
+      "implementation": "保留当前读取；ExifTool作可选批处理补读CR3/IIQ/XMP，统一字段与时间语义",
+      "acceptance": "同夹具的方向/快门/GPS/机型一致，原文件不写",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "metadata_service.py / exif_service.py：Native保留原始EXIF，补读只填缺失；原/ExifTool/XMP侧文件来源分开、ICC描述复用既有Pillow头读取；侧文件专属优先，XMP评分/颜色/标签/几何不自动覆盖手工字段或recipe。",
+        "exiftool_service.py / import_service.py：可选现有工具按24张只读批量补读，禁默认config、UTF8参数文件/JSON数值/字段白名单；15秒/2MiB、取消进程树、原片前后fullSHA及入库源绑定复核、失败回退。",
+        "backend/tests/test_metadata.py新增8项；与progressive/RAW共20项定向通过，实际官方13.59源码+现有Perl验证Unicode/曝光/GPS/ICC及原片hash；其余检查XMP优先/手工保留/失效绑定/DTD与大小/取消/超时/异常输出。",
+        "2026-10-22完整最终后端147项通过（含Win真实后代进程取消、巨ISO/像素与XMP结构边界）；Native界面完整107通过。Frontend产品源码本批未改，沿用62逻辑/两生产构建/Web完整73及最终相关11项结果。",
+        "core/metadata.ts + metadata_values.py：共同数值/墙钟日期/DMS和XMP经纬/快门合同，0.8秒不再显示1/1；原始有效值优先、标准EXIF优于近似MakerNote，metadata-contract.json七向量及实际合成JPEG跨读器逐字段一致。",
+        "browser/xmp.ts + api.ts + storage.ts：文件多选/授权目录的嵌入及外部XMP只读补缺，按source/相对文件夹和专属文件名匹配，歧义不猜；照片数独立、XMP前后hash、不可变原始字节副本、photo_hash绑定引用校验，备份保留，旧库会话晚响应废弃；原手工rating/color/tags和外部几何不覆盖。",
+        "backend metadata归一旧读器、读取已打开Pillow头内XMP、两次侧文件内容比对、元数据后再次原片fullSHA；官方CR3/IIQ元数据夹具实际只读补读通过，不声称完整像素支持。",
+        "web-metadata.spec.mjs七项实际UI/OPFS检查通过：JPEG事实/ICC/原片hash、XMP副本与备份/手工标记、异常XML/UTF16/CDATA/注释/命名歧义、目录隔离/源变拒绝、切库迟到、XMP-only/坏ref拒绝、390英文浅色、真实64MiB清单拒绝超限而不改旧文件、公开清单不泄露内部来源。",
+        "2026-10-22 Browser XMP批次：完整后端151、Native界面107、Web界面80、逻辑64、两生产构建与图标通过；共同向量后增year-0000拒绝，Native元数据12再验通过。后续方向/设置修复另记最终结果。",
+        "Native JPEG标准→HD：缺少显式EXIF时采用既有Pillow/XMP方向，普通EXIF不重复旋转；持久缓存独立算法版本。两项真实四色角像素/尺寸/源SHA检查通过，另断言v1暗房输入保留；八方向像素映射共同逻辑通过。",
+        "2026-10-22最终：Native界面110全过；Web完整81及最后cache-key校验修复后相关8过；逻辑65、元数据12、icon1、两最终生产构建通过。Native新engine白名单与真实IDB写入断言齐备，测试目录PID+UUID隔离，旧合成库保留。后端产品未再改，完整151加共同向量12补验。",
+        "2026-10-22编辑源版本：source-decode-profile.ts/source_decode.py保存不可变v1/v2规则，旧缺省保持v1，新JPEG内嵌XMP方向与EXIF优先；实际新旧裁剪/重开/PNG导出及源SHA通过。Native副本/复制/合并保留，schema4语义升级先备份；Browser manifest2兼容读1并首次写入保留原始字节备份，未来版本拒绝。完整163后端/111Native/84Web/67逻辑，两生产构建/icon通过。",
+        "2026-10-23 AF03源码验收：原/可选ExifTool/嵌入与sidecar来源补缺、真实Native与Browser共同JPEG/字段向量，以及CR3/IIQ元数据样例均只读；方向/快门/GPS/机型/ICC一致。Catalog profile使新标准/HD/水印/public/图库暗房来源一致，旧photo/draft/工程/重扫沿用v1；实际尺寸/四色角/原片及托管副本SHA、公开隐私、格式1/2→manifest3原始字节备份/未知规则拒绝均验。",
+        "最终catalog-profile：Native完整111＋最后3，Web修复LibRaw转移buffer后标量读取的回归后完整88＋最后2像素/managedSHA补验，逻辑70、两final2生产构建、icon1/diff通过。后端本批未改，沿用完整163。"
+      ],
+      "progress_note": "已按本条acceptance完成当前源码运行时验收。无额外重读Exif，移用LibRaw buffer前取JPEG标量；外部XMP不覆盖人工字段/几何，原片只读。专门刷新/监听属AF67，更多完整机型、真实WebView/内存与正式包配置属M7后验；不代表全99完成。"
+    },
+    {
+      "id": "AF04",
+      "domain": "导入媒体",
+      "feature": "渐进可用导入",
+      "photocollection_now": "后台任务但桌面逐张索引/预览；Web16张提交",
+      "afterframe_now": "100张或8s批转预览",
+      "decision": "融合",
+      "implementation": "扫描固定总数→先校验hash和登记元数据→首批24张、后续100张或8秒分批预览；逐图释放渲染名额，保留手工修改及原查看器",
+      "acceptance": "导入时搜索/选中/打分保持响应，固定总数正确",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "backend/app/services/import_service.py: 普通图容器校验与完整hash后先入库；预览单独补齐，只更新图像字段；RAW后配对继承人工标记，删除记录不复活。",
+        "backend/app/services/jobs.py: 导入按每张图片借用render，已有导出优先取得下一名额，固定整体计数与独立预览计数；完成阶段不因后续取消回退。",
+        "browser/api.ts / worker.ts / image-header.ts: JPEG/PNG/WebP容器尺寸快读，AVIF尺寸解码回退；清单小批发布、可选pending/ready/failed、同内容重导入修复；原片hash和图库作用域复核。",
+        "core/task-queue.ts / browser/task-service.ts: 浏览器io→render单向借用、按图释放、取消等待借用；借用不重复计入整体容量，三个阶段持久并按创建顺序展示。",
+        "App.tsx / WaterfallGallery.tsx / components.tsx: 同查询刷新保留滚动容器、卡片、选中和输入焦点，元数据读取每批≤200；待生成无虚假媒体URL，旧查看器就绪自动显示。",
+        "backend/tests/test_progressive_import.py: 六项真实SQLite/合成原片检查，首24→后100→余3、8秒边界、解码暂停时搜索/评分/影集/删除、取消/显式修复、导出穿插、后配对标记与全源hash。",
+        "web-editor.spec.mjs: 真正Worker暂停验证相同批次边界、标记/影集/删除不回退、导出穿插、取消保留完成index与一张预览、显式修复、原查看器自动显示与合成原片hash。",
+        "progressive.spec.mjs: 中英文宽暗/窄浅，预览更新及新增ID后滚动/选中/输入与焦点保留；等待查看器不覆盖并发收藏，迟到响应和关闭停止轮询。",
+        "最终后端全套123、前端逻辑44、桌面/本机网页全套80、独立浏览器全套51均通过；两种生产构建、图标unittest和diff检查通过。最终图库图片loaded状态与定格截图另补验2项通过。"
+      ],
+      "progress_note": "两个当前支持运行时的渐进导入和交互已验收，未改变既有格式支持或原片；真实设备首屏/峰值内存和安装包发行仍归M7，不将24/100/8参数当作硬件性能保证。"
+    },
+    {
+      "id": "AF05",
+      "domain": "导入媒体",
+      "feature": "预览分层与RAW按需高清",
+      "photocollection_now": "560缩图+2560预览；Web不同尺寸派生",
+      "afterframe_now": "512缩图+2000HD，RAW按需",
+      "decision": "融合",
+      "implementation": "保留已有缓存命中，新增显示档位/当前优先/邻图300ms延迟/有界队列",
+      "acceptance": "快速切图无过期图闪回，导出用正确源",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/workspace/usePhotoViewer.ts",
+        "frontend/src/media/useNeighborPreviews.ts",
+        "frontend/src/core/resource-pool.ts",
+        "frontend/tests/workspace.spec.mjs",
+        "frontend/tests/web-local.spec.mjs",
+        "frontend/src/core/display-request.ts",
+        "frontend/src/core/source-stream.ts",
+        "frontend/src/media/display-preview.ts",
+        "frontend/src/media/useDisplayPreview.ts",
+        "frontend/src/media/PreviewQualityControl.tsx",
+        "frontend/tests/display-preview.spec.mjs",
+        "frontend/tests/display-request.test.ts",
+        "frontend/tests/source-stream.test.ts",
+        "frontend/tests/web-editor.spec.mjs",
+        "frontend/src/core/display-cache.ts + media/display-library.ts: IDB原子保存/校验/跨库LRU，64项/256MiB JPEG全来源预算，元数据与Blob分store；key含稳定库UUID/完整源hash/档位/渲染版本/底色，读缓存前完整核验原片。",
+        "backend/app/display_routes.py + services/display_service.py/display_worker.py + media/native-display.ts: TIFF/HEIC/HEIF全尺寸子进程回退，真实Pillow/HEIF版本事实、方向/ICC/白底/16灰度、取消/100MP/超时/源前后hash；jobs共享render容量与导出优先，不生成历史根或计费请求。",
+        "workspace/DisplayCacheSettings.tsx + 两种Settings: 按库清理只动可重建JPEG，IDB拒绝明确降级；原片/作品/活跃Blob/导出不受影响，沿用主题和双语。",
+        "backend/tests/test_display.py九项、display-cache.test.ts三项、display-preview.spec.mjs新增三项、web-editor.spec.mjs新增四项：实际重载复用/坏缓存重建/源变化拒绝、真实TIFF/HEIF与16灰度、工作进程取消和HTTP断开、排队导出/共享容量/切库屏障、事务失败、跨库64条收敛、另一窗口活跃图片与真实导出hash不变。",
+        "2026-10-22最终完整后端132、逻辑59、桌面服务浏览器103、本地Web67，两种生产构建、图标和diff检查通过；人工检查390英文浅色缓存不可用说明及清理禁用状态。"
+      ],
+      "progress_note": "当前运行时已完成标准/4096/6144、当前300ms稳定后优先/邻标准图预读、单Worker与有界内存/持久缓存、Native TIFF/HEIF回退和可取消共享额度。持久命中仍读原片hash，已有内存按登记hash使用；外部持续监听另属后续，真实WebView/硬件峰值/发行仍M7，不将压缩字节预算冒充全部内存。"
+    },
+    {
+      "id": "AF06",
+      "domain": "导入媒体",
+      "feature": "导出图匹配外部RAW来源",
+      "photocollection_now": "同目录拍摄分组，保守元数据一致性",
+      "afterframe_now": "跨源目录文件名/时间/器材规则评分",
+      "decision": "保留PC并补AF能力",
+      "implementation": "新增RAW来源注册与人工确认配对，现有CaptureGroup不被跨目录评分自动改写",
+      "acceptance": "连拍/改名/跨机同名不误绑，保留人工确认",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [],
+      "implementation_note": "已写入 Native/Browser 独立 RAW 目录登记任务、按内容哈希去重、名称/时间/机型候选线索与冲突、人工勾选确认、来源哈希与并发版本检查、清除关联、合并保留目标库决定及信息栏入口。不改 CaptureGroup。尚未验证，仍待与本批生命周期/派生图整合。",
+      "progress_note": "已完成十任务统一验收：Native/Browser 独立 RAW 登记、名称/时间/机型线索及冲突、人工确认、SHA/版本检查、清除关联与合并保留通过；不改 CaptureGroup 或原片。"
+    },
+    {
+      "id": "AF07",
+      "domain": "导入媒体",
+      "feature": "HEIC/HEIF/TIFF统一显示",
+      "photocollection_now": "桌面已有依赖；Web库受浏览器格式限制",
+      "afterframe_now": "HEIC按需全尺寸JPEG",
+      "decision": "融合",
+      "implementation": "桌面统一解码与ICC；Web可选本地解码WASM/受限格式说明，缓存版本化",
+      "acceptance": "横竖/透明/ICC测试；冷解码不阻塞UI",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "方向/ICC/透明度及16位TIFF回归通过；TIFF/HEIC真实高清解码与持久缓存通过。同步缓存前后端版本为pc-display-2，未改变旧水印源解码。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "未验证：新增 image_decode.py 统一显示方向、ICC、透明通道及16位灰度；高清缓存引擎/缩略图文件版本更新；旧水印 open_image 保留。浏览器原生 HEIC/HEIF/TIFF 解码与明确的受限格式提示已接入。仍需整批回归与格式边界检查。",
+      "progress_note": "方向/ICC/透明度及16位TIFF回归通过；TIFF/HEIC真实高清解码与持久缓存通过。同步缓存前后端版本为pc-display-2，未改变旧水印源解码。"
+    },
+    {
+      "id": "AF08",
+      "domain": "任务设置",
+      "feature": "统一活动中心与取消",
+      "photocollection_now": "一个主要活动任务视图，持久JobRecord",
+      "afterframe_now": "多个类型统一dock",
+      "decision": "融合",
+      "implementation": "新增多任务列表、父子任务、阶段/资源队列/重启中断；保留现有作业记录",
+      "acceptance": "同时导入/导出/AI均可见，取消不删已完成作品",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "backend/app/services/jobs.py: 五资源FIFO与共享自定义执行器门槛，64个等待/执行整体任务，取消等待项直接释放名额；父阶段内联执行避免递归单线程死锁。",
+        "import_service.py / art_service.py: 扫描/入库、图像/标题实际阶段；原水印/人物由实际执行子阶段包装，整体原结果和计数保持。",
+        "workspace/ActivityCenter.tsx: 惰性阶段详情、返回整体、必要阶段取消说明和双运行时实际资源队列；任务摘要不加载图片结果。",
+        "backend/tests/test_job_tree.py: 跨资源不饥饿、共享上限、容量、队列取消立即释放、父子取消保留文件、实际导入原片hash、恢复不重发、整组历史和提交前取消。",
+        "billing_state + sticky uncertainty 持久化；恢复仅标中断/未知，不重新提交。完整逐次计费账本/查询尚未完成。",
+        "browser/task-service.ts + core/task-queue.ts: io/render/cloud各1、64任务上限、实际阶段与同库持久进度；图片Worker串行，取消活动请求后保留物理名额至回复/超时。",
+        "web-editor.spec.mjs / web-local.spec.mjs: 跨资源队列、取消等待/活动、迟到Worker切库隔离、刷新保留阶段/导出、提交状态写入期间取消不发submit、源hash变化不连接云；前端逻辑38项与独立浏览器48项全套通过。",
+        "embedding_service.py: Chinese-CLIP准备/索引经过共享local-ai名额，真实模型/照片阶段、逐张检查取消、复用已提交向量、导入请求合并与队列满不反转已完成导入。",
+        "test_semantic_jobs.py五项：人物/语义共享名额、等待取消重开、迟到模型丢弃/坏加载恢复、真实SQLite向量部分完成保留和原片hash、导入触发合并及容量；后端111全套和界面定向8项通过，无真实模型下载。"
+      ],
+      "progress_note": "当前支持工作流的统一活动中心、后台资源队列、父子阶段和取消/恢复已通过验证。完整计费请求账本归M5后续工作；交互式短推理保留旧模型锁，不声称全GPU调度或真实AI质量验收。"
+    },
+    {
+      "id": "AF09",
+      "domain": "任务设置",
+      "feature": "中英文实时切换",
+      "photocollection_now": "已有，报告/水印/水彩也双语",
+      "afterframe_now": "已有i18next",
+      "decision": "保留PC",
+      "implementation": "扩展现有i18n覆盖新能力、错误、日期和系统措辞",
+      "acceptance": "两语言不丢正在编辑状态，所有新文案齐全",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/i18n.ts",
+        "frontend/src/media/PreviewQualityControl.tsx",
+        "frontend/tests/i18n.spec.mjs",
+        "frontend/tests/desktop-editor.spec.mjs",
+        "设备能力面板原因/动作/错误使用中英一致文本；原水彩标题语言通过InferenceAdapter保留，新增宽屏中文/窄屏英文和错误恢复检查。",
+        "2026-10-27固定十项批次：新增视觉/图层/Agent界面、任务状态与错误使用现有中英体系；语言切换与中英宽窄界面复验通过，编辑内容保持。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "新增视觉/图层/Agent界面、任务状态与错误使用现有中英体系；语言切换与中英宽窄界面复验通过，编辑内容保持。"
+    },
+    {
+      "id": "AF10",
+      "domain": "任务设置",
+      "feature": "可重绑快捷键与菜单",
+      "photocollection_now": "已有重绑/帮助，作用域有限",
+      "afterframe_now": "菜单与编辑器统一作用域",
+      "decision": "融合",
+      "implementation": "单一快捷键注册表，库/灯箱/编辑器/输入框冲突规则，菜单同步",
+      "acceptance": "输入框打字不触发删图，录制时不触发旧绑定",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/shortcuts.ts + workspace/useCommands.ts: 单一29项元数据与共享执行，库/灯箱/编辑器隔离、旧自定义键优先、Shift/IME/输入/录制/菜单/模态保护、保存导出重复键和未完成请求重入保护。",
+        "workspace/CommandMenu.tsx + commands.css + components.tsx: 菜单与按钮/帮助/设置同步，键盘导航与焦点恢复、主题变量静态布局、真实全屏内菜单和嵌套帮助，避免modal自身portal循环。",
+        "App.tsx + browser/ToolsPage.tsx + WatermarkPage.tsx + ArtPage.tsx + 两种Settings: 既有保存/撤销/导出/取消复用同命令，不注册云生成；水彩保留标题确认和保存后导出，FilmTrain保留首尾循环与当前请求位置切图。",
+        "frontend/tests/shortcuts.test.ts + commands.spec.mjs + workspace.spec.mjs + web-editor.spec.mjs + art.spec.mjs: 真实本地保存/导出/全部原片hash、输入和录制隔离、Shift重绑/实时菜单/旧绑定、阻塞POST后请求仅1次、嵌套全屏/模态/焦点/双语双主题窄屏，旧art模拟生成和标题计数不变。",
+        "首轮完整桌面98pass/2fail发现FilmTrain首尾边界误限，修复命令启用条件后原两项未改且定向6pass；最终源码完整桌面100、本地Web63、后端123、前端逻辑56，两种生产构建/图标/diff检查均通过（2026-10-22）。",
+        "人工核对宽暗中文/窄浅英文菜单截图；当前源码运行时验收通过，M7真实WebView/硬件/发行仍单独验证，完整99项尚未全部完成。"
+      ],
+      "progress_note": "当前运行时已完成。以后新增工具沿用同一命令表、作用域与菜单执行层；不将未来工具本身的待实现工作冒充已完成。"
+    },
+    {
+      "id": "AF11",
+      "domain": "任务设置",
+      "feature": "工具偏好重启恢复",
+      "photocollection_now": "图库/水印/设置部分已记忆",
+      "afterframe_now": "LUT/切图/拼图/文字等记忆",
+      "decision": "融合",
+      "implementation": "PreferenceStore分global/library/document；新工具复用，不将作品内容误存全局",
+      "acceptance": "重启恢复布局/工具偏好而不改旧草稿",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/core/preferences.ts + preference-store.ts: global 沿用既有键，library 保存浏览设置，document 保存暗房缩放，字段白名单与双运行时持久适配。",
+        "frontend/src/workspace/useGalleryPreferences.ts: 旧设置一次性迁入、晚读取保护、350ms合并与按图库隔离的标签页待写记录；关闭图库等待写入。",
+        "frontend/tests/preferences.test.ts + backend/tests/test_workspace_preferences.py + desktop-editor.spec.mjs + web-editor.spec.mjs: 字段边界、身份保护、工程缩放、双图库隔离和原片哈希。",
+        "尚待后续 LUT/拼图/图层等新工具接入；未把作品内容或原片参数存到全局设置。",
+        "本批最终全套：后端97、前端逻辑31、桌面界面64、独立浏览器41项，两种构建与图标检查通过；立即刷新恢复用例保留。",
+        "2026-10-22：useToolPreferences / tool-preference-store 接查看器清晰度与pin、compare.linked、darkroom导出格式/长边/质量；350ms/字段合并/晚读保护/待写journal/卸载及关闭flush，快速返回等待已登记写入；输出字段不修改recipe/revision，保留根导出默认值回退。",
+        "Native workspace/tools 白名单事务合并，gallery响应过滤工具命名空间；Browser manifest.tool_preferences 且适配器绑定UUID+代次+目录，即使重开同UUID也拒绝旧saveGallery/saveDocument/saveTool。SQLite复制/合并保持目标工具偏好、编辑内容与原片hash。",
+        "新增真实重载/关闭重开/A-B-A/旧会话/迟到读取/失败写journal恢复/无效尺寸检查；快速返回compare发现热缓存load后被passive reset清尺寸，已用layout reset修复。最新全套后端133/logic60/Native107/Web69、双构建/icon/diff通过；仅未来LUT/拼图/文字/图层偏好仍待各工具实现。",
+        "拼图十部分批次：collage/collageBatch严格字段偏好，沿用图库隔离、待写journal与关闭flush；readPreferences等待初始恢复，新建才应用默认画布，已有单页/批量工程保留自己的布局和分组。",
+        "十部分统一验证最终：后端328、前端逻辑189、Native完整216、Web完整236、图标1及两种构建全部通过；最终产品实现之后无修改，原片/副本哈希保持。运行时及未完成范围见实施记录。",
+        "2026-10-27固定十项批次：图层折叠/吸附/隐藏素材与AI工作室选项接入图库级偏好；作品文字/几何/深度留在工程，密钥/审批不持久化；两端重开检查通过。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "图层折叠/吸附/隐藏素材与AI工作室选项接入图库级偏好；作品文字/几何/深度留在工程，密钥/审批不持久化；两端重开检查通过。"
+    },
+    {
+      "id": "AF12",
+      "domain": "任务设置",
+      "feature": "加密设置导出/迁移",
+      "photocollection_now": "目录迁移与备份；无AF式设置包",
+      "afterframe_now": "口令加密.afsettings",
+      "decision": "新增",
+      "implementation": "只导出用户选定偏好；可选密钥包用PBKDF2或scrypt+AES-GCM，默认不含密钥",
+      "acceptance": "错口令/篡改/旧版本拒绝；Web会话密钥不自动持久化",
+      "milestone": "M7",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/core/settings-transfer.ts + workspace/SettingsTransfer.tsx：AES-GCM/PBKDF2、明确选择/预览/确认，默认不含密钥，可选独立AI账户包。",
+        "workspace_routes.py + browser/ai-studio.ts：账户与偏好原子导入、新账户ID、Web会话密钥与Windows DPAPI；test_ai_studio.py + ai-studio.test.ts + Web opt-in keys 用例通过。"
+      ],
+      "progress_note": "选定偏好AES-GCM/PBKDF2加密迁移；可选AI工作室账户密钥包默认关闭，预览确认后原子导入为新账户，Web密钥仅会话保存。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF13",
+      "domain": "浏览选片",
+      "feature": "四种图库布局",
+      "photocollection_now": "已有等高+虚拟网格，密度/间距/圆角",
+      "afterframe_now": "Grid/Tiles/Justified/Waterfall",
+      "decision": "融合",
+      "implementation": "保留react-window/ID-first，补Tiles/Waterfall纯几何算法及模式偏好",
+      "acceptance": "四布局同选中/排序/计数，原比例查看入口保留",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/gallery-layout.ts",
+        "frontend/src/gallery/WaterfallGallery.tsx",
+        "frontend/tests/gallery-layout.test.ts",
+        "frontend/tests/workspace.spec.mjs",
+        "frontend/tests/web-local.spec.mjs"
+      ],
+      "progress_note": "四种布局与偏好、选中、顺序、双击查看通过；50,000张合成库19次跨区滚动与缓存/DOM上限通过。"
+    },
+    {
+      "id": "AF14",
+      "domain": "浏览选片",
+      "feature": "排序与稳定顺序",
+      "photocollection_now": "时间/名称/手动影集顺序",
+      "afterframe_now": "时间/名称/评分等",
+      "decision": "融合",
+      "implementation": "新增评分排序、稳定ID tie-break；避免深offset全量水合",
+      "acceptance": "切排序不串库，多页同值无重复/漏项",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "photo_order.py/core/photo-order.ts：rating排序、null置后、0独立、同值ID升序；实际SQL与共享9记录Unicode/时间/评分夹具升降序逐项一致，未知sort回退date_taken。",
+        "Native SQL offset/limit和ID-only保留，by-ids按请求顺序，1027条双向分页无重复漏项；ORM load监测深页窗口和ids零水合。Browser引用排序后分页，深页原片/缩略图getFile计数0，manual map不反复indexOf。",
+        "GalleryPreferences两端白名单/界面新增rating，库ID/会话隔离；Native真实中英宽窄重载/排序/选择/评分与清除重排及原片SHA，Web真实A-B-A同ID跨库与评分隔离、manual顺序不变。",
+        "完整backend167/Native113/Web90通过；最后补即时重排/Browser空评分清除后两最终构建、logic72、icon及Native2/Web2实际新路径补验通过，diff通过。"
+      ],
+      "progress_note": "已按本条验收完成当前源码运行时。SQL仍有排序/offset遍历，Browser仍读取整份清单并排序引用；未声称keyset或真实超大库性能，后者归M7。影集manual位置和全部旧排序入口保留，整体99未完成。"
+    },
+    {
+      "id": "AF15",
+      "domain": "影集整理",
+      "feature": "条件智能集合",
+      "photocollection_now": "PC语义候选影集可手工确认",
+      "afterframe_now": "保存AND/OR/NOT/评分空值筛选",
+      "decision": "保留PC并新增规则型",
+      "implementation": "保留semantic类型；新增rule类型QueryAST，与混合检索可组合",
+      "acceptance": "旧语义影集不迁成LIKE条件，布尔/空值计数正确",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/core/photo-query.ts / backend/app/services/photo_query.py：有界版本化 QueryAST，AND/OR/NOT、评分0与NULL、标签/字面包含/日期到秒共同语义，编译参数绑定SQL及浏览器元数据谓词。共享23组真实SQLite/JS/Browser API结果一致。",
+        "独立rule集合：AlbumsPage / RuleAlbumDialog新建、编辑、实时12张候选与数量；保存与信息修改后动态计算，原normal/smart语义快照、关键词、分数、人工确认和重匹配保留，不改为LIKE。规则与桌面现有语义筛选可取交集。",
+        "SQLite schema5先备份添加albums.query，schema4旧语义行/成员保留、幂等和备份失败回退；迁移合并保留规则。Browser manifest4可读1/2/3，固定原始字节before-rules-v4备份，不以滚动previous代替；未来AST/清单和伪装旧格式拒绝写入。",
+        "1027条规则过滤多页ID无重漏、深页只水合窗口、ID查询零Photo ORM水合；浏览器对应查询零原片/缩略图读取。跨库A-B-A、重开、评分修改即时移出、单张/批量颜色清空归一与公开导出只含明确勾选成员通过，私有规则不公开，合成原片SHA-256不变。",
+        "中文深色宽屏/英文浅色窄屏、NOT焦点和多值逐字输入通过；指针移动恢复漏失enter但不重置1s截止时间，复现前失败/修正后及重复3轮9项通过，保留触摸/关闭/切页保护。",
+        "最终完整检查：后端173、逻辑74、桌面浏览器116、本地网页版95；Native/Web生产构建、图标1与diff检查通过。证据见docs/afterframe-upgrade.md及docs/rule-collections.md；无真实付费调用、模型下载、私库、提交、推送或安装。"
+      ]
+    },
+    {
+      "id": "AF16",
+      "domain": "影集整理",
+      "feature": "文件夹列表排序/搜索",
+      "photocollection_now": "普通影集与成员排序已有",
+      "afterframe_now": "名称/自定义/最新/照片数排序和搜索",
+      "decision": "融合",
+      "implementation": "增强既有AlbumsPage，不以磁盘目录替换影集",
+      "acceptance": "新建置顶、重命名、排序保存不移动原片",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "AlbumsPage/core/album-list.ts：逻辑影集名称搜索、自然名称/新建时间/拍摄数/自定义与方向，缺失时间置后、同值ID稳定；新建普通/语义/条件集合清除搜索并置顶，保留原照片浏览/配色/六点UI。",
+        "完整列表ID编排，拖拽手柄与键盘上移/下移；搜索隐藏项和其他类型影集不丢失。复用PATCH重命名，空名称拒绝；普通/语义/条件的成员、封面、规则、关键词和分数不变，原片SHA-256不变。",
+        "图库偏好复用SQLite library_profile.preferences.albums与Browser可选album_preferences，不需新schema（Native5/Browser4）。严格命名空间/有界唯一ID、BEGIN IMMEDIATE合并及期望图库身份；浏览器目录/会话代次/revision队列保护、A-B-A及同UUID旧适配器拒写、复制/合并保持。",
+        "350ms合并和标签页临时记录；晚读取不覆盖早选择，配额不足/503失败后重开恢复。跨页面旧请求覆写已用延迟PATCH复现失败；等待上一页登记写入后读取新快照，修正后Native4项真实路径通过。",
+        "最终完整后端176、前端逻辑77、Native界面120、Web99，两种构建/图标1/diff通过。中文深色宽屏/英文浅色窄屏截图已检查，真实鼠标拖拽先起步再滚动目标。主题检查补初始化等待，产品配色未改。",
+        "AF71继续记录既有偶发Web双击未打开查看器，单独3次/最终99通过不作根因已修复的证明。完整99范围未缩减，AF17/M2-M7继续；无付费AI、模型下载、私库、提交、推送或安装。"
+      ]
+    },
+    {
+      "id": "AF17",
+      "domain": "影集整理",
+      "feature": "文件夹总览页",
+      "photocollection_now": "普通影集卡与封面",
+      "afterframe_now": "四图封面/日期跨度/最近加入/表格/批量",
+      "decision": "融合",
+      "implementation": "现有影集总览增加模式和聚合统计，复用同一查询口径",
+      "acceptance": "删除影集只删关系；手动封面不被自动四图覆盖",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "2026-10-23：AlbumOverview + AlbumsPage 复用原页新增自动四图/手动单图与失效占位、拍摄日期跨度/未知数量、最近照片分页、卡片24/表格50分页、按图库保存view、独立影集选择与批量删除；双击原查看器、主题/双语/reduced-motion保留。",
+        "backend album_service批量按CaptureGroup首选图汇总，RAW/JPEG不重复；四图聚合无Photo ORM/EXIF加载，recent仅当前页hydrate。Browser同一元数据快照+一次ID索引，overview/recent API零文件读取。条件集合复用PhotoQuery，近期按导入时间明确标识。",
+        "schema6 nullable AlbumPhoto.added_at与manifest5 member_added_at/cover_mode/view：旧历史NULL、不造日期；重审保留成员时间/position/score；合并保留时间。桌面备份/失败事务回滚/幂等，Web旧清单精确字节before-overview-v5备份失败拒写、旧1–4读兼容/未来6与非法时间拒写通过。",
+        "手动封面优先、照片记录删除后保留手动缺失状态、主动恢复自动；批量1–1000唯一ID全有才删除，仅Album/AlbumPhoto及编排ID清理，照片/人物/人脸/草稿与原片SHA-256保留。",
+        "最终完整：npm test 180通过79.97s，npm run test:frontend 77，npm run test:browser 122通过4.7m，npm run test:web 103通过3.9m；两端build、desktop.test_icon 1、diff检查通过。补充历史/合并/页内hydration6通过2.07s。Native定向6/Web定向7通过；中深宽与英浅窄卡片/表格截图已检查。",
+        "仅本功能源码验收；完整99项17verified/8in_progress/74pending。既有AF71偶发双击入口根因仍未证明已修复；无正式包/安装更新/发布、付费AI、私图上传、权重下载或Git提交推送。"
+      ]
+    },
+    {
+      "id": "AF18",
+      "domain": "浏览选片",
+      "feature": "照片信息检查器",
+      "photocollection_now": "照片详情弹层/灯箱含EXIF与操作",
+      "afterframe_now": "三栏固定Inspector",
+      "decision": "按用户六点修订融合",
+      "implementation": "右缘默认收纳；悬停照片1秒展开，移开保持，下一张立即跟随，右上角关闭；悬停不改选择",
+      "acceptance": "计时取消/主动关闭/旧响应不误开；双击沿用现有查看器",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/tests/workspace.spec.mjs",
+        "frontend/tests/rebuild.spec.mjs",
+        "docs/afterframe-upgrade.md"
+      ]
+    },
+    {
+      "id": "AF19",
+      "domain": "浏览选片",
+      "feature": "评分与Lightroom XMP读取",
+      "photocollection_now": "已有评分和颜色标签，XMP未完整读",
+      "afterframe_now": "导入XMP评分",
+      "decision": "融合",
+      "implementation": "保留应用人工评分；只在首次导入/明确刷新读取外部XMP，不回写原片",
+      "acceptance": "外部重新扫描不覆盖后续人工评分",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "2026-10-24：首次导入从限定命名空间读取XMP Rating，合法整数0–5，侧文件优先于内嵌（文件专属覆盖共享），0与NULL分别保存；无效负数/越界/文本忽略。Python/TypeScript共享合同；不替代favorite/color_label/tags或修改图像几何。",
+        "新增rating_source与原PhotoInformation来源/刷新入口。单图、快捷键和批量评分/清空均标manual；旧NULL/0/其他评分标legacy保守保护，普通重扫按哈希跳过；主动刷新只更新未设置或外部管理的值，读取期间人工操作优先。源哈希前后核对，界面只合并评分字段并重查评分排序/规则。",
+        "桌面schema7迁移备份/幂等，Browsermanifest6可读旧1–5，before-ratings-v6精确字节备份；备份失败保留旧库内容，未知未来7/来源值/旧格式新增字段/来源与NULL不一致拒写。目录刷新发现新增侧文件；选文件导入读取已保存XMP副本并核对SHA，损坏拒绝；切库/同UUID重开拒绝迟到保存。",
+        "补修library_maintenance合并：人工/legacy清空不当作缺失数据；仅目标none+NULL可补齐，rating/source成对更新，旧来源库新行补legacy以兼容NOT NULL。元数据专用合成RAW配对继承人工NULL（不作RAW解码证明），原片/XMP只读。",
+        "最终完整检查：npm test187通过93.19s，npm run test:frontend79，npm run test:browser124通过4.8m，npm run test:web108通过4.1m；两端build、desktop.test_icon1、diff通过。新增备份失败断言后Native7通过3.47s/Web迁移1通过3.8s；合并/配对9通过3.84s。中文深色宽屏/英文浅色窄屏截图已查看，源SHA不变。",
+        "首次UI用例忘展开既有照片信息、旧断言仍期待XMP评分为NULL、错误文本及重开落点预期不符，修正测试后定向Native2/Web11与完整124/108通过。仅源码验收，全部99项18verified/8in_progress/73pending，AF71双击根因仍未证明修复；无付费AI/上传私图/模型下载/安装更新/提交推送。"
+      ]
+    },
+    {
+      "id": "AF20",
+      "domain": "浏览选片",
+      "feature": "P/X/U留用排除选片",
+      "photocollection_now": "收藏/评分/颜色标签已有",
+      "afterframe_now": "留用/排除/清除+Shift前进",
+      "decision": "新增",
+      "implementation": "Photo增加独立flag，快捷键与批量筛选；保留favorite/rating/color_label",
+      "acceptance": "三种字段不互相替代，排除仅记录/可撤回",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "2026-10-24：新增独立picked/rejected/unmarked，原PhotoInformation、卡片图标、批量编辑、筛选、统计和PhotoQuery条件集合共用；保留favorite/rating/color_label/tags，排除仅元数据、可清除，不删除原片或手动影集关系。操作见docs/photo-flags.md。",
+        "P/X/U及Shift接入原快捷键重绑定/输入和弹窗保护。仅成功且当前单张/视图仍一致时按原顺序前进、不循环；图库四布局滚入可见区域并移焦，条件范围重查并剔除离开成员，普通图库成功保存不拉取全库ID。时间线使用自身顺序及独立flagRevision更新图标。",
+        "新增SQLite schema8默认未标记，备份/失败回滚/幂等；Browsermanifest7读旧1–6，before-flags-v7精确保留旧清单字节、备份失败不发布。未来8、无效/NULL清单状态、旧格式新增flag或条件字段拒写；API显式NULL规范为unmarked。新RAW/JPEG配对继承标记，合并保留目标决定，原片与侧文件只读。",
+        "修复真实查看器前进错误：普通openId误带胶片DOM来源守卫；修复保存期间另开批量弹窗被旧前进改变选择/目标，检测当前modal并固定打开时目标列表。新增关闭重开ABA、弹窗时序、失败无前进、规则成员和四布局边界用例。定向Native5/Web4通过。",
+        "最终完整检查：npm test190通过82.47s，npm run test:frontend81，npm run test:browser129通过5.0m，npm run test:web111通过4.3m；Native/Web构建、desktop.test_icon1和diff通过。本机/Web中文深色宽屏与英文浅色窄屏四张截图已检查，合成原片SHA不变；256行滚动样例仅元数据，不作为RAW解码速度结论。",
+        "全部99项19verified/8in_progress/72pending；只作源码验收，AF71既有偶发Web双击问题根因仍未证明修复，正式Windows包/WebView2继续后续验收。未使用私人图库、上传照片、调用付费AI、下载模型、更新安装、提交或推送。"
+      ]
+    },
+    {
+      "id": "AF21",
+      "domain": "影集整理",
+      "feature": "人工描述与AI标签来源",
+      "photocollection_now": "人工tags、批量整理；无通用caption来源",
+      "afterframe_now": "人工caption优先、AI/user标签",
+      "decision": "融合",
+      "implementation": "新增user_description/annotation/tag origin，人工覆盖/拒绝标记",
+      "acceptance": "AI重标注不删人工标签/描述，手动空描述也尊重",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "2026-10-24：PhotoInformation新增人工描述、人工/AI来源及单图/批量保持/设置/清空/恢复；user_description空字符串抑制AI，NULL允许AI描述。标签来源区确认AI为人工、移除/拒绝及重新允许，原逗号标签编辑保留。沿用现有查看器、配色、双语和输入保护。见docs/photo-annotations.md。",
+        "Photo.user_description/annotation/rejected_ai_tags及PhotoTag.origin，旧来源按人工保护。AI结果只替换AI所有标签，保留人工与拒绝；批量添加仅明确名字转人工，移除未知标签也记拒绝，完整列表保存确认保留项为人工。保留旧Web人工200字符/200项能力并同步Native，AI每轮100项/100字符；原片/XMP/收藏/评分/颜色/选片独立。",
+        "SQLite9备份/回滚/幂等，Browsermanifest8兼容旧1–7，before-annotations-v8精确旧字节备份；失败不发布。未来9、旧格式新字段、坏origin/revision/有效且拒绝同名标签拒写。合并保留目标描述NULL/空字符串、标注与拒绝；新照片继承来源，缺列旧源补空值与user来源，人工来源优先但目标拒绝阻止加回。",
+        "本机与Web本地POST /photos/id/annotation严格version1/有界caption,tags,OCR/provider/model，目录记录source_hash+expected_revision CAS保护，写入合并最新人工状态；不读取像素或联网，不接收额外密钥字段。真正国内VLM/批次任务仍为AF52/53，合成结果只验证协议与保护，不当作模型质量。",
+        "修复实际UI重复评分行：PhotoAnnotations与PhotoRatingSource曾同key=photo.id，改notes:前缀并新增两组件count1断言；四张截图核对通过。复现并修复新归一化截短旧Web长标签，核心/SQL/Web API200项及长名字保存/重标注/移除/添加检查通过。__proto__/toString/constructor共同向量通过JSON字节核对，普通对象原型不成为来源。",
+        "最终完整检查：npm test196通过96.61s，npm run test:frontend84，npm run test:browser131通过5.1m，npm run test:web114通过4.2m；两端build、desktop.test_icon1、diff通过，合成原片SHA保持。旧Web测试saved()锁外读ID发生NotReadableError，改从现有偏好适配器读身份再在锁内读文件，相关场景3次11.0s通过后全套114通过；首次误用native-only workspace接口已修正，产品逻辑未为测试变更。",
+        "全部99项20verified/8in_progress/71pending，只作源码验收。294字符Windows迁移预览不可用新问题保留M7，缩短隔离测试路径不是修复；AF71既有Web偶发双击根因仍未证明修复。无私人图库/付费AI/上传照片/模型下载/安装更新/提交推送。"
+      ]
+    },
+    {
+      "id": "AF22",
+      "domain": "浏览选片",
+      "feature": "万图虚拟浏览",
+      "photocollection_now": "ID列表+600对象缓存+react-window",
+      "afterframe_now": "180分页+自写可见区，数据累加",
+      "decision": "保留PC并优化",
+      "implementation": "保留有界缓存；布局按活跃模式/区块计算，限制空闲动画与预取",
+      "acceptance": "1万/5万合成库内存有界，无新增无上限缓存",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/gallery-layout.ts",
+        "frontend/src/core/resource-pool.ts",
+        "frontend/src/media/MediaImage.tsx",
+        "frontend/tests/resource-pool.test.ts",
+        "frontend/tests/workspace.spec.mjs",
+        "frontend/tests/web-local.spec.mjs",
+        "core/local-file-reference.ts / browser/local-file-service.ts / public/local-file-worker.js: 元数据仅返回本次图库会话引用，不打开图片或创建Blob；文件读取向请求窗口复核库/会话/代次，只限派生与导出，no-store/范围请求，普通与生产SW共享。",
+        "MediaImage / photo-media / DownloadLink: 草稿/场景/海报复用有界图片租约；导出点击时读取，禁用SW仍可显示和下载；关库撤销剩余引用，历史文件不删除。",
+        "web-local.spec.mjs: 360份真实派生预览与900历史结果元数据零媒体读取/零Blob，逐个访问≤256条/96MiB，活动图片不被淘汰；缓存重置后导出hash保持、SW无私人缓存、同UUID重开旧URI失效、SW禁用下载hash一致。",
+        "逻辑路径编码/拒绝原片、凭证和越界/SW范围与无缓存规则通过；最终后端123、逻辑47、桌面界面全套80、浏览器全套53通过。另7项一万/五万Grid/Tiles/Justified/Waterfall窗口检查通过，配合既有五万Waterfall19位置检查覆盖两个规模的四布局。",
+        "App.tsx启动先读任务摘要，再仅读取所选一个root详情；360草稿/900结果批量读API无媒体打开/Blob创建，未产生历史URL缓存。",
+        "最新两种生产构建、图标unittest、diff检查通过。这里只证明结构、资源字节与渲染窗口预算；真实硬件的进程/解码/GPU峰值内存仍由M7检验。",
+        "recent.ts / workspace/recent-export.ts / local-file-service.ts: 实际复现并修复最近导出直接新开会话URI不可读；记录改为图库身份/首文件稳定位置/任务ID，打开时核对身份并重取会话；兼容可识别的旧URI，未知旧会话不猜测同名文件。",
+        "recent.spec.mjs / web-local.spec.mjs / recent.test.ts: 本机当前进程会话重绑、跨库/不可核验拒绝，浏览器旧引用打开/刷新/历史回收/实际批量导出记录及导出字节hash；完整桌面89、浏览器56、逻辑49通过，最后旧身份提示精化后另2+3定向通过。"
+      ],
+      "progress_note": "当前运行时的虚拟窗口、惰性元数据和媒体引用生命周期已验收。显示中图片不淘汰，空闲文件/Blob受预算；下载仅显式短持有，磁盘文件不随内存回收删除。真实硬件峰值内存与发行验收仍归M7。"
+    },
+    {
+      "id": "AF23",
+      "domain": "查询分析",
+      "feature": "全文字段与标注搜索",
+      "photocollection_now": "规则解析+ChineseCLIP/FAISS+标签",
+      "afterframe_now": "caption/OCR/tags等LIKE",
+      "decision": "保留PC并融合",
+      "implementation": "统一QueryAST：结构化筛选+文本索引+向量召回；补caption/OCR；大库FTS5为可重建索引",
+      "acceptance": "中文词/短语/同义表达分测试，语义能力不降级",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/core/photo-text.ts / core/photo-query.ts 与 backend/app/services/text_search.py / photo_query.py：五个全文/描述/OCR字段及 icontains 同一有界AST，人工空描述与有效标签优先，保留旧区分大小写包含与 Chinese-CLIP/FAISS。",
+        "backend/app/services/text_index.py：FTS5 trigram元数据候选+源字段复核，短词/Unicode/不支持FTS/损坏回退，dirty触发器、稳定行号、256条写事务批次、索引缺失检测及本地非计费可取消重建任务；设置页显示与修复。",
+        "SQLite10 / browser manifest9：SQLite9先备份/失败回退/幂等；Web旧1–8兼容读、before-text-v9完整原字节备份失败不写；未来10及旧格式新字段/运算符拒写。权威照片/标注/标签/草稿与原片保留。",
+        "backend/tests/test_text_search.py及共享16向量：SQL/TypeScript/真实Browser API对照，中文单字/词/短语、大小写/Unicode、人工覆盖/OCR、特殊字面、NOT组合；受控语义同义召回及scope交集单独测试，不作为真实模型质量。10000元数据按批与真实FTS计划、事务回滚、原始无UDF连接写入和原片SHA通过。",
+        "frontend/tests/text-search.spec.mjs / web-local.spec.mjs：中文深色宽屏/英文浅色窄屏实际文字/文件名搜索与描述/OCR条件集合保存、未加载语义保留查询、迟到解析拒绝、旧清单升级；原片hash不变。",
+        "2026-10-25完整回归：后端203(105.04s)、逻辑85、Native134(5.4m)、Web117(4.6m)、双构建/icon1/diff通过；重建按钮恢复断言补强后相关Native3再次通过(21.4s)。四张搜索+两张设置截图已查看；无真实付费AI/照片上传/模型下载。正式包和真实模型质量仍待对应阶段。"
+      ]
+    },
+    {
+      "id": "AF24",
+      "domain": "查询分析",
+      "feature": "Facet多选/排除/自定义栏",
+      "photocollection_now": "现有相机/镜头/曝光日期/评分/颜色等筛选",
+      "afterframe_now": "多选、范围、否定、文字/地点/主色等",
+      "decision": "融合",
+      "implementation": "新AST兼容旧URL；显示哪些Facet可选；关联计数服务端算",
+      "acceptance": "影集/全库口径一致，日期边界/空值/NOT正确",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "core/photo-facets.ts / services/photo_facets.py：有界version1状态编译既有QueryAST，21类字段、同栏任一/标签全部、整栏NOT、NULL/零分/假值、数值与日期包含/严格边界。画幅由有效显示宽高计算，不改Photo.orientation EXIF数字；旧单值/范围/别名参数保留并按栏转换。",
+        "services/facet_service.py / browser/facet-options.ts：关联计数只忽略自己的临时条件和旧参数，保留其他条件及显式规则/影集基础范围；SQL分组/分页、拍摄/文件口径接口，Web纯元数据计算。分页/选项搜索有界，已选零计数保留；取消和过期响应隔离，元数据变化刷新成员与计数。",
+        "FacetBar.tsx/facets.css：当前主题的多选/排除/范围/缺失/描述文字弹窗，自定义常用栏，隐藏仍有效的项目保持可见，收起后显示实际条件摘要。保留原RAW/JPEG配对筛选、旧查看器与快捷键；4布局选片Shift前进原检查通过。",
+        "workspace/facets复用library_profile.preferences身份与BEGIN IMMEDIATE合并；Browser facet_preferences与现有代次/目录/revision/待保存日志。复制迁库保持、合并保留目标偏好；同UUID重开拒绝旧writer，不保存筛选值/路径/凭证。SQLite11升级备份/失败不升级/幂等；manifest10读旧1–9、before-facets-v10精确字节备份失败不写，未来11/旧格式画幅规则或新偏好/重复隐藏项拒写。",
+        "shared facet-contract.json 22组SQL/TypeScript/真实Browser API：中文标签、多选/全部、NOT、NULL/零分、布尔假、严格数值边界、日末小数秒、画幅及组合；真实API关联计数/固定AST/影集范围/分页/搜索和原片SHA。中深宽屏/英浅窄屏Native/Web真实操作、自定义保存/重开、零计数已选值及旧库保护通过。",
+        "2026-10-25最新完整回归206后端(101.59s)/87逻辑/136Native(5.6m)/120Web(4.8m)、双构建/icon1/diff通过；定向Native11/Web8及四张最终截图/实际行对齐/无横向溢出通过。修复queued事件null锚点、undefined排除值及全局label列方向实际问题，旧选择器/未来格式样本同步，未弱化断言。无真实付费AI/照片上传/模型下载，正式包和真实模型质量未据此宣称通过。"
+      ]
+    },
+    {
+      "id": "AF25",
+      "domain": "查询分析",
+      "feature": "文件夹内检索范围",
+      "photocollection_now": "现有album_id筛选与普通影集",
+      "afterframe_now": "筛选/搜索/计数跟随范围",
+      "decision": "保留PC并强化",
+      "implementation": "QueryScope固定base collection/group mode，临时条件不丢base",
+      "acceptance": "从图表钻取/智能影集/人物进入均保持正确scope",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "core/query-scope.ts + services/query_scope.py：有界version1基础条件、图库身份、capture/file和入口；严格白名单/类型/日期/32KiB、拒绝嵌套路径及未来版本；临时条件只求交集，不增加持久schema字段。",
+        "library_service.py / main.py + browser/api.ts：基础范围约束列表、统计、多选计数和自动完成，保留影集顺序；错误图库或已删除集合拒绝，Web不支持的人脸/语义查询明确失败。修复旧日期末秒小数、收藏false、品牌及缺失画幅一致性。",
+        "App.tsx / QueryScopeBar：旧地址兼容、Native查询/Web hash保存范围与临时条件，清除/撤销/刷新/前后退保留base；新范围清选择/旧撤销、异步代次/卸载/取消保护与原编辑离开保护；范围栏沿用中英文与主题。",
+        "AnalysisPages + file删除：统计/报告固定原计数方式，真实RAW文件图表入口不被首选JPEG代替；只移除文件记录，同组JPEG和两份合成原片SHA保持。月份末日/闰年正确，文件模式禁用拍摄组拖动。",
+        "test_query_scope.py / query-scope.test.ts / browser-statistics.test.ts / query-scope.spec.mjs / Web共享UI：基础不可覆盖、规则/智能/人物、分页/计数/选项、日期/无效/跨库范围、clear/undo/reload/history与成员变化；四张中英宽窄主题截图已查看，无横向溢出。",
+        "2026-10-25当前完整回归209后端(93.16s)/90逻辑(414ms)/139Native(5.9m)/123Web(4.9m)、双构建/icon1/diff通过；新增定向Native3(17.4s)/Web3(11.7s)通过。隔离合成图库和原片SHA校验，无付费AI/上传/模型下载/私人库/安装/提交/推送。"
+      ],
+      "progress_note": "当前Windows本机服务与独立网页已验收；scope为临时状态，schema11/manifest10不变。独立网页继续现有逐文件能力，不将范围支持当作人脸/语义/拍摄分组能力。正式包、真实模型与既有其他验收事项继续后续条目。"
+    },
+    {
+      "id": "AF26",
+      "domain": "查询分析",
+      "feature": "可搜索标签与大标签库",
+      "photocollection_now": "标签筛选/自动完成已有",
+      "afterframe_now": "服务端标签查询",
+      "decision": "融合",
+      "implementation": "复用标签表/索引，搜索分页与计数；Web可重建索引Worker",
+      "acceptance": "数千标签无全量重复下载，人工标签排序稳定",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "backend/services/tag_service.py + /api/tags：复用Tag/PhotoTag及QueryScope按范围分组计数、分页、文字字面匹配、名称/频率/人工优先稳定排序与user_count；上限256字符/100条，坏参数和跨库范围拒绝，不读取原片。",
+        "App/SearchBox：初始化include_tags=false保留旧filter-options默认兼容及报告镜头口径；标签输入180ms按词返回最多7条，绑定范围/词/版本并取消迟到请求；相机/镜头/文字/文件名/本机语义入口和原标签多选/任一全部/排除/缺失/计数保留。",
+        "core/tag-index.ts + browser/tag-worker/tag-index-service：当前有效标签倒排索引，人工来源计数、Unicode稳定顺序；每图库会话/版本复用、编辑重建、关闭清理，只有ID/标签/来源送线程；无原片/路径/完整EXIF/原始AI标注。32待处理上限与超时，构造/加载/运行失败回退元数据索引，旧线程错误不终止新线程。schema11/manifest10不变。",
+        "tag-index.test.ts / test_tag_search.py：一万标签分页无重叠，手工/AI来源、固定影集和临时条件交集、字面%_/Unicode/大小写、元数据编辑/删除、参数/跨库拒绝、旧接口省略标签与原片SHA；只读元数据检查，未调用模型。",
+        "tag-search.spec + Web共享UI：100张/10002标签，宽泛7建议+2文字入口、键盘选取、60→120分页、最后一项/关联计数；真实取消旧请求，索引建一次复用/修改重建、同UUID关闭重开、构造拒绝、真实模块加载失败、运行错误和旧线程迟到错误均通过；4张中英主题宽窄屏截图已查看、无横向溢出。",
+        "2026-10-25当前完整211后端(109.29s)/92逻辑(423ms)/141Native(6.0m)/127Web(5.0m)、双生产构建/icon1/diff通过；定向Native7(30.2s)/Web6(19.0s)通过。首轮英文Tag定位与渐进样本新增/tags接口准备已补齐，未弱化断言；原片SHA不变，无模型/上传/付费AI/私人库/安装/提交/推送。"
+      ],
+      "progress_note": "按需标签与可重建Worker索引在当前Windows本机服务及独立网页源码验收通过。缓存按版本重建且可回退，不宣称已有增量/持久索引或完整五万照片性能/真实AI质量；后续人物与发布验收继续推进。"
+    },
+    {
+      "id": "AF27",
+      "domain": "人物",
+      "feature": "本地脸检测与身份向量",
+      "photocollection_now": "Windows/OpenCV YuNet+SFace；Web无",
+      "afterframe_now": "Mac Vision+ArcFace CoreML",
+      "decision": "保留PC主引擎",
+      "implementation": "不为模型名升级替换已有人物；可选ONNX模型另空间评估；Web可选兼容本地worker",
+      "acceptance": "不上传人脸，模型空间隔离、原人工确认保留",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "face_space.py / face_service.py：继续本机YuNet/SFace，不新增云API/网页引擎；引擎、检测/识别权重SHA、处理流程版本和128维float32形成稳定空间，只比较同空间/维数的有效L2向量；非法形状、NaN/零向量/位置拒绝发布。",
+        "models.py / migrations.py schema12：FaceModelSpace/FacePrototype(按人物/空间)与DetectedFace来源；备份失败不写、幂等、旧向量原字节/人物ID名称/确认/缓存/影集保留，未知旧来源标legacy-unverified不自动升格或重扫。新库数据库server_default与升级库一致，兼容旧维护SQL写入。browser manifest10不变。",
+        "模型文件流式完整性+文件身份/变更缓存，引擎绑定已核验文件指纹；损坏不加载、变更重建、推理中权重/契约改变拒绝结果。计算在写事务外，发布前复核照片来源/已有确认/取消；旧确认不被迟到结果覆盖，无自动下载/重试。",
+        "显式关联为已有命名人物建立当前空间参考，保留其它空间及旧代表字节；移出错分后刷新相应参考避免空组招回，删除人物级联参考且原片保留。库复制/合并校验空间、映射人物、目标同空间参考优先，快照不静默增改。",
+        "test_face_spaces.py五项受控检查：同字节维数A/B/旧未知空间隔离、重关联后招回正确人物/保留旧确认缓存和快照、坏输入/取消/并发人工确认/来源改变、schema11备份失败及幂等/原始SQL/复制合并、微型假权重完整性/引擎重载及计算中模型改变/SHA/no-network；不当作真实识别准确率。FacePage新增中英保留说明/显式修复，原入口保留，任务状态复用已有翻译。",
+        "2026-10-25当前完整216后端(100.35s)/92逻辑(426ms)/143Native(6.0m)/127Web(5.0m)、双构建/icon1/diff通过；最终Native3(7.5s)及两张最终中英文宽窄主题截图通过。首轮发现并修复freshSQL默认值实际兼容问题，旧人物影集断言未弱化；无模型下载/付费AI/上传/私人库/安装/提交/推送。",
+        "2026-10-25 AF33完整回归发现人物页面初始任务响应较晚返回会清空刚启动的模型修复任务。FacesPage现按代次隔离初始读取、主动操作与轮询并限制单次轮询；face-spaces中英两项持有初始响应直至新任务出现的确定性检查通过，随后Native164全通过。"
+      ],
+      "progress_note": "当前Windows本机服务的人物空间与旧确认保护源码验收通过；保留SFace主引擎，旧未知来源不猜测，新候选可人工关联到旧人物后继续学习。其它模型/网页引擎仍是可选独立评估，真实识别质量、模型性能和正式包另验，不据受控向量宣称准确率提升。"
+    },
+    {
+      "id": "AF28",
+      "domain": "人物",
+      "feature": "封面/合并/错分移出",
+      "photocollection_now": "命名/确认/关联影集已有，细粒度不足",
+      "afterframe_now": "改封面/合并/移错脸",
+      "decision": "融合",
+      "implementation": "FaceObservation/Member关系补齐；旧face_data兼容迁移；人物影集保持快照语义",
+      "acceptance": "合并/拆分可撤销，旧关联影集不被静默重写",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "face_management.py / face_graph.py / models.py：独立封面、保留来源人物ID的合并别名、批量移出和拆分；手动跨模型合并按空间保存参考，目标同空间优先、来源退出候选，不混合向量。纯关系遍历与离线SQLite维护不导入应用配置、默认库或FastAPI。",
+        "face_routes.py / schemas.py：所见人脸版本和人物摘要检查，BEGIN IMMEDIATE事务内重验，坏输入/超限/部分失败整体回滚；旧单人脸接口兼容。新封面验证成员与位置，缺派生图时只读原片裁取，明确WEBP响应格式，无效图片显示通用人物图标。",
+        "FaceOperation按图库持久保存最近100次且压缩合计至多128MiB，单次8MiB/解压32MiB；撤销检查观察/照片内容、模型清单、归属、封面、参考和别名，拒绝后续冲突，不重建已删除照片。拆分新人物已有新影集关联时阻止撤销删除。",
+        "人物影集成员/顺序/封面/原关联保持；来源旧影集在目标卡片作为历史入口打开，不自动PATCH重关联；连续合并可撤销，删除目标不复活别名。schema13先备份/失败不写/幂等，浏览器manifest10；复制库保留历史，合并库映射别名封面并保留目标决定，外库撤销记录留在来源备份。",
+        "test_face_management.py八场景覆盖连续合并多步撤销、跨空间、封面/拆分/错分/重关联、并发和过期版本、删除/观察变化/新影集保护、坏历史/外库/保留上限/回滚、schema12迁移、库复制/冲突合并/冷启动维护；原片SHA一致。新增2项真实UI中文1440深色/英文390浅色，含并发改名409与恢复输入、旧影集无写入打开、重开后撤销、封面实际解码、零模型下载/分析请求。",
+        "2026-10-25最终当前完整224后端(121.54s)/92前端逻辑(547ms)/145Native(6.1m)/127Web(5.1m)通过，双生产构建/icon1/diff及私密产物保护通过；最终针对性3(23s)包含原完整英文检查，4张最终主题截图保留、2张已查看。首轮严格英文检查抓到备用姓名首字的孤立汉字，改通用图标而未弱化旧测试。无私人库、真实模型/AI、上传、计费、安装、提交或推送。"
+      ],
+      "progress_note": "Windows与本机服务网页的人物封面、合并、拆分、错分移出及持久撤销源码验收通过；旧人物影集保持快照，跨模型人工身份合并仍按来源隔离参考向量。独立Web人物模型、AF29批量忽略与正式包/真实识别质量继续另验。"
+    },
+    {
+      "id": "AF29",
+      "domain": "人物",
+      "feature": "批量忽略错误人物组",
+      "photocollection_now": "无完整忽略墓碑",
+      "afterframe_now": "忽略组重扫不再出现",
+      "decision": "新增",
+      "implementation": "持久ignore/rejected关系与模型版本，支持恢复",
+      "acceptance": "重扫不复活已忽略组；恢复仅操作记录",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "models.py / migrations.py schema14：FaceIgnore持久组决定，FaceIgnoredMember保留原片SHA/模型空间/位置/向量/确认/稳定摘要；独立照片和观察FK，缓存清理或重登记不丢决定。先备份、备份失败不写、幂等，旧人物/观察/封面/模型/影集/撤销记录保留；browser manifest10不变。",
+        "face_ignore.py / face_service.py：只核对同内容同模型空间的负向观察，摘要相同或IoU至少0.9且cos至少0.995的小抖动继续归入隐藏分组；检测顺序不影响。其它人脸/原片/模型来源不全局屏蔽；忽略人物不作新照片的正向候选，旧未知来源不升格，人工确认/参考不改。",
+        "face_management.py / face_routes.py：批量1..100个版本复核、BEGIN IMMEDIATE原子忽略/恢复与guardedundo；正常分组保持schema13旧快照摘要，可在升级后实际撤销旧操作；模型清单固定在操作范围内，前后状态均约束8MiB压缩/32MiBraw。忽略人物先恢复再编辑，已有照片范围和影集仍可读。",
+        "FaceGroupDecisions.tsx：主动打开才加载，40条分页/256字搜索、跨页选择100个、检查当前名称再提交，409保留选择并允许刷新/清空；恢复仅移除状态/负向关系，无模型下载/重识别。继承配色/双语/减少动态设置，接入原持久历史与撤销。",
+        "维护复制保留决定与历史；合并映射人物/模型空间、目标原正常或忽略决定优先，导入到已忽略目标的新成员也记录负向观察。五个新合成库场景检查缓存重建/重登记/抖动与其它源模型不误拦截、旧确认封面参考快照、多步撤销/旧13升级真实撤销、原子失败/分页字面查询、复制/冲突合并/新增目标成员及冷CLI不导入默认库配置。原片SHA一致。",
+        "2026-10-25当前完整229后端(113.13s)/92逻辑(442ms)/147Native(6.2m)/127Web(5.1m)、双构建/icon1/diff/privateguard通过；初始新UI2(7.7s)、额外强断言5(3.74s)通过。两项当前真实UI中英宽窄主题覆盖并发改名409→刷新、重开后隐藏、43组40+3分页/跨页恢复3组、旧影集确认保持、撤销恢复与忽略、模型下载/分析0和SHA；4张最终截图保存且2张已查看。无真实模型/AI/私人图库/上传/付费/安装/提交/推送。"
+      ],
+      "progress_note": "Windows与本机服务网页的批量忽略、分页恢复、重扫负向观察保护和持久撤销源码验收通过；保护同原片同模型来源的已忽略观察，旧未知来源继续保留缓存，不跨来源猜测。恢复只操作已有记录；独立浏览器人物模型、真实识别质量与正式包仍另验。"
+    },
+    {
+      "id": "AF30",
+      "domain": "人物",
+      "feature": "按人物筛选与打开照片",
+      "photocollection_now": "现有创建/打开人物影集",
+      "afterframe_now": "直接人物filter/view photos",
+      "decision": "融合",
+      "implementation": "保留人物影集入口；新增实时person scope，标明快照与当前匹配的区别",
+      "acceptance": "新识别照片进入实时视图，不自动篡改快照影集",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "person_scope.py / face_routes.py: 绑定图库与拍摄/文件口径的只读状态API，一致事务内流式摘要实际成员与名称/合并/忽略；不读取向量/原图路径，不调用模型，schema14不变。",
+        "usePersonScope.ts / QueryScopeBar.tsx / App.tsx: 可见时5秒有界同步、取消旧请求；过滤条件保持、删除不退回全库、合并主动跳转；大图暂停同步并在关闭后更新。",
+        "FacesPage.tsx / App.tsx: 新增实时人物照片入口并保留原分组检查/人物影集；原分组大图翻页限定当前人物，影集快照不被自动更改。",
+        "test_person_scope.py四项合成库检查：受控新识别、同数换成员、名称/优选文件变化、RAW/JPEG、跨库/合并/忽略/删除，以及2000条观察不读向量/路径且响应小于1KiB；原片SHA保持。",
+        "person-scope.spec.mjs三项实际界面覆盖中文宽屏/英文窄屏、保留搜索、新成员同步/大图暂停、旧快照、删除后主动退出、迟到A响应不能污染B。",
+        "GalleryContent.tsx与photo-activation回归：定位react-window滚动期间内部pointer-events:none；修复前6项失败/2项瀑布流对照通过，修复后本机8项及独立Web4项真实两次按下通过，保留虚拟化且无点击重试。",
+        "最终完整：后端233(115.64s)、逻辑92(425ms)、本机界面158(6.9m)、独立Web131(5.1m)、两种构建/图标/diff与私密产物检查通过。"
+      ],
+      "progress_note": "人物实时QueryScope与快照入口已验收；保留原查看器与全部导航/配色，模拟识别不代表真实模型质量，正式Windows包归AF71。"
+    },
+    {
+      "id": "AF31",
+      "domain": "人物",
+      "feature": "导入后本地自动分析",
+      "photocollection_now": "模型与扫描任务已有，非完整独立策略",
+      "afterframe_now": "可选导入后人脸索引",
+      "decision": "新增",
+      "implementation": "默认手动；可选只对本次新增asset IDs的本地排队分析",
+      "acceptance": "无云调用/无重复全库扫描，停用基础浏览不受影响",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "import_face_analysis.py / face_routes.py / config.py: 默认关闭的本机策略与严格布尔API，独立即时保存；普通偏好保留选择，启用代次使导入途中开启及关闭再开启不追认旧导入。",
+        "import_service.py: 只收集本次成功创建的有限ID，重复/重新定位/补预览不纳入；上传兼容photo_ids另存，导入结束后独立排队，不把空列表传给全库手动分析。",
+        "jobs.py / import_face_analysis.py: 独立faces-import本地推理队列，逐ID核对当前图库/取消/优选文件；保留模型来源、人工确认、忽略与既有缓存，默认0.45仅生成待确认建议。",
+        "face_service.try_status: 模型占用时非阻塞状态读取；模型缺失或队列失败保留正常导入，无自动下载/上传/计费/重试。关闭只取消自动任务，当前计算保存前再核对策略；重启手动恢复。",
+        "ImportFaceSettings.tsx / ActivityCenter.tsx: 中英独立开关、保存失败保留旧决定和主动重试、模型忙碌/未就绪说明、导入详情原因与独立任务入口，保留原主题和手动分析。",
+        "test_import_face_analysis.py八项合成库检查：精确新增范围、重复/重新定位/上传/部分失败、原缓存与待确认、模型缺失/队列故障、排队/运行关闭、手动隔离、导入途中策略代次、锁忙碌/迟到取消/删除优选变化与原片SHA；强化默认关闭不读模型状态，最终8项3.78s。",
+        "import-faces.spec.mjs三项实际中英宽窄界面6.4s通过，原片SHA一致；目录设置旧模拟补齐精确策略响应，原errors==[]及全部目录断言保留，定向1项3.9s通过。",
+        "最终完整：后端241(120.31s)、逻辑92(444ms)、本机界面161(6.8m)、独立Web131(5.1m)、双生产构建各3.25s、图标1及diff/私密产物保护通过。"
+      ],
+      "progress_note": "默认手动与可选新ID本地队列已验收；SQLite14/browser10保持。独立浏览器人脸引擎、真实模型准确率和正式Windows包分别按后续条目验收。"
+    },
+    {
+      "id": "AF32",
+      "domain": "创作编辑",
+      "feature": "裁剪/校正/翻转",
+      "photocollection_now": "Web暗房归一化裁剪+90度/翻转",
+      "afterframe_now": "交互裁框/±45度校正/预设/角尺",
+      "decision": "融合，以PC参数工程为准",
+      "implementation": "共享暗房移植桌面，加八柄/三分线/比例/自由角；v1配方回放",
+      "acceptance": "预览/输出坐标一致；原片hash及旧配方观感不变",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/core/editor-adapter.ts",
+        "frontend/src/native/editor-adapter.ts",
+        "frontend/src/browser/ToolsPage.tsx",
+        "backend/app/editor_schemas.py",
+        "frontend/tests/desktop-editor.spec.mjs",
+        "2026-10-22编辑源版本：source-decode-profile.ts/source_decode.py保存不可变v1/v2规则，旧缺省保持v1，新JPEG内嵌XMP方向与EXIF优先；实际新旧裁剪/重开/PNG导出及源SHA通过。Native副本/复制/合并保留，schema4语义升级先备份；Browser manifest2兼容读1并首次写入保留原始字节备份，未来版本拒绝。完整163后端/111Native/84Web/67逻辑，两生产构建/icon通过。"
+      ],
+      "progress_note": "2026-10-25源码验收完成：八柄/三分线、全部比例含2.35及反向、±45度角尺、左右转/翻转、20倍取景、一次手势一次撤销及取消；独立相机和精确裁区预览保持配色/减少动态。本轮完整254后端(124.07s)、100逻辑(826.667ms)、163本机界面(7.2m)、136独立Web(5.5m)、双生产构建各3.25s、icon1及diff/隐私/副本哈希检查通过。旧v1的96组渲染字节与v2零角度一致；新坐标/16位/缩小预览/完整PNG/源哈希、真实SQLite复制合并和浏览器首次v2精确备份/失败回滚均验。SQLite14/manifest10未变；未知版本拒绝。本机与网页中英宽窄截图复核通过；正式WebView2与发行验收归M7。"
+    },
+    {
+      "id": "AF33",
+      "domain": "创作编辑",
+      "feature": "连续切图Split",
+      "photocollection_now": "无",
+      "afterframe_now": "自动/手动片数/片比/拖区域/版本",
+      "decision": "新增",
+      "implementation": "复用归一化几何和安全导出，顺序面板边界共用计算",
+      "acceptance": "相邻边无缝，无漏像素/重复列；单片版本血缘完整",
+      "milestone": "M4",
+      "status": "verified",
+      "evidence": [
+        "core/seamless-split.ts: 独立于普通裁剪的归一化区域，3:4默认/五比例/自定义1–100，自动或手动2–10片，保持中心的重设、四角锚定缩放和自由角边界内移动。",
+        "core/split-render.ts: 复用原8/16位源与共享颜色核，先完整渲染区域再按共同整数边界顺序复制；不分片重复锐化/降噪，不改原像素。源尺寸/角度改变拒绝旧区域，坏的末片边界在首片产出前拒绝。",
+        "seamless-split.test.ts七项与split-contract.json: 奇数宽度/半像素向上舍入/连续列计数、45度合法超轴框、四角锚点、自动/手动/自定义、未知参数、8/16位/alpha原值与源摘要、旋转翻转/自由角，以及独立分片滤镜产生接缝的反例。",
+        "browser/edit-session.ts/edit-worker.ts: 请求时冻结参数、整幅一次处理、PNG母版与顺序PNG/JPG编码及SHA-256、进度和主动取消；编码画布释放，单组512MiB限制。真实Worker覆盖透明PNG逐字节重组、自由角、白底JPG和取消后重开。",
+        "split_schemas.py/split_service.py/editor_routes.py: 复用AssetVariant保存母版和有序子片，固定源/工程版本/解码/原配方/渲染配方/几何/边界；文件与事务整体发布，PNG逐像素核对、源SHA及并发工程保护、幂等请求、失败只清本次新目录。",
+        "backend/tests/test_split.py八项：实际PNG/JPG、坏参数/文件/源/版本、磁盘写入失败回滚、迟到变化、真实复制/冲突合并、未来来源拒绝及SQLite14→15备份失败/幂等。完整后端262项通过140.26s。",
+        "core/split-record.ts/browser/split-storage.ts/storage.ts: browser11精确旧清单备份、编辑版本和不可变组关系；新UUID内保存文件后原子发布清单，绑定图库/目录/会话、源文件复核，失败回滚、重复请求去重、整组恢复哈希验证和父工程删除保护。",
+        "web-editor.spec.mjs新增三项保存检查：并发重复/原工程变更/完整备份重开、注入中断与单片损坏、格式10精确备份及失败、持有写入时关闭切库；共享真实Worker用例也验证网页版保存。local-file-reference/split-record测试保护合法路径及坏版本/几何/关系。",
+        "2026-10-25本批最终完整验证：后端262(140.26s)、逻辑110(793.9558ms)、本机界面164(7.3m)、独立Web140(5.8m)，双生产构建3.33s/3.37s、图标1及diff/隐私/272文件备份哈希通过。另修复完整回归发现的原人物任务初始响应覆盖新请求竞态，确定性延迟复现后中英定向及完整回归通过。",
+        "browser/edit-storage.ts/split-storage.ts/api.ts：关联照片首个分图私有源快照、后续组共享，移出照片记录后父工程解除关联继续可用；源优先级、父工程锁、乐观版本和图库会话保护，失败仅回滚新目录。七项真实Web检查覆盖重开/备份/并发/源变化/写入失败/切库/坏路径，source.bin不能作为派生图片公开。",
+        "workspace/SplitTool.tsx/SplitCanvas.tsx/useSplitPreview.ts：独立普通裁剪的五比例/小数自定义、自动/手动2–10、四角锚定与平移、手势撤销/Escape/方向键/触控、受限预览队列、图库比例偏好、整组保存和取消后恢复暗房。两端按工程分页查看旧组，保存版本与当前选区隔离，单片下载。",
+        "split-ui.spec.mjs/web-editor.spec.mjs共享实际交互：中英/明暗/1440与390，非默认比例重开，普通裁剪保留80%，每次手势一次撤销、触控、方向键缩小、Esc取消、下载字节/源SHA，取消生成后继续编辑；本机持有成功响应再断网后主动重试同一UUID仅保存一组。",
+        "2026-10-25 本批最终完整验证：后端 263 项（134.32s）、前端逻辑 112 项（827.9711ms）、本机界面 168 项（7.7m）、独立 Web 150 项（6.6m）全部通过；双生产构建 3.30s / 3.26s、图标 1 项（0.087s）、差异 / 私密文件 / 文档链接检查通过，初始备份 272 个文件哈希未变。最新完整检查包含触控、方向键缩小、非默认 4:5 比例重开、普通裁剪保留 80%、原片哈希和未知保存响应重试。中英宽窄两端截图已复核。",
+        "split_export_service.py：保存组直接复制PNG/JPG字节，默认/自选目录、可选子目录、排他占名和整组编号避让；逐片源/输出校验、导出登记与成功回执，未知响应同UUID重试，失败按文件身份和源前缀回退并保留外部改动。13项后端覆盖格式、冲突、迟到文件、磁盘/登记/回执失败、源变化与原片SHA。",
+        "browser/split-export.ts/SplitExportPanel.tsx：显式目录授权、跨图库窗口输出锁、排他写入和全组复查、作用域取消、会话重试记录、回退保留外部文件；8项Web检查覆盖默认/自选/取消、写入失败及写完后报错、迟到冲突、外部改动与切库，双端中英文宽窄真实目录UI、文件字节和原片SHA。成功保存后释放EncodedSplit大图，未确定结果仍保留幂等请求。",
+        "本批完整验证：最终后端 276 项（137.10s）、前端逻辑 113 项（793.9525ms）、本机界面 170 项（7.8m）、独立 Web 158 项（6.8m）通过；本机回退进一步保护外部改动后，13 项导出后端专项及 6 项实际界面流程（24.8s）重新通过。双生产构建 3.23s / 3.29s、图标 1 项（0.091s）、差异 / 私密文件 / 文档链接检查通过，初始备份 272 个文件哈希未变。",
+        "本机单片继续编辑基础：edit_lineage.py严格版本/ID/哈希/尺寸定义与纯来源链校验；split_edit_service精确复制独立快照、中性参数/profile2方向1、256MiB上限、请求ID重试保留后续编辑、失败回退。SQLite16先备份；库复制与冲突合并重映射每一代来源，离线维护不导入默认库/配置/FastAPI。12后端新场景+共享JSON正反例与RGBA中性像素检查；最终288后端/115逻辑、46相关专项通过。界面和Web持久化未接入，不能标记AF33已验收。 最终本机完整170项(7.6m)+末次分图UI6项(25.5s)、两端构建3.66s/3.35s、图标1项通过；22Native/28Web JS/CSS与上一批完全相同，既有Web158项作为未变代码证据。本轮272备份SHA、49文档链接、私密文件候选及diff检查通过。",
+        "split-edit.ts/edit-lineage-graph.ts/storage.ts：browser12严格来源图、独立私有快照、同请求串行/重试、多代来源、完整备份、源损坏保护；保存编辑保留derived_from。edit-storage输出冻结edit_origin，Watermark/Art来源继承，引用阻止删除；写入/清单失败仅清理确认未发布的自有文件，清单close异常核对已落盘完整内容。ToolsPage/SplitTool：当前参数先保存后打开中性分片，来源父版本与当前子版本双标记，返回父工程最新版本/返回子工程/刷新重开，两语主题保留。当前118逻辑/172Native通过，最终Web套件待完成。",
+        "2026-10-25 最终独立Web完整168项通过（7.2m，进程exit0），含10项新增来源/持久化/界面场景。前端逻辑118项、Native完整172项、双生产构建3.31s/3.32s通过。未知格式夹具已改为13，保持拒绝/不改写断言；AF33按接缝和独立版本来源验收。"
+      ],
+      "progress_note": "连续分图、整组保存与目录输出、分片独立编辑及父子版本导航均通过当前源码运行环境验收。SQLite16/manifest12；保留原片及保存分片，PNG接缝像素一致，JPG不宣称有损像素完全一致。最终118逻辑、172Native、168Web通过；后端未变实现288项通过。WebP和统一导出元数据仍属AF74，真实WebView2/安装包另验。"
+    },
+    {
+      "id": "AF34",
+      "domain": "创作编辑",
+      "feature": "自由文字图层",
+      "photocollection_now": "水印/署名参数已有，无通用自由图层",
+      "afterframe_now": "文本/渐变/描边/阴影/发光/吸附",
+      "decision": "融合",
+      "implementation": "保留授权本地字体和wonder固定图案，新增可编辑TextLayer样式与触控操作",
+      "acceptance": "中英长文/缺字/放缩/导出一致；不把AI字图当字体",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "core/text-layers.ts：独立版本1文字文档；严格字段/字体ID/颜色/有限数值/资源限额，拒绝未知版本、重复ID、控制字符和坏UTF16；复制/排序返回独立快照。包含多行、大小写、字距/行距/对齐、填充/渐变、描边、四边背景、阴影/发光。旧EditRecipeV1/V2未扩展。",
+        "core/text-layout.ts：1920长边设计坐标、加载完成字体的整段Canvas测量、保留空行与组合字、斜体外伸/下伸/装饰线/效果边界、旋转缩放及逆变换命中；不逐码点拆字绘制。",
+        "browser/text-render.ts：独立、尚未接入产品的共享Canvas渲染器；复用七种本地OFL字体和中文回退，字体失败允许重试，绘制前冻结文档并预检字体/排版；整层透明度只合成一次。可见区域及效果余量限制临时画布，单块最多1600万像素/16000边长，超限明确失败。",
+        "text-layers.test.ts新增6项已通过；前端逻辑完整124项通过。web-text-render.spec.mjs新增7项实际Chrome检查通过2.7s：七种本地字体/长文、同版式放缩、PNG像素、原输入SHA、样式透明度、字体故障重试、异步冻结、窗口与Worker像素一致、未知版本、隐藏层无字体请求、画外阴影及无白边。没有外网字体请求。",
+        "本批最终完整Native172项（7.8m）、独立Web175项（7.4m）均exit0，逻辑124项（1030.671ms）、双生产构建3.33s/3.44s、图标1项（0.092s）通过；272备份文件SHA未变，47份文档链接和私密文件候选检查通过。旧后端未改动，保留此前288项通过结果。",
+        "TextPanel/TextCanvas：多行、本地10种字体选项、17种排版样式、渐变/描边/背景/阴影/发光，图层选择/复制/粘贴/顺序/显隐/锁定/删除；鼠标与真实触控、中心/文字锚点吸附、固定屏幕尺寸手柄和画内约束、单手势撤销及Esc取消。中英/明暗/宽窄界面实测，样式基于现有主题变量。",
+        "EditRecipeV3内含text_layers独立v1，旧RecipeV1/V2严格结构保留；SQLite17/browser13先备份后升级，拒绝旧格式冒用新字段/未来格式/未知字体。后端纯Python与TS共用合成样例；复制、合并、原片哈希、错误升级/写入与输出冻结检查。",
+        "edit-worker.ts统一预览/导出/分图绘制；textRenderView通过源平面映射父裁切文字到分图区域，先整幅合成再按整数边界切片。实际PNG预览/导出/母版及跨片拼接一致，旋转裁切母版与工具预览一致；子工程中性像素等于已含文字的分片，没有二次叠字。",
+        "Native字体仅从已有本地资产目录读取；浏览器完整备份重开恢复V3文字工程/分图子工程/原始字节与哈希，工坊输出origin2冻结文字配方，有引用时保护工程。新schema17/manifest13语义备份和来源关系验证，清单结果不确定时保留文件用于恢复。",
+        "最终统一后端294项164.56s、逻辑128项885.1749ms、Native完整175项8.5m、Web完整180项8.4m全部exit0；双生产构建3.41s/3.48s、图标1项0.092s通过。首轮后端两项旧预期16改为17后完整重跑，保留旧备份版本和原片哈希断言。272初始备份SHA未变；48文档链接0断链，0私密Git候选；两端中英宽窄截图存档并检查。"
+      ],
+      "progress_note": "自由文字的样式面板/触控操作、文字图层与统一撤销、两端保存和兼容保护、预览/输出/分图来源四部分已通过当前源码运行环境验收。最终后端294、逻辑128、Native175、Web180、双构建与图标通过。SQLite17/manifest13/recipe3；缺字本机回退且提示检查，wonder保持固定图案。深度遮挡和混合蒙层分别归AF38/AF37，真实WebView2与安装包仍另验，不将本项通过等同于99项全部完成。"
+    },
+    {
+      "id": "AF35",
+      "domain": "AI创作",
+      "feature": "AI手写字",
+      "photocollection_now": "本地艺术字字体与固定图案，不是生成",
+      "afterframe_now": "17参考风格生成+本地抠白",
+      "decision": "新增，国内API",
+      "implementation": "国内图像编辑/生成+目标文字+可选样例，黑白位图本地转alpha；人工核对",
+      "acceptance": "换色/移动不重复计费，错字可弃用，本地字体功能保留",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "AIStudio.tsx + ai_studio.py + browser/worker.ts：准确文字/参考图、黑白转alpha、本地改色位置大小、人工核对导出/弃用。",
+        "test_ai_studio.py验证alpha、无重复计费和原片SHA；Web真实adapter/worker与合成relay完整生成导出通过。"
+      ],
+      "progress_note": "独立手写生成、可选参考图、黑白转alpha、本地改色/位置/缩放/人工核对导出，保留原字体功能。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF36",
+      "domain": "创作编辑",
+      "feature": ".cube LUT与样式库",
+      "photocollection_now": "Web暗房有摄影调色，无LUT库",
+      "afterframe_now": "Mac .cube+强度/预览/收藏/最近/Log",
+      "decision": "新增，跨Windows与Web",
+      "implementation": "严格CUBE解析、四面体插值Worker（沿用参考实现的四顶点路径）、不可变内容寻址资产；在已定义的sRGB照片管线应用，独立可见缩略图缓存",
+      "acceptance": "identity LUT零变化，强度端点正确，RAW和导出一致",
+      "milestone": "M4",
+      "status": "verified",
+      "evidence": [
+        "cube-lut.ts / cube_lut.py 共用正反例：UTF-8/BOM/换行/注释/范围/2–65网格，精确行数，拒绝shaper、非有限数与含糊范围，插值前保留超范围节点。",
+        "LutPanel 与两端服务已接通文件/文件夹副本导入、收藏、最近使用、移出/恢复、强度及撤销；SQLite19 BLOB / browser15 私有源文件按内容hash保存，支持复制/合并/完整备份。",
+        "RecipeV5只引用LUT和强度；照片调整后、文字蒙层前应用，同一Worker处理预览/导出/全母版分图，子工程中性重开。两端实际像素检查通过，LUT不改变文字蒙层颜色。",
+        "本批后端完整305项、逻辑138项、Web完整193项通过；最终双构建3.59s/3.57s，补充双语错误恢复后的Web 8项LUT专项32.5s通过。真实16位DNG恒等/反相/预览导出一致与源SHA检查通过；最终桌面完整183项8.6m通过；初始272份备份SHA保持，51文档链接/私密产物/diff检查通过。",
+        "第二组四部分：lut-log沿用参考输入名判断；独立hash人工标识与hideLog；工具偏好保存分组/1–3列/强度；方向键700ms合并撤销与Esc、39项整行跨页；仅预览关闭LUT的按住对比。最终专项两端中英宽窄通过，后端306/逻辑141/双构建通过，最终桌面完整185项8.7m、Web完整197项9.6m全部通过。首轮2项失败为旧测试假设导入项在第一页，改为按名称查找后完整复验通过；产品代码未因此变更。272备份SHA、51文档链接、私密产物/diff检查通过。",
+        "第三组四部分：外部目录持久关联/重定位/离线状态，受限缓存扫描与预览零复制/使用时不可变快照，目录树筛选与折叠记忆，聚焦刷新和目录/输入注释Log提示。SQLite20/browser16升级备份；迟到扫描/发布、断开、外部修改和重定位失败保护通过。后端完整311项159.35s、逻辑144项985ms、桌面完整187项8.8m、双构建3.56s/3.45s、图标1项通过。Web全套195通过6旧格式断言失败9.6m，6项更新断言后专项16.3s全部通过（非另一轮全套）。272备份SHA、51文档273本地链接、私密产物/diff检查通过。",
+        "第四组四部分：复制目录保留层级，LutAsset v2来源分组/输入注释，复制样式树及偏好，逐文件权威结果汇总；SQLite21/browser17升级备份、旧格式/未来格式拒绝、重复收藏保留、断开来源仍保留提示，盘符根目录标签兼容。后端315全套+最终10专项（316不同用例）；逻辑147；最终桌面189全套8.7m、13专项53.5s；Web全套203通过1旧版本样例失败，最终19专项1.5m通过，含修复样例及新根目录用例（205不同用例，非单轮全套）。最终双构建9.65s/3.79s与图标通过。272备份SHA、51文档273链接、隐私/差异检查通过，四张截图复核。",
+        "第五组四部分已验：拖入枚举与来源保留、全部/单独折叠重开、下载逐字节一致、关联源定位只接受未变的登记来源、缩略图排队取消/共享/可见保护/LRU/显式重试。后端318项153.16s、逻辑154项909.987ms、Native191项9.0m、Web207项9.7m、最终双构建3.64s/3.89s、icon1项通过；中英宽窄专项2+2项9.1s/10.5s通过。272备份SHA、51文档273链接、隐私/diff及四张截图复核通过。实际Explorer/WebView2手动验收仍属正式发行门槛。",
+        "第六组四部分已验：45000目录节点逻辑样例；两端真实导入300个合成CUBE、601目录可达且DOM节点≤261；整批失败回滚、旧工程重开及源字节/原片hash保持、菜单键盘与窄屏边界。后端321项169.42s、逻辑157项1455.9819ms、Native全套193通过1影集夹具时间并列失败9.7m+修正后影集4项通过11.5s=194不同用例通过；Web全211项10.3m及影集复查2项6.6s通过。双构建3.73s/4.05s、icon1项、272备份/51文档273链接/隐私/diff复核通过。",
+        "第七组：12个33³/65³样式串行与4线程本机测量273.8/93.3ms及1589.1/478.5ms，非整软件对比；设备降档/最多4线程/32MiB输入预算、关闭/超时/失败/重试、LRU4及缓存命中源校验有回归。两端中英宽窄逐帧仅允许前后调色画面，延迟旧结果/失败不覆盖最新；当前失败保持旧画面且恢复后提示消失。后端321、逻辑165、完整Native196(9.7m)/Web213(10.7m)，最终错误提示收尾双构建3.56/3.63s和LUT专项20/27(1.4m/2.2m)通过；图标1、272备份hash/51文档273链接/隐私/diff通过。",
+        "第八组：特殊分组独立/全部折叠，图库设置布尔字段合并，搜索计数/分页/方向键跳过折叠；大图LUT最多4子线程、4MiB/段、16MiB在途像素，失败/超时/无嵌套支持回原编辑线程补算未完成段，最终释放。真实8.32MP单/多线程与故障输出、分图母版像素相同，原片hash不变；12MP/24MP内核测量分别134.8/57ms及320.8/100.9ms，不含全管线。最终构建3.77/3.71s，后端322、逻辑170、Native完整199(10.4m)、Web完整216(11.4m)及icon1通过。参考交互及identity/强度/RAW/导出验收对照见本地lut-bands-verification.json。"
+      ],
+      "progress_note": "八组实现和统一回归完成，AF36当前支持运行时验收：完整CUBE解析/插值、不可变库、参考浏览交互和分组折叠、连续预览、缩略图与大图LUT并行策略均有证据。原片、旧工程及主题保持；整库删除采用可恢复移出，私有资产以取出CUBE提供源访问。Windows WebView2/安装包发行验收归M7，不扩大为全部99项完成。"
+    },
+    {
+      "id": "AF37",
+      "domain": "创作编辑",
+      "feature": "可排序蒙层",
+      "photocollection_now": "固定水印/光感背景，无自由stack",
+      "afterframe_now": "solid/gradient overlay layers",
+      "decision": "新增",
+      "implementation": "LayerStack中纯色/渐变overlay与文本/贴纸同序",
+      "acceptance": "调层级/alpha撤销与导出一致，LUT不污染文字",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "layer-stack.ts / layer_stack.py：严格混合图层文档v1，文字沿用原严格契约；Overlay纯色/2–16色标线性渐变、四边1%–100%覆盖、独立透明度与显隐/锁定，总数32。RecipeV4 + SQLite18/browser14保护格式；旧V1/V2/V3保持。",
+        "TextPanel+OverlayPanel共用列表和历史，蒙层/文字交错顺序、复制/粘贴/删除/显隐/锁定；keepLayerFormat在保存后提升旧历史快照的格式，不借用未来图层，撤销到添加前仍可保存。",
+        "layer-render.ts在照片调整后按堆栈合成，蒙层跟随当前输出照片范围，文字保留自身坐标映射；预览/导出/整图后切片共享Worker并冻结父配方和工坊来源。独立像素检查覆盖四边、色标、透明度相乘与真实叠放顺序，复制/合并/完整备份恢复已通过。",
+        "最终专项Native3项17.3s/Web7项30.5s通过；完整后端299项171.27s、逻辑132项982.5255ms、Native178项8.5m、Web187项8.7m全部通过。双生产构建3.50s/3.54s、图标1项0.099s通过。四张中英宽窄截图归档、原主题保留，272初始备份哈希未变。",
+        "AF36联动：两端真实Worker覆盖LUT在混合图层之前应用、预览/导出/整图母版一致、裁剪旋转后切图及冻结父版本，隐藏LUT仍可重开，子工程中性像素保持。",
+        "2026-10-27固定十项批次：蒙层、文字、贴纸共用混合堆栈/排序/透明度/撤销及渲染；实际像素、旧工程、切图与备份相关回归通过。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "蒙层、文字、贴纸共用混合堆栈/排序/透明度/撤销及渲染；实际像素、旧工程、切图与备份相关回归通过。"
+    },
+    {
+      "id": "AF38",
+      "domain": "本地视觉",
+      "feature": "深度感知文字/贴纸",
+      "photocollection_now": "无",
+      "afterframe_now": "Mac DepthAnythingV2→深度mask",
+      "decision": "新增，本地Windows/Web引擎",
+      "implementation": "DepthAnythingV2-Small兼容ONNX/现有推理后端，版本化深度缓存+羽化；无付费API",
+      "acceptance": "遮挡坐标对齐，模型缺失能正常无深度编辑",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十项批次：DepthAnythingV2-Small本地CPU与量化WASM真实推理通过；SHA+模型版本缓存、源绑定、深度阈值/羽化、缺模型普通编辑、取消/保存重开通过。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "DepthAnythingV2-Small本地CPU与量化WASM真实推理通过；SHA+模型版本缓存、源绑定、深度阈值/羽化、缺模型普通编辑、取消/保存重开通过。"
+    },
+    {
+      "id": "AF39",
+      "domain": "本地视觉",
+      "feature": "主体抠图与贴纸库",
+      "photocollection_now": "无",
+      "afterframe_now": "Mac Vision实例分割/选区/PNG库",
+      "decision": "新增，本地替代",
+      "implementation": "许可确认的分割模型适配，透明PNG/实例ID/每库贴纸；描边阴影发光统一",
+      "acceptance": "不同主体可选、毛发/边缘样片验收、纯本地、原图只读",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十项批次：SlimSAM固定许可与哈希离线导入，两端真实多主体输出、实例ID和透明PNG通过；每库贴纸隐藏/导出/重开保持作品。公开样片发现并修正置信度直接映射的残影；复杂反光/毛发不保证精确，须人工核对和补点。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "SlimSAM固定许可与哈希离线导入，两端真实多主体输出、实例ID和透明PNG通过；每库贴纸隐藏/导出/重开保持作品。公开样片发现并修正置信度直接映射的残影；复杂反光/毛发不保证精确，须人工核对和补点。"
+    },
+    {
+      "id": "AF40",
+      "domain": "创作编辑",
+      "feature": "80种拼图布局",
+      "photocollection_now": "无",
+      "afterframe_now": "归一化80模板含1图，1–12图",
+      "decision": "新增",
+      "implementation": "数据驱动模板+格内pan/zoom+图身份状态+可访问拖换",
+      "acceptance": "80模板几何覆盖无缝；所有来源完整登记",
+      "milestone": "M4",
+      "status": "verified",
+      "evidence": [
+        "core/collage-templates.json：展开固定上游版本的80模板，保留MIT授权和来源记录。",
+        "core/collage.ts + browser/collage-worker.ts：严格来源清单、共享布局几何与完整源图导出；workspace/CollageTool.tsx：图库/工具入口、取景交换、恢复清单。",
+        "collage.test.ts：80模板两种非整除尺寸完整覆盖、交换保持图身份、空间/格式/来源约束。",
+        "fixtures/collage-worker.mjs：两端80模板Canvas像素、2048细节保持、1000预览、真实16位DNG对照暗房中性PNG、预览斜线排除、坏来源原子恢复。",
+        "fixtures/collage-ui.mjs + collage.spec.mjs/web-editor.spec.mjs：1440中文暗色/390英文浅色，鼠标和键盘取景、交换/撤销、恢复清单/改序字段、替换布局、坏文件/超12张保护、哈希阶段与解码阶段关闭、图库ID和源hash。",
+        "后端322、逻辑174、图标1通过；桌面完整203通过，Web完整218通过+2旧工具数量断言失败，更新3→4后复测通过。最终关闭保护与单复数文案后两种构建及Native4/Web6相关检查全部通过。未宣称最终微调后再执行全套。",
+        "第二批 core/collage-interaction.ts + workspace/useCollageGestures.ts：直接拖换、8显示像素中心吸附/Shift绕过、滚轮/触控板/双指缩放、连续滚轮一次撤销、捕获丢失撤回。",
+        "第二批 CollageTool + collage-render/session/worker：比例/长边/纯色快捷项、预览缺口开关、JPEG质量；连续预览最多一个在途和一个最新待处理状态，旧来源会话结果不发布。",
+        "第二批全前端逻辑177通过；两端拼图各6项通过（包括第一批回归、真实JPEG下载、质量编码和显示提示不入输出），最终复选框CSS后构建3.38/3.35秒、中英宽窄屏各2项复测通过。此批未重复后端/图标/完整应用套件。",
+        "第三批 core/collage-project.ts + backend/app/collage_schemas.py：单页/批量工程、来源、快照路径及修订的严格契约；backend/app/services/collage_service.py + browser/collage-storage.ts：按SHA-256去重的源快照、幂等请求、版本冲突、切库隔离与只删除记录。",
+        "第三批 CollageProjectBar/CollageLauncher：工程命名、保存/另存、分页列表、自动核验重开；删除当前工程后可重新保存，读取失败保留当前编辑。SQLite22/browser18升级前备份，复制改路径、合并映射照片/工程ID，网页版完整备份包含快照。",
+        "第三批后端全量327通过、前端逻辑187通过、图标1通过。全量回归发现并修复冷迁库加载运行时配置的问题：工程及资产校验改为独立数据模块，恢复不加载配置/模型/FastAPI的维护约束。界面最终结果见实施记录。",
+        "第三批界面：桌面完整214通过；Web完整230通过与3项旧格式预期失败，修正断言后与全部拼图合并20项通过。最后窗口保留/取消竞态后重建，Native拼图15及Web20项通过；包括单页与批量重开、复制/删除重建及读取失败保留未保存取景。原始副本272文件hash一致。",
+        "第四批十部分：按库默认画布、单页输出/提示偏好、批量分组/输出偏好、照片格鼠标/键盘菜单、空白/Escape取消选择、未保存名称保护、分页前名称搜索、稳定双向排序、保存来源信息及单页/批量WebP；已有工程样式不被默认偏好改写。验证见实施记录最新批次。",
+        "十部分统一验证最终：后端328、前端逻辑189、Native完整216、Web完整236、图标1及两种构建全部通过；最终产品实现之后无修改，原片/副本哈希保持。运行时及未完成范围见实施记录。",
+        "作品库十部分：CollageOutput严格契约冻结完整工程、页码、编码质量和SHA256；两端原子存储、幂等和版本保护，单页/批量主动保存，列表/预览/下载/恢复布局副本/安全删除。schema23/browser19升级前备份、复制迁库、合并和完整备份含托管图片及来源。最终验收结果见实施记录。",
+        "作品批次最终：后端全量332、逻辑191、图标1通过；Native完整218通过，最后删除缓存/路径收紧后重建并全部拼图19通过。Web完整236通过与4旧未来版本断言失败，修正19→20后重建，4项+全部拼图共28通过。两端最终构建3.61/3.57秒，272原副本hash不变。未将最后微调后的专项复验冒充全量重跑。"
+      ],
+      "progress_note": "80模板及全来源登记验收通过；完整源导出、交互/偏好、图库工程、冻结作品来源与布局副本恢复均已实现。原片/配色保留。当前源码运行时已验收，跨工具派生图、资产回收及发行验收仍分别由AF69/M7继续。"
+    },
+    {
+      "id": "AF41",
+      "domain": "创作编辑",
+      "feature": "批量拼图/融边/缺口提示",
+      "photocollection_now": "无",
+      "afterframe_now": "按顺序分组/余图/跨页交换/edge blend",
+      "decision": "新增",
+      "implementation": "共用单页renderer，明确余图策略；互补alpha融边，预览缺口辅助不进导出",
+      "acceptance": ">12余图不静默丢图，部分失败正确，导出不含斜线",
+      "milestone": "M4",
+      "status": "verified",
+      "evidence": [
+        "core/collage-book.ts：2/3/4/6/9按序分组、选择/文件名/拍摄时间排序、余图独立/合并/跳过、合并超过12张回退独立、严格v1批量清单。",
+        "workspace/CollageLauncher/CollageBatchTool：图库超过12张直接批量、逐张读取原子替换、复用单页编辑器、跨页指针/键盘交换保留取景、清单重新选原图恢复、十步批量撤销。",
+        "core/collage-batch-export/zip-store：逐页全来源PNG/JPEG、失败继续/停止保留成功页、主动重试未完成页、250MiB图片预算/256MiB标准ZIP及来源与状态报告。",
+        "core/collage-book.test.ts：1–31张×5分组数×3余图策略、合并上限、缺失时间与稳定排序、跨页及跳过恢复取景、清单篡改、失败/取消/重试、ZIP CRC与边界。全逻辑182通过。",
+        "两端全部拼图回归各10项通过（桌面1.1分钟/Web1.2分钟），包含旧80模板/RAW/原图保护、13张批量及图库入口、清单恢复、真实鼠标跨页、窄屏目标交换、部分失败/取消与只重试未完成页、单页转批量顺序及读取停止/关闭释放。ZIP由Python zipfile CRC和Pillow尺寸/格式检查。",
+        "最终两种构建3.41/3.51秒；中文暗色1440及英文浅色390截图检查。后端和图标无改动，本批未重跑完整应用/后端/图标套件。",
+        "第二批 core/collage-blend.ts / browser/collage-blend-render.ts：互补线性alpha、内部扩展/外沿保持/忽略圆角，未取整共享接缝，单透明输出画布及<=400万像素临时条。",
+        "单页/批量清单v2严格保存edge_blend；v1复制升级补零，旧渲染与v2零融边逐像素一致。取景/缺口/吸附使用融边范围，批量样式与重新分组传递参数，画布重置可撤销。",
+        "第二批全逻辑185通过；两端构建3.68/3.42秒，所有拼图回归各13通过（桌面1.1分钟/Web1.3分钟）。实际像素覆盖80布局交汇、317x211奇数/小数带宽、3001x1801完整输出及1000预览、零融边兼容、对称性和预览斜线排除；UI旧v1恢复/v2重开一致、撤销、双语主题及批量32px融边ZIP检查。",
+        "额外仅测试探针：OffscreenCanvas子类观测临时层上限，3001x1801单格实际分条全像素一致；两端各1项通过5.3/4.0秒。首次Web探针因动态导入后未等ready丢消息超时，补ready握手后通过；产品代码未因此改动。"
+      ],
+      "progress_note": "AF41明确验收项已覆盖：超过12张不丢图、显式余图、跨页交换、部分失败/取消/重试、互补融边及导出不含斜线。独立的AF40图库工程持久化/更多操作入口、AF69派生关系与备份等全局范围继续实施；不代表整个99项完成。"
+    },
+    {
+      "id": "AF42",
+      "domain": "水印相框",
+      "feature": "22种EXIF相框/用户模板",
+      "photocollection_now": "摄影相框+沉浸光感持久草稿",
+      "afterframe_now": "22参数化预设、模板变图层",
+      "decision": "融合，保留PC旧渲染",
+      "implementation": "旧模板engine v1固定，新增v2模板系统与编辑图层；自定义模板存token/锚点",
+      "acceptance": "旧草稿导出金样保持，横竖长幅字体布局正确",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "22模板×横幅/竖幅/长幅布局渲染、旧v1像素金样、两端中英文模板保存和WebP真实导出通过；来源hash不变。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "实施中：已将固定 AfterFrame commit 的22套相框布局数据转换为本地 JSON，保留 MIT 来源记录。v2合同、渲染、可编辑层、用户模板存储和UI尚未实现。",
+      "progress_note": "22模板×横幅/竖幅/长幅布局渲染、旧v1像素金样、两端中英文模板保存和WebP真实导出通过；来源hash不变。"
+    },
+    {
+      "id": "AF43",
+      "domain": "水印相框",
+      "feature": "品牌/个人Logo覆盖",
+      "photocollection_now": "现有品牌logo与wonder固定签名",
+      "afterframe_now": "真实品牌/用户logo/按品牌机型覆盖",
+      "decision": "融合",
+      "implementation": "保留素材/授权与签名，新增个人库、黑白原色/金、来源声明与优先级",
+      "acceptance": "Logo授权记录随包；手动覆盖优先，透明边缘无光晕",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "透明Logo预乘采样边缘、手动优先级、个人资产验证和旧快照保留通过；复用已有品牌/署名及授权来源文件。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "待实施：个人 Logo 库、黑白原色金色变体、来源与覆盖优先级、保存到v2作品的稳定快照。",
+      "progress_note": "透明Logo预乘采样边缘、手动优先级、个人资产验证和旧快照保留通过；复用已有品牌/署名及授权来源文件。"
+    },
+    {
+      "id": "AF44",
+      "domain": "水印相框",
+      "feature": "机型名称规范与用户别名",
+      "photocollection_now": "EXIF机型显示/品牌规则",
+      "afterframe_now": "设备代码产品名映射、用户重命名",
+      "decision": "新增",
+      "implementation": "小型人工规则+可更新映射+用户别名，不修改原EXIF",
+      "acceptance": "原始字段可查、别名可恢复、未知机型可用",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "精确品牌/机型映射、用户别名严格校验和原始EXIF保留通过；别名提供器维持按需加载与图库代次隔离。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "未验证：精确机型映射、图库内别名设置/导入/恢复默认、缩略图和信息栏显示已接入；保留原始EXIF。还需接入v2相框的名称快照。",
+      "progress_note": "精确品牌/机型映射、用户别名严格校验和原始EXIF保留通过；别名提供器维持按需加载与图库代次隔离。"
+    },
+    {
+      "id": "AF45",
+      "domain": "视频",
+      "feature": "视频入库与封面/元信息",
+      "photocollection_now": "仅照片库",
+      "afterframe_now": "照片旁索引视频/时长codec/封面",
+      "decision": "新增",
+      "implementation": "MediaAsset扩展表+ffprobe/ffmpeg本地工具；照片计数/报表不混视频",
+      "acceptance": "原片只读，损坏视频不阻塞导入，照片计数不回归",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "真实FFmpeg合成视频导入/坏片隔离/删除留源、两端视频播放及照片计数隔离通过；复制迁库与合并覆盖视频和相框资产。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "未验证：独立 MediaAsset 表与视频API、ffprobe元信息和封面、原片只读、逐文件隔离、视频分页UI；纯浏览器独立视频清单/导入/完整备份接入。SQLite拟升24、Web清单拟升20。尚需检查整批迁移/旧数据/导入与显示边界。",
+      "progress_note": "真实FFmpeg合成视频导入/坏片隔离/删除留源、两端视频播放及照片计数隔离通过；复制迁库与合并覆盖视频和相框资产。"
+    },
+    {
+      "id": "AF46",
+      "domain": "视频",
+      "feature": "悬停关键帧预览",
+      "photocollection_now": "无",
+      "afterframe_now": "hover胶片条拖预览",
+      "decision": "新增",
+      "implementation": "按需关键帧、并发去重、缩图缓存与预算，触控提供点击预览",
+      "acceptance": "离开停止请求/不持续自动播放，prefers-reduced-motion可静态",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "两端真实界面验证650ms不切帧、1s后关键帧、移出恢复封面、reduced-motion保持静态及手动关键帧；资源预算和取消回归通过。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "未验证：按鼠标位置延迟请求关键帧、移开取消、触摸点击、减少动态效果、ResourcePool合并并发/内存预算和原生版本缓存已接入。",
+      "progress_note": "两端真实界面验证650ms不切帧、1s后关键帧、移出恢复封面、reduced-motion保持静态及手动关键帧；资源预算和取消回归通过。"
+    },
+    {
+      "id": "AF47",
+      "domain": "视频",
+      "feature": "灯箱视频播放器",
+      "photocollection_now": "照片灯箱/展映已有",
+      "afterframe_now": "自定义播放控制，Mac AVPlayer",
+      "decision": "平台等价",
+      "implementation": "Windows WebView2/浏览器原生video优先；play/pause/scrub/volume/fullscreen/keys",
+      "acceptance": "视频未就绪不只播声音，键盘/焦点/字幕语义清楚",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "两端真实视频验证不自动播放、Space播放/暂停、VTT一条字幕加载显示、关闭恢复播放按钮焦点；照片灯箱完整回归通过。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "未验证：独立视频灯箱、原生controls、首帧前静音、模态焦点恢复、键盘、外部VTT字幕已接入；保留照片灯箱。",
+      "progress_note": "两端真实视频验证不自动播放、Space播放/暂停、VTT一条字幕加载显示、关闭恢复播放按钮焦点；照片灯箱完整回归通过。"
+    },
+    {
+      "id": "AF48",
+      "domain": "视频",
+      "feature": "HEVC等兼容代理",
+      "photocollection_now": "无",
+      "afterframe_now": "AVPlayer或H264按需代理",
+      "decision": "新增",
+      "implementation": "Windows FFmpeg后台代理，HDR标明tone-map、编码参数、cache LRU/取消",
+      "acceptance": "源hash不变、重复请求不重转、代理尺寸/音画同步可验",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "真实本机FFmpeg代理尺寸、时间/音画相对时序、完整源hash、重复请求/取消/缓存保护通过；浏览器明确依赖原生编解码，不宣称执行FFmpeg。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "active_batch_note": "未验证：本地FFmpeg H.264/AAC兼容代理任务、显式HDR到SDR映射、原片前后哈希、输出尺寸/时长保护、取消、任务去重、缓存LRU已写入；播放器入口已接入。仍需补充缓存管理、边界与音画同步回归。",
+      "progress_note": "真实本机FFmpeg代理尺寸、时间/音画相对时序、完整源hash、重复请求/取消/缓存保护通过；浏览器明确依赖原生编解码，不宣称执行FFmpeg。"
+    },
+    {
+      "id": "AF49",
+      "domain": "AI创作",
+      "feature": "多供应商图像适配",
+      "photocollection_now": "固定自定义Qwen网关+独立key",
+      "afterframe_now": "Gemini/GPTImage/Ark/Jimeng/兼容端",
+      "decision": "国内能力等价",
+      "implementation": "保留现有Qwen；新增官方Qwen/Ark独立profile与能力表、模型/账户切换，不默认接国外API",
+      "acceptance": "模型/协议/地区/account不混用；未授权0调用，失败不跨厂商自动重试",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "ai_schemas.py + ai_protocol.py + ai_studio.py：官方Qwen/Ark独立profile和能力、地区/工作空间白名单、账户密钥隔离。",
+        "后端授权/错误格式不回显密钥/超时仅1次POST/配置失效确认、relay4项新协议用例通过；未调用真实计费服务。"
+      ],
+      "progress_note": "官方Qwen与Ark独立配置、模型/地区能力、Windows加密与Web会话密钥、独立转发协议，零自动调用/跨供应商重试。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF50",
+      "domain": "AI创作",
+      "feature": "25风格预设与自定义prompt",
+      "photocollection_now": "专门水彩风格/标题/纸面/比例严校",
+      "afterframe_now": "油画/动漫/水彩等25风格",
+      "decision": "新增通用重绘并保留专用水彩",
+      "implementation": "新StylePreset库与可见prompt；水彩独立稳定模板/本地排版",
+      "acceptance": "旧水彩不变；非水彩按各模型能力明确尺寸限制",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "ai_styles.py与core/ai-styles.json：25条独立可见prompt和自定义；UI显示模型输出尺寸限制。",
+        "ai-studio.test.ts验证25个唯一预设；既有水彩与署名后端/桌面/Web全量用例保留通过。"
+      ],
+      "progress_note": "25份可查看提示词预设和自定义prompt，两端按模型能力显示输出尺寸限制，专用水彩不改。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF51",
+      "domain": "AI创作",
+      "feature": "重绘对比/历史版本",
+      "photocollection_now": "水彩已有对比/作品revision/固定海报引用",
+      "afterframe_now": "并排/上下和repaint history",
+      "decision": "融合",
+      "implementation": "统一DerivedGraph+对比组件，保持scene/poster与草稿快照不可变",
+      "acceptance": "切版本不重新计费、不改变在用水印来源",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "schema27/Browser23 AIResult，DerivedGraph来源/父版本，独立PNG与预览、原片对比、记录删除不删原片；迁移/备份/回收保护。",
+        "后端手写历史切换/本地多次导出/迁移/合并冲突与原片SHA通过；Web历史缩略图真实加载和原片SHA通过。"
+      ],
+      "progress_note": "不可变结果/父版本、来源对比、历史选择、DerivedGraph、迁移/备份/回收引用保护。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF52",
+      "domain": "AI分析",
+      "feature": "自动描述/标签/OCR/地点猜测",
+      "photocollection_now": "语义向量+人工标签；已有水彩标题，不是通用标注",
+      "afterframe_now": "VLM输出caption/tags/OCR/location",
+      "decision": "新增，国内VLM",
+      "implementation": "Qwen-VL类结构化JSON，压缩去EXIF/GPS；位置猜测置信/人工确认，不外传坐标",
+      "acceptance": "字段验证、人工优先、无上传默认；不伪称GPS真值",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "压缩重建像素去EXIF/GPS，版本化描述/双语标签/OCR/地点猜测，人工信息来源优先。",
+        "后端/relay验证元数据剥离；后端及两端UI验证人工地点审核只改结果来源、不改GPS。"
+      ],
+      "progress_note": "结构化描述/双语标签/OCR/地点猜测，去EXIF/GPS，人工标注优先，猜测人工确认/否决只记录来源、不写GPS。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF53",
+      "domain": "AI分析",
+      "feature": "单张/多选/影集/缺失标注任务",
+      "photocollection_now": "无通用标注批次",
+      "afterframe_now": "四范围后台任务",
+      "decision": "新增",
+      "implementation": "scopeSnapshot固定ID/数量，显式授权；记录provider/model/requestId与结果",
+      "acceptance": "失败不重发计费POST，取消保留已成功照片结果",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "固定ID/数量/模型/10分钟确认，单张/多选/影集规则/缺失范围，逐项成功失败/请求编号/计费状态。",
+        "后端取消保留首项、剩余零POST，旧配置确认拒绝、原片变更零上传；Native UI与Web真实适配器未确认零调用通过。"
+      ],
+      "progress_note": "单张/多选/影集规则/缺失/导入固定范围和10分钟授权令牌，逐项结果/计费状态/取消，无自动重发。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF54",
+      "domain": "AI分析",
+      "feature": "导入自动标注",
+      "photocollection_now": "无通用自动云标注",
+      "afterframe_now": "默认关；开启触发全库未标注",
+      "decision": "安全融合",
+      "implementation": "默认只提示本次导入，可明确授权本次或用户选范围；不复制全库隐式补扫",
+      "acceptance": "未经授权0云请求；新导入不意外计费历史积压",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "两端导入任务保存新增ID；ActivityCenter主动提示并带入此次导入范围，需单独确认才云调用。",
+        "后端先后两次导入范围检查，不混历史；全量导入/活动中心旧行为回归通过。"
+      ],
+      "progress_note": "导入记录本次新增IDs，活动中心仅提示并打开范围确认，零隐式云调用。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF55",
+      "domain": "AI分析",
+      "feature": "双语标签数量/描述长度",
+      "photocollection_now": "现有双语界面、人工标签",
+      "afterframe_now": "可配置标注长度/标签数/双语",
+      "decision": "新增",
+      "implementation": "语义JSON schema版本化，本地截断/去重/来源；分开同义归一和翻译",
+      "acceptance": "模型格式错可人工修，中文英文标签可检索",
+      "milestone": "M5",
+      "status": "verified",
+      "evidence": [
+        "双语概念对、NFKC/去重/长度数量限制，坏JSON本地保存修复，不触发重新计费。",
+        "后端坏JSON修复/旧版本拒绝与敏感字段清除，逻辑双语规范化/非法响应测试通过。"
+      ],
+      "progress_note": "版本化结构校验、数量/字数上限、Unicode规范化/去重、原始坏JSON保存和本地修复。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF56",
+      "domain": "AI分析",
+      "feature": "标注结果融入检索",
+      "photocollection_now": "原有CLIP+标签条件",
+      "afterframe_now": "LIKE全文索引字段",
+      "decision": "保留PC并融合",
+      "implementation": "caption/OCR/结构化tag入同一QueryAST，语义与精确文本可切模式",
+      "acceptance": "不把无标签语义召回退化成仅LIKE",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "AI描述/OCR/双语tag复用既有QueryAST与文字索引，工作室增加明确字段检索入口，语义检索保留独立模式。",
+        "后端和Web按AI描述、OCR与双语标签查询通过；原语义/精确检索回归用例未替换为LIKE。"
+      ],
+      "progress_note": "双语描述/OCR/标签复用既有QueryAST与文字索引，新增明确字段检索入口，保留独立语义搜索。 固定十项统一验证后验收；未调用真实付费模型。"
+    },
+    {
+      "id": "AF57",
+      "domain": "Agent",
+      "feature": "37工具覆盖",
+      "photocollection_now": "无产品MCP服务",
+      "afterframe_now": "37库/编辑/图像/任务工具",
+      "decision": "新增，安全版MCP",
+      "implementation": "FastAPI本机独立工具路由复用应用services；参数schema、token认证、scope、读写分级",
+      "acceptance": "37功能族映射齐全；写/付费分别经App审批",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十项批次：37族严格schema与现有services/共享渲染器适配完成；读取真实服务、写审批/原片只读及应用内文字工程端到端通过。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。",
+        "完成审计补充：Agent字号schema原允许1024而共享编辑器上限1000，现统一为1–1000。补实际最小/最大字号审批与保存，以及多照片真实检索/空结果断言。后端相关14项、浏览器端到端2项通过；原片hash保持。"
+      ],
+      "progress_note": "37族严格schema与现有services/共享渲染器适配完成；读取真实服务、写审批/原片只读及应用内文字工程端到端通过。"
+    },
+    {
+      "id": "AF58",
+      "domain": "Agent",
+      "feature": "双向选择桥",
+      "photocollection_now": "普通UI选择/路由已有",
+      "afterframe_now": "get_selection/show_in_app",
+      "decision": "新增",
+      "implementation": "selectionVersion/catalogId→agent；揭示结果高亮/定位，过期选择拒绝",
+      "acceptance": "“这些”不串库/不使用过期ID，深定位不拉全库图片",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十项批次：图库UUID/聚焦窗口/15秒selectionVersion桥、100张上限、过期拒绝与应用定位接入；过期/换库/单次领取检查通过。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "图库UUID/聚焦窗口/15秒selectionVersion桥、100张上限、过期拒绝与应用定位接入；过期/换库/单次领取检查通过。"
+    },
+    {
+      "id": "AF59",
+      "domain": "Agent",
+      "feature": "Agent任务可见可取消",
+      "photocollection_now": "现有Job机制可复用",
+      "afterframe_now": "共享活动dock",
+      "decision": "融合",
+      "implementation": "所有Agent请求创建同TaskRecord，显示发起者/范围/批准与取消",
+      "acceptance": "不出现隐藏付费任务；取消本机不误报退款",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十项批次：所有Agent工具请求进入活动记录，审批摘要/来源/范围/子任务/计费状态可查；取消/单次执行/中断不重试通过。仅未领取请求可暂停，不虚构运行中暂停。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "所有Agent工具请求进入活动记录，审批摘要/来源/范围/子任务/计费状态可查；取消/单次执行/中断不重试通过。仅未领取请求可暂停，不虚构运行中暂停。"
+    },
+    {
+      "id": "AF60",
+      "domain": "Agent",
+      "feature": "MCP本机运行与集成设置",
+      "photocollection_now": "后端loopback与本地服务规则已有",
+      "afterframe_now": "loopback41706、Host/Origin、无token",
+      "decision": "保留PC约束并强化",
+      "implementation": "默认禁用、显式启用；loopback+token+Host/Origin+请求限额，独立集成设置",
+      "acceptance": "非本机来源/错误token拒绝，secret不进工具结果",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十项批次：默认关闭且重启禁用的本机Streamable HTTP MCP；token、Host/Origin/loopback、代理拒绝、限额、独立scope与国内AI单独批准通过；纯Web说明不开放监听。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "默认关闭且重启禁用的本机Streamable HTTP MCP；token、Host/Origin/loopback、代理拒绝、限额、独立scope与国内AI单独批准通过；纯Web说明不开放监听。"
+    },
+    {
+      "id": "AF61",
+      "domain": "查询分析",
+      "feature": "近重复库/感知哈希",
+      "photocollection_now": "SHA256精确去重、CLIP语义向量",
+      "afterframe_now": "64bit pHash+Mac Vision feature print",
+      "decision": "新增并复用本地向量",
+      "implementation": "pHash候选+可选同模型CLIP外观复核，独立近重复阈值；不跨空间套AF0.4",
+      "acceptance": "不同场景/裁切/重编码样片标定；默认仅建议不删图",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "backend/tests/test_similarity.py：pHash重编码/缩放/裁切/不同场景、BK-tree对照、可取消索引/原片SHA、全库候选与schema复制合并/拒绝降级。",
+        "frontend/tests/visual-hash.test.ts、web-editor.spec.mjs：浏览器真实Worker索引、取消保留/恢复、manifest21备份失败回滚及坏记录拒绝。"
+      ],
+      "progress_note": "已完成本批统一验证：Native/Browser版本化pHash、BK-tree、本地显式可取消索引、来源校验、全库候选分页；独立阈值与可选本地CLIP复核，仅供人工审阅。"
+    },
+    {
+      "id": "AF62",
+      "domain": "查询分析",
+      "feature": "右键查相似/检查器相似条",
+      "photocollection_now": "语义搜索已有，无完整以图查图UI",
+      "afterframe_now": "FindSimilar/Inspector up to8",
+      "decision": "新增交互",
+      "implementation": "以已有图向量检索+hash，标注按外观/语义的模式；独立同拍摄组逻辑",
+      "acceptance": "候选排序稳定，RAW/JPEG来源不重复混算，人工确认",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [
+        "frontend/tests/similarity-analysis.spec.mjs + web-editor.spec.mjs：右键/Shift+F10、双语宽窄界面、相似条/展开候选、原查看器与独立色板。",
+        "统一回归发现未索引照片的自动400请求，已改为按当前照片身份先检查索引，CSP与信息栏复验通过。"
+      ],
+      "progress_note": "已完成本批统一验证：右键与Shift+F10菜单、检查器八张相似条、展开候选、原查看器联动、稳定排序和拍摄去重；双语/主题/窄屏沿用现有组件。"
+    },
+    {
+      "id": "AF63",
+      "domain": "系统集成",
+      "feature": "文件级复制/拖出/定位",
+      "photocollection_now": "导出/下载，部分打开路径",
+      "afterframe_now": "系统文件剪贴板/原生拖拽",
+      "decision": "平台等价",
+      "implementation": "Windows受限native bridge；本机Web下载/复制路径；纯WebFile分享或下载回退",
+      "acceptance": "不得从网页任意读盘；原片不写、不冒充已有OS权限",
+      "milestone": "M6",
+      "status": "verified",
+      "evidence": [
+        "复制/登记ID白名单/原片hash及真实Windows剪贴板通过；修正pythonnet加载后clr.__spec__为空导致能力检查报错。原生拖放仍未完成：WinForms OLE调用和实验性直接COM桥接未通过真实投放/取消验收；实验代码已隔离到忽略目录，发布源码不含实验模块，drag能力为false且请求返回501。复制/定位/下载保留。此项不得标为完成，也不得开启下一批。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。",
+        "2026-10-26 AF63闭环：复用WebView2现有窗口的STA UI线程，停止在独立后台STA线程运行OLE拖放；只接受已登记照片ID，拖放只协商Copy，前台窗口/真实按键预检，提前松开/取消/到期退出与互斥。正式启动器+实际React照片信息栏→HTTP→Windows原生接收区真实投放成功，副本及原片SHA-256一致；合成窗口复制→空白取消→再复制及真实手势超时取消通过。仅桌面窗口就绪后声明drag能力，本机Web无窗口时保留复制/下载，纯Web文件分享或下载。未引入编译器、辅助EXE或新依赖。",
+        "本次补充：文件传递接口5通过、Catalog/受管理启动重开6通过、桌面全屏1通过、图标1通过；272份初始副本哈希一致，差异空白检查通过。沿用本批此前完整套件与修复复验，不声称本次再次运行全部前后端及浏览器套件。",
+        "最后补齐文件传递校验错误的中英文文案后，前端198项、文件传递5项再次通过，桌面/纯Web生产构建再次通过。最终审计52文档283本地链接有效，Git候选无测试数据或私人文件。"
+      ],
+      "active_batch_note": "本批已完成完整实现与真实桌面验收。",
+      "progress_note": "2026-10-26 AF63闭环：复用WebView2现有窗口的STA UI线程，停止在独立后台STA线程运行OLE拖放；只接受已登记照片ID，拖放只协商Copy，前台窗口/真实按键预检，提前松开/取消/到期退出与互斥。正式启动器+实际React照片信息栏→HTTP→Windows原生接收区真实投放成功，副本及原片SHA-256一致；合成窗口复制→空白取消→再复制及真实手势超时取消通过。仅桌面窗口就绪后声明drag能力，本机Web无窗口时保留复制/下载，纯Web文件分享或下载。未引入编译器、辅助EXE或新依赖。"
+    },
+    {
+      "id": "AF64",
+      "domain": "首页发现",
+      "feature": "回忆/人物/地点/影集Discover",
+      "photocollection_now": "PC摄影空间、策展封面、统计报告入口",
+      "afterframe_now": "规则回忆/地点照片卡",
+      "decision": "融合",
+      "implementation": "保留策展与品牌首页；增加可收合Discover分区，回忆按日期/地点规则",
+      "acceptance": "不覆盖手选12图；无GPS可按日期兜底",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [],
+      "implementation_note": "已写入两端首页附加 Discover、回忆/人物/地点/影集独立折叠与持久偏好、往年今日/月份回忆、无 GPS 日期兜底、无效日期计数、已有本机人物与影集入口；不改策展 12 图。尚未验证。",
+      "progress_note": "已完成十任务统一验收：保留手选12图与启动展示页，追加回忆/人物/地点/影集折叠区及持久偏好；无GPS按日期兜底，无效日期与现有人物入口回归通过。"
+    },
+    {
+      "id": "AF65",
+      "domain": "地图地点",
+      "feature": "本地地图/聚类/视窗筛选",
+      "photocollection_now": "存GPS但无地图工作流",
+      "afterframe_now": "离线MapLibre、聚类封面/视窗筛选",
+      "decision": "新增",
+      "implementation": "可选延迟加载地图模块、离线底图、国家城市Facet、实际空间索引查询",
+      "acceptance": "日界线/无GPS/十万点截断提示、纯本地基础地图",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [],
+      "implementation_note": "已写入 Native SQLite R*Tree 事务触发器、Browser 网格索引、跨日界线精确过滤、64×32 聚合/300 点上限与完整计数、country/city/无坐标筛选及范围下钻；离线 Natural Earth 陆地资源及来源记录、按需地图页、键盘/指针控制和原查看器入口。十万点及实际 UI 仍待批次统一验证。",
+      "progress_note": "已完成十任务统一验收：离线 Natural Earth 底图、Native R*Tree/Browser 网格、日界线/精确范围、十万点聚合/300点截断及下钻通过；中英文宽窄深浅地图截图已复核。"
+    },
+    {
+      "id": "AF66",
+      "domain": "地图地点",
+      "feature": "人工地点与来源优先",
+      "photocollection_now": "EXIFGPS只读字段",
+      "afterframe_now": "manual>exif>ai、清除pin",
+      "decision": "新增",
+      "implementation": "location sidecar覆写显示，不写原EXIF；精度/来源分开，位置可撤销",
+      "acceptance": "手工优先、清除回落GPS；公开导出默认无地点",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [],
+      "implementation_note": "已写入两端独立地点记录、SHA/版本绑定、人工优先且不混用旧 GPS、清除回落与 20 步撤销、精度/来源/原始 GPS 展示、信息栏编辑与范围刷新、旧格式保护及合并。尚未验证，公开导出与迁移在同批继续整合。",
+      "progress_note": "已完成十任务统一验收：独立人工地点与SHA/版本绑定、人工优先、清除回落、20步撤销和迁移保留通过；无效地点响应被拒绝，不影响原查看器，公开包无地点记录。"
+    },
+    {
+      "id": "AF67",
+      "domain": "导入媒体",
+      "feature": "增量监听/缺失核验/重定位",
+      "photocollection_now": "自动扫描与库迁移/哈希重定位已有",
+      "afterframe_now": "fs.watch合批、relink/refresh/tombstone",
+      "decision": "融合",
+      "implementation": "保留现有扫描；Windows事件提示+周期校验；Web在活跃授权时增量扫描，不承诺后台OS通知",
+      "acceptance": "重复事件幂等，移出库不立即重导，磁盘断开可恢复",
+      "milestone": "M2",
+      "status": "verified",
+      "evidence": [],
+      "progress_note": "已完成十任务统一验收：Windows 目录变化合批与周期补扫、Browser 显式授权及前台扫描、重复事件合并、断开状态、路径/内容墓碑与SHA重定位回归通过；移出记录不自动复活。"
+    },
+    {
+      "id": "AF68",
+      "domain": "原片安全",
+      "feature": "移出图库/磁盘回收站",
+      "photocollection_now": "只删记录，外部原片永不删",
+      "afterframe_now": "可显式把原片移系统废纸篓",
+      "decision": "安全等价例外",
+      "implementation": "保留只读原片；新增可恢复隐藏/库墓碑；只回收未引用托管派生副本",
+      "acceptance": "原片hash/存在性恒定，在用作品版本阻止回收",
+      "milestone": "M7",
+      "status": "verified",
+      "evidence": [],
+      "progress_note": "已完成十任务统一验收：Native软移出/Browser完整归档、关系保留与恢复、在用/原片保护、显式派生回收与恢复日志、目标冲突/中断回归通过；修复移出文字索引残留和旧草稿归档来源重定位。"
+    },
+    {
+      "id": "AF69",
+      "domain": "架构存储",
+      "feature": "派生图/RAW资源集合",
+      "photocollection_now": "CaptureGroup/Artwork/WatermarkDraft已有",
+      "afterframe_now": "resource_sets/versions/links",
+      "decision": "融合",
+      "implementation": "AssetVariant关系衔接既有ID；RAW来源、拍摄组、派生图三种关系不混",
+      "acceptance": "旧ID/影集/草稿不变；新派生来源可追踪",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "backend/app/models.py",
+        "backend/app/services/editor_service.py",
+        "backend/app/services/watermark_draft_service.py",
+        "backend/migrate_storage.py",
+        "backend/library_maintenance.py",
+        "backend/tests/test_editor.py",
+        "2026-10-22编辑源版本：source-decode-profile.ts/source_decode.py保存不可变v1/v2规则，旧缺省保持v1，新JPEG内嵌XMP方向与EXIF优先；实际新旧裁剪/重开/PNG导出及源SHA通过。Native副本/复制/合并保留，schema4语义升级先备份；Browser manifest2兼容读1并首次写入保留原始字节备份，未来版本拒绝。完整163后端/111Native/84Web/67逻辑，两生产构建/icon通过。",
+        "拼图作品记录固定多来源工程与编码输出，复用不可变源快照；工程删除后仍可查看来源和恢复新布局，不计入原片。复制/合并映射和完整备份已接入，统一跨工具DerivedGraph及水印/暗房联动仍待完成。",
+        "拼图作品闭环两端最终检查通过：冻结版本/来源、工程更新和删除后重开、独立副本、编码字节下载、部分保存及安全删除；全局跨工具DerivedGraph仍未完成，AF69保持实施中。"
+      ],
+      "progress_note": "已完成十任务统一验收：来源图保留旧ID，区分拍摄组/人工RAW/暗房/水印水彩/拼图切图，80节点/6层截断与继续查看、冻结编辑来源及归档引用保护通过。"
+    },
+    {
+      "id": "AF70",
+      "domain": "架构存储",
+      "feature": "迁移前备份与版本拒绝",
+      "photocollection_now": "已有SQLite备份幂等迁移；Webprevious/revision",
+      "afterframe_now": "Schema事务/升级备份/旧app拒开",
+      "decision": "保留PC并强化",
+      "implementation": "新模型/sidecar版本化，失败回滚，显式旧版读写门槛",
+      "acceptance": "中断/磁盘满/旧库/跨盘与DPAPI失败恢复",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "backend/app/migrations.py",
+        "backend/app/models.py",
+        "backend/tests/test_editor.py",
+        "backend/tests/test_migration.py",
+        "docs/shared-darkroom.md",
+        "拼图作品库schema23/browser19：升级前备份失败保持字节，伪装旧版的新数据拒绝；Windows复制/合并作品与来源路径映射，浏览器完整备份重开包含作品快照。",
+        "2026-10-27最后四项联合验收：详见 docs/afterframe-upgrade.md 最终结果；原始日志保存在不入Git的 .test-artifacts/final-four-*。"
+      ],
+      "progress_note": "已验证原子备份、磁盘满/硬中断/复制损坏恢复、真实跨卷迁移、导出别名与回执迁移、DPAPI跨账户失败及重新保存；原片hash保持。"
+    },
+    {
+      "id": "AF71",
+      "domain": "平台发行",
+      "feature": "桌面/网页/本地系统特例",
+      "photocollection_now": "Windows WebView2、FastAPI网页、持久Web、公开站",
+      "afterframe_now": "Mac/Windows Electron、受限Web体验",
+      "decision": "保留PC并做平台等价",
+      "implementation": "能力按现有runtime交付；OS特例给Windows等价；不为Mac Dock复制增加新平台",
+      "acceptance": "安装/升级/窄屏/离线/旧链接各运行时检查",
+      "milestone": "M7",
+      "status": "in_progress",
+      "evidence": [
+        "core/capabilities.ts + capability-adapter.ts / backend capability_service: available/degraded/unavailable、明确原因/恢复动作/runnable，区分依赖/加载/权限/未验证连接。",
+        "core/native-adapter.ts / inference-adapter.ts: 现有目录/文件选择、本地语义加载、人物与千问单张/批次提交接通实际既有服务；不新增自动上传/模型下载/计费重试。",
+        "workspace/CapabilitiesPanel: 两运行时默认收起的只读状态和安装/授权/本机替代入口；坏快照局限于状态面板，单个后端provider失败不拖垮其他能力。",
+        "全套Windows安装/升级、完整系统桥、全部离线/旧链接验收仍待后续M6/M7；不能因接口和状态读取通过标记整体平台交付完成。",
+        "本批最终：后端100、前端逻辑34、桌面界面67、独立浏览器42项全套通过；两种构建、图标、diff检查通过。实际状态读取不打开模型下载/原片/云连接，模拟AI不冒充真实画质。",
+        "2026-10-23 待跟踪：Web 高清查看回归曾出现双击后只有选中状态、查看器未打开；未改产品源码的单独重复3次和随后完整99项通过，根因仍未证明。web-editor.spec.mjs 保留只在失败时输出的有界合成点击目标诊断，正式运行时/包验收前继续定位，不能仅凭重跑通过声称修复。",
+        "2026-10-25 新证据：滚动期间react-window内部pointer-events:none可稳定复现照片命中外层DIV；6项虚拟布局失败而2项瀑布流对照通过。GalleryContent保留虚拟化并解除内部指针屏蔽后，本机320/390四布局8项和独立Web四布局4项实际两次按下通过，完整本机158/Web131通过，无延迟/自动重试。该滚动路径已有根因与修复证据，不能替代全部Windows/WebView2、安装升级、离线/旧链接验收。",
+        "2026-10-27最后四项联合验收：详见 docs/afterframe-upgrade.md 最终结果；原始日志保存在不入Git的 .test-artifacts/final-four-*。"
+      ],
+      "progress_note": "桌面/Web生产构建、离线窄屏旧链接、实际WebView2六路径和真实CPU/WASM模型通过；安装/升级部分按用户明确决定延期，未完成整项验收。"
+    },
+    {
+      "id": "AF72",
+      "domain": "浏览选片",
+      "feature": "灯箱缩放/白底校样/胶片导航",
+      "photocollection_now": "已有沉浸灯箱/极光/FilmTrain",
+      "afterframe_now": "fit/zoom/drag/胶片条/白底proof",
+      "decision": "融合",
+      "implementation": "保留现有特色；新增白底校样、精确缩放与少量邻图预读，工具自动收合",
+      "acceptance": "减少动态时静态可操作；原比例/键盘/焦点与双语完整",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/workspace/ViewerPicture.tsx + useViewerZoom.ts + ViewerTools.tsx + viewer.css: 原查看器内增加1%–800%精确缩放、指针锚点、受限拖动、适应/100%、白底与闲置收合；局部姿态不触发整库重绘，减少动态保持工具可用。",
+        "frontend/src/App.tsx + shortcuts.ts: 保留普通/极光/雪境/FilmTrain及全部原动作；最多17张胶片条、Home/End与焦点跟随、切图复位、可重绑命令和输入保护，旧自定义绑定优先。",
+        "frontend/tests/viewer.spec.mjs + viewer-geometry.test.ts + shortcuts.test.ts: 双主题/双语/窄屏、真实双击、缩放尺寸/锚点/连续滚轮、收合/固定/焦点/减少动态与旧绑定冲突通过。",
+        "frontend/tests/web-editor.spec.mjs: 本地授权文件真实鼠标与CDP触摸拖动、适应窗口横滑、高清1600到4096切换和原片哈希不变。",
+        "2026-10-22最终源码全套：后端123、前端逻辑52、桌面服务浏览器93、本地Web58，两种生产构建、图标检查通过；人工核对宽屏中文暗色/390英文浅色白底截图。",
+        "100%指当前预览CSS像素，白底为查看背景而非ICC打印软打样；真实WebView/硬件峰值/发行包仍属M7，不将当前运行时验收冒充整体99项完成。"
+      ]
+    },
+    {
+      "id": "AF73",
+      "domain": "创作编辑",
+      "feature": "图层深度/描边/发光/直接操作",
+      "photocollection_now": "水印署名参数，无统一自由stack",
+      "afterframe_now": "文本/贴纸共享控制，吸附/旋转/重排",
+      "decision": "新增统一图层",
+      "implementation": "LayerDocument统一归一化坐标/样式/深度；导出从源重算，持久recipe",
+      "acceptance": "8方向手柄/旋转吸附/撤销/裁切后不漂移",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十项批次：LayerDocument v2冻结坐标；八向独立缩放、旋转/吸附/撤销、描边阴影发光与深度共用预览导出。实测修正旋转与顶部缩放手柄重叠；两端保存/重开及裁切映射通过。",
+        "docs/local-vision-and-layers.md；docs/local-agent.md；docs/afterframe-upgrade.md记录首轮失败和复验。"
+      ],
+      "progress_note": "LayerDocument v2冻结坐标；八向独立缩放、旋转/吸附/撤销、描边阴影发光与深度共用预览导出。实测修正旋转与顶部缩放手柄重叠；两端保存/重开及裁切映射通过。"
+    },
+    {
+      "id": "AF74",
+      "domain": "创作编辑",
+      "feature": "多格式/高分辨率/安全导出",
+      "photocollection_now": "JPG/PNG、独立导出登记/命名冲突，持久草稿",
+      "afterframe_now": "JPG/PNG/WebP与Sharp/Canvas",
+      "decision": "融合，以PC安全为准",
+      "implementation": "增WebP和能力允许格式；预览/导出共享几何，路径白名单/冲突编号/hash保留",
+      "acceptance": "无静默缩小/原图覆盖/半成品成功，元数据策略明确",
+      "milestone": "M4",
+      "status": "verified",
+      "evidence": [
+        "拼图十部分批次：完整源图Canvas直接编码WebP，检查实际MIME、文件RIFF/WEBP标识及2048输出尺寸；单页实际下载、逐页WebP与ZIP输出通过两端专项检查。PNG/JPEG、源hash及RAW中性输出回归保留。",
+        "十部分统一验证最终：后端328、前端逻辑189、Native完整216、Web完整236、图标1及两种构建全部通过；最终产品实现之后无修改，原片/副本哈希保持。运行时及未完成范围见实施记录。",
+        "实际JPEG/PNG/WebP、元数据策略、冲突编号/失败清理/原片hash/原子登记回归通过；保留省略质量时的旧默认95，网页版导出返回实际尺寸。两端新模板导出真实字节验收通过。",
+        "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。"
+      ],
+      "progress_note": "实际JPEG/PNG/WebP、元数据策略、冲突编号/失败清理/原片hash/原子登记回归通过；保留省略质量时的旧默认95，网页版导出返回实际尺寸。两端新模板导出真实字节验收通过。",
+      "active_batch_note": "待实施：除已有拼图WebP外，统一多格式导出、路径/覆盖/失败清理、元数据策略、共享预览导出几何仍需完成。"
+    },
+    {
+      "id": "PC01",
+      "domain": "光影集保留",
+      "feature": "拍摄/文件双口径与RAW+JPG分组",
+      "photocollection_now": "已有明确口径/分组",
+      "afterframe_now": "以文件/资源集合为主",
+      "decision": "保留PC",
+      "implementation": "新查询/视频/版本显示继续携带countMode",
+      "acceptance": "同一张RAW+JPEG默认一拍摄；派生作品另计",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "frontend/tests/capture-groups.test.ts：唯一配对/歧义拒绝、人工标记/影集成员与封面、capture/file移除记录留源；后台与网页全量导入回归通过。",
+        "query-scope.spec.mjs：真实file统计下钻打开RAW，删除记录保留配对JPEG及两原片SHA。"
+      ],
+      "progress_note": "已完成本批统一验证：RAW/JPEG唯一配对、拍摄/文件双口径、代表文件/影集排序与来源记录保留；不自动重组旧库单例。"
+    },
+    {
+      "id": "PC02",
+      "domain": "光影集保留",
+      "feature": "收藏与人工颜色圆环",
+      "photocollection_now": "favorite/rating/color_label已存在",
+      "afterframe_now": "flag/主色为不同机制",
+      "decision": "保留PC",
+      "implementation": "收藏/人工标签/分析主色/旗标4字段独立显示筛选",
+      "acceptance": "升级不重解释旧颜色，快捷动作不互相覆盖",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "test_similarity.py、web-editor.spec.mjs：派生色板过滤与收藏/人工色标/旗标四者独立；完整两端已有标记与快捷操作回归。"
+      ],
+      "progress_note": "已完成本批统一验证：人工色标/收藏/旗标各自保留，新增派生色板与独立筛选；快捷修改刷新当前结果。"
+    },
+    {
+      "id": "PC03",
+      "domain": "光影集保留",
+      "feature": "时间线年月日树与照片",
+      "photocollection_now": "已有本地统计树",
+      "afterframe_now": "无同等报告型模块",
+      "decision": "保留PC",
+      "implementation": "统一QueryScope与索引口径，旧时间线入口不消失",
+      "acceptance": "旧URL/日期未知/跨时区口径回归",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "backend/tests/test_analysis_scope.py + frontend/tests/analysis-scope.test.ts：同范围树/照片计数、无效/未知日期、时区当地日期、闰日与分页；既有时间线入口回归。"
+      ],
+      "progress_note": "已完成本批统一验证：时间线树/照片共用范围与双口径、未知/无效日期/跨时区墙钟、分页与迟到响应保护。"
+    },
+    {
+      "id": "PC04",
+      "domain": "光影集保留",
+      "feature": "器材统计与精确/分组直方图",
+      "photocollection_now": "相机镜头/焦段/光圈ISO快门钻取",
+      "afterframe_now": "EXIF筛选无同等统计体系",
+      "decision": "保留PC",
+      "implementation": "新筛选AST映射现有图表drilldown",
+      "acceptance": "统计总数/点击过滤与范围一致",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "backend/tests/test_analysis_scope.py：分组/精确各bin总数与锁定scope浏览匹配。",
+        "similarity-analysis.spec.mjs：真实图表点击后保留原50mm下限/收藏并叠加24–70mm条件；query-scope保留file口径。"
+      ],
+      "progress_note": "已完成本批统一验证：保留精确/分组直方图与指标；当前范围可选、AND下钻、锁定口径与范围一致。"
+    },
+    {
+      "id": "PC05",
+      "domain": "光影集保留",
+      "feature": "月报/年报/镜头报告",
+      "photocollection_now": "已有焦段分界/活跃日月/封面",
+      "afterframe_now": "无同等体系",
+      "decision": "保留PC",
+      "implementation": "维持全部指标/设置，生成缩略图与新分析分开",
+      "acceptance": "升级前后相同样本数字一致",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "analysis-scope.test.ts、test_analysis_scope.py及browser-statistics.test.ts：月年范围交集、拍摄/文件双总数、月末/闰年与未来日期边界、旧统计报告流程。"
+      ],
+      "progress_note": "已完成本批统一验证：月/年/镜头报告保留原指标、设置与叙述；日期交集/双总数、月末闰年和过去12月边界。"
+    },
+    {
+      "id": "PC06",
+      "domain": "光影集保留",
+      "feature": "照片多图对比",
+      "photocollection_now": "已有独立compare入口",
+      "afterframe_now": "有Compare与重绘对比",
+      "decision": "保留PC并共用视图",
+      "implementation": "增加同步缩放/对齐可选，保留独立对比页与链接",
+      "acceptance": "不将选片对比限制成AI before/after",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/ComparePage.tsx + workspace/ComparePicture.tsx + compare.css + core/comparison-view.ts: 保留独立2–4张、深链接、EXIF和移除/返回；按相对适应大小与归一化观察位置联动，支持开关同步、逐张调整、居中/适应、边界拖动和键盘。",
+        "frontend/src/browser/api.ts: 补齐已有对比入口缺失的只读本地路由，复用已有预览和共享媒体池，不读写原片或上传。",
+        "frontend/tests/comparison-view.test.ts + compare.spec.mjs + web-editor.spec.mjs: 几何比例/锚点/边界、双语双主题窄屏、最多4图/迟到请求/深链接、真实本地CDP触摸及全部3张原片哈希与记录数量，新增定向3+2通过。",
+        "2026-10-22最终源码：前端逻辑55、桌面服务浏览器96、本地Web60全套通过；两种生产构建、图标及diff检查通过。后端未改，本轮最新全套123通过。人工核对1440中文暗色/390英文浅色比较截图，原比例/配色/入口保留。",
+        "当前运行时验收通过；不是特征点自动配准，不新增AI调用或修改图片。M7真实WebView/硬件/发行检查仍单独进行。"
+      ]
+    },
+    {
+      "id": "PC07",
+      "domain": "光影集保留",
+      "feature": "Chinese-CLIP中文语义检索",
+      "photocollection_now": "本地模型+FAISS/矩阵回退",
+      "afterframe_now": "注释文本LIKE，非对等",
+      "decision": "保留PC",
+      "implementation": "向量索引revision与hash重建；可选小模型Web，默认不开云替代",
+      "acceptance": "无标签也能语义召回；不同模型不得混向量",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "test_embedding_spaces.py/test_semantic_jobs.py：模型文件变化、旧/不同revision与损坏向量拒绝，取消保留已完成原子向量。",
+        "本机已有Chinese-CLIP缓存离线实测：3张无标签合成图、中文红色圆形正确排首、按图排除自身、FAISS/矩阵一致、异revision拒绝、原片SHA保持；不下载/不上传。"
+      ],
+      "progress_note": "已完成本批统一验证：本地Chinese-CLIP模型revision及原片/预览/向量来源校验，原子写入与有限缓存、FAISS失效、按图语义检索；schema25复制合并保留。"
+    },
+    {
+      "id": "PC08",
+      "domain": "光影集保留",
+      "feature": "语义智能影集与人工候选确认",
+      "photocollection_now": "已有any/all/threshold/人工整理",
+      "afterframe_now": "规则智能集合",
+      "decision": "保留PC",
+      "implementation": "增加rule类型而非改变semantic旧类型",
+      "acceptance": "旧关键词/阈值/已确认成员不丢",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "test_similarity.py/test_photo_query.py：重新匹配保留人工成员及旧关键词/负阈值/模式/上限，仅保存改成员。",
+        "similarity-analysis.spec.mjs：旧成员选中/新候选未选中、取消不保存、迟到匹配不重开编辑器。"
+      ],
+      "progress_note": "已完成本批统一验证：重新匹配保留人工成员和旧参数，新候选人工确认，取消/迟到请求保护，仅明确保存更新；语义和规则类型独立。"
+    },
+    {
+      "id": "PC09",
+      "domain": "光影集保留",
+      "feature": "人物确认→影集快照",
+      "photocollection_now": "命名确认后建影集；已有直接打开",
+      "afterframe_now": "实时人像视图/组",
+      "decision": "保留PC",
+      "implementation": "新增实时person filter但保留快照与关系",
+      "acceptance": "后续聚类不自动重写已建影集",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "backend/tests/test_faces.py：人物确认创建普通影集快照后，重分配与重分析不改成员；Native真实人物影集关系和删除回归通过。"
+      ],
+      "progress_note": "已完成本批统一验证：已有实时人物视图和普通影集快照保持独立；补充重分配及重分析不得改变快照的回归用例。"
+    },
+    {
+      "id": "PC10",
+      "domain": "光影集保留",
+      "feature": "持久水印草稿/状态/复制",
+      "photocollection_now": "恢复/复制/ready/exported/来源缺失等",
+      "afterframe_now": "AF主要编辑会话/版本",
+      "decision": "保留PC",
+      "implementation": "统一新图层document，旧模板与旧revision兼容",
+      "acceptance": "关闭重开/离开保护/跨窗口冲突/批量参数不变",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "保留草稿恢复/复制/状态/撤销与离开保护；补保存会话代次防迟到响应、Web修改后恢复draft状态及modified_since_export一致性。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC11",
+      "domain": "光影集保留",
+      "feature": "逐草稿参数批量导出",
+      "photocollection_now": "每作品自己的布局/格式参数",
+      "afterframe_now": "批量图像/拼图",
+      "decision": "保留PC",
+      "implementation": "批量任务仅覆显式导出字段，不统一覆盖布局",
+      "acceptance": "不同草稿比对预览/输出，取消保留成功项",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "提交时冻结各草稿参数，导出只覆盖显式字段；两端编号/去重/失败继续/成功保留，旧版本导出不标记新版本已导出，取消传递到文件发布。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC12",
+      "domain": "光影集保留",
+      "feature": "沉浸光感与无署名稳定布局",
+      "photocollection_now": "独立模板、无署名不移照片/两侧信息",
+      "afterframe_now": "无直接同款",
+      "decision": "保留PC",
+      "implementation": "新模板系统保留旧engine，golden像素检查",
+      "acceptance": "中心署名区域外输出像素一致",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "保留独立ambient与旧frame渲染引擎；沉浸光感无署名时照片和两侧信息位置保持，新增中心区域外像素回归。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC13",
+      "domain": "光影集保留",
+      "feature": "本地艺术字字体与wonder图案",
+      "photocollection_now": "授权中文/英文与固定图案",
+      "afterframe_now": "17个AI生成样式",
+      "decision": "保留PC",
+      "implementation": "本地字体离线兜底，AI手写只是新增贴纸来源",
+      "acceptance": "授权/缺字回退/图案固定属性不回归",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "保留所有OFL字体、缺字回退和固定wonder图案；浏览器字体加载失败不永久缓存拒绝，复原后可重试，补资产/固定图案回归。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC14",
+      "domain": "光影集保留",
+      "feature": "专用千问水彩工作流",
+      "photocollection_now": "标准/Pro/标题确认/纸纹/55%-85%留白",
+      "afterframe_now": "通用AI风格重绘",
+      "decision": "保留PC",
+      "implementation": "独立WatercolorRecipe与scene/poster版本；国内新provider不改旧协议",
+      "acceptance": "极端比例/主体边缘/本地改版不计费",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "保留专用千问协议/独立密钥/比例技术留边/纸面及55%-85%布局；两端生成前核对原片SHA，Web增加专用layout与标题确认校验，本地改版不调用云。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC15",
+      "domain": "光影集保留",
+      "feature": "最多100张批量水彩与逐张标题",
+      "photocollection_now": "当前源码/README已加入",
+      "afterframe_now": "无同等专用流程",
+      "decision": "保留PC",
+      "implementation": "批次范围快照/确认/父子Job，标题顺序与作品对应",
+      "acceptance": "部分失败/断连unknown不重发，已存作品可用",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "保留100张范围和逐张结果/标题；提交冻结原片哈希与模型，逐项保留unknown计费状态且无重试；标题应用检查生成作品revision，避免覆盖人工修改。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC16",
+      "domain": "光影集保留",
+      "feature": "水彩→水印固定海报来源",
+      "photocollection_now": "revision快照引用/在用删除保护",
+      "afterframe_now": "普通重绘派生版本",
+      "decision": "保留PC",
+      "implementation": "版本图关系和引用计数，不用latest路径替代快照",
+      "acceptance": "改水彩不改旧水印；在用版本不清理",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "固定海报revision及引用保护保留；新水印快照记录海报SHA，读取/导出拒绝损坏来源；历史revision URL正确解析，排版跳过中断文件且不覆盖旧字节。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC17",
+      "domain": "光影集保留",
+      "feature": "极光背景/沉浸展映/胶片列车",
+      "photocollection_now": "已有独特可选效果与减少动态",
+      "afterframe_now": "轻量玻璃灯箱",
+      "decision": "保留PC，仅按用户要求删除手电筒",
+      "implementation": "双击沿用当前查看器；保留普通/极光/雪境/FilmTrain与氛围/全屏/速度；旧torch回退普通",
+      "acceptance": "只删除手电筒菜单/开关/追踪，其余浏览功能不回归；减少动态有效",
+      "milestone": "M1",
+      "status": "verified",
+      "evidence": [
+        "frontend/tests/workspace.spec.mjs",
+        "frontend/tests/rebuild.spec.mjs",
+        "docs/afterframe-upgrade.md"
+      ]
+    },
+    {
+      "id": "PC18",
+      "domain": "光影集保留",
+      "feature": "纯Web持久图库/备份/重连",
+      "photocollection_now": "目录JSON+previous+locks+IDBhandles",
+      "afterframe_now": "AF会话内存/30图体验",
+      "decision": "保留PC",
+      "implementation": "继续目录权威，新增可重建Worker索引/引用计数URL缓存",
+      "acceptance": "清浏览器缓存重授权恢复，无服务器也可用",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [],
+      "progress_note": "已完成十任务统一验收：目录为权威、可重建索引及资源缓存、开库会话隔离、句柄缓存丢失后离线重开及显式重新授权恢复通过；合成目录测试，备份维护互斥与分块核验通过。"
+    },
+    {
+      "id": "PC19",
+      "domain": "光影集保留",
+      "feature": "16位RAW与摄影调整/仿色",
+      "photocollection_now": "Web现有全套曝光WB曲线HSL仿色等",
+      "afterframe_now": "8位渲染编辑+LUT",
+      "decision": "保留PC并推广桌面",
+      "implementation": "共享纯TS内核与适配器；增加自由角/图层不替换原功能",
+      "acceptance": "旧recipe回放；16位源验证；最终输出位深如实标注",
+      "milestone": "M3",
+      "status": "verified",
+      "evidence": [
+        "frontend/src/core/editor-adapter.ts",
+        "frontend/src/browser/editor-adapter.ts",
+        "frontend/src/native/editor-adapter.ts",
+        "frontend/src/browser/edit-worker.ts",
+        "frontend/tests/desktop-editor.spec.mjs",
+        "frontend/tests/web-editor.spec.mjs",
+        "2026-10-22编辑源版本：source-decode-profile.ts/source_decode.py保存不可变v1/v2规则，旧缺省保持v1，新JPEG内嵌XMP方向与EXIF优先；实际新旧裁剪/重开/PNG导出及源SHA通过。Native副本/复制/合并保留，schema4语义升级先备份；Browser manifest2兼容读1并首次写入保留原始字节备份，未来版本拒绝。完整163后端/111Native/84Web/67逻辑，两生产构建/icon通过。",
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "纯TS像素/配方内核提取core，两端共享并保留browser兼容入口；保留曝光/WB/曲线/HSL/Lab/几何/图层/LUT、16位输入及如实8位输出。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC20",
+      "domain": "光影集保留",
+      "feature": "暗房编辑记录与源SHA256",
+      "photocollection_now": "持久recipe/外部原始副本/100状态撤销",
+      "afterframe_now": "Apply烘焙/80会话状态",
+      "decision": "保留PC",
+      "implementation": "统一document保存，保留100状态（参数），独立导出，不烘焙掉原工程",
+      "acceptance": "源改动拒绝套旧配方，编辑重开/备份恢复",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "backend/app/editor_routes.py",
+        "backend/app/services/editor_service.py",
+        "backend/tests/test_editor.py",
+        "frontend/src/core/editor-adapter.ts",
+        "frontend/tests/desktop-editor.spec.mjs",
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "保留100状态、独立参数工程与导出、SHA/版本并发保护和备份；修复Browser缓存File尚在但链接原片已改变时仍可保存的漏洞。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    },
+    {
+      "id": "PC21",
+      "domain": "光影集保留",
+      "feature": "公开作品白名单导出和静态站",
+      "photocollection_now": "显式选片/清除EXIFGPS/哈希资源/空站构建",
+      "afterframe_now": "无对等发布工作流",
+      "decision": "保留PC",
+      "implementation": "新派生图同样显式选中才公开；保持访客本地入口和整包替换",
+      "acceptance": "未选照片/源路径/人脸/GPS/密钥绝不进入包",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [],
+      "progress_note": "已完成十任务统一验收：显式白名单派生选片、默认不选、公开清单与JPEG净化、前后SHA校验、访客本地入口通过；实际合成公开构建仅含两张选中图，无私有字段/EXIF，解码像素一致，公开UI4项通过。"
+    },
+    {
+      "id": "PC22",
+      "domain": "光影集保留",
+      "feature": "目录迁移/独立模型/导出路径",
+      "photocollection_now": "已有迁移备份/重启切换",
+      "afterframe_now": "每库及app data目录",
+      "decision": "保留PC",
+      "implementation": "新mask/sticker/edit/video/analysis纳入迁移清单；保留外部原片位置",
+      "acceptance": "跨盘中断回滚，模型可单独放置，旧库保留",
+      "milestone": "M7",
+      "status": "verified",
+      "evidence": [],
+      "progress_note": "已完成十任务统一验收：Native目标盘暂存/核验/发布、失败回滚、旧库/外部原片/独立模型保留及新资产复制合并通过；Browser分块核验与最后写清单通过。中断为合成注入测试，未做真实跨物理磁盘拔盘实验。"
+    },
+    {
+      "id": "PC23",
+      "domain": "光影集保留",
+      "feature": "Windows安装/便携/安全升级",
+      "photocollection_now": "WebView2引导校验/保留库卸载/安装验证防覆盖",
+      "afterframe_now": "Electron NSIS/Mac签名",
+      "decision": "保留PC",
+      "implementation": "新工具/模型按可选资源打包、许可证和来源记录齐全",
+      "acceptance": "测试隔离库/安装保留数据，包无私人数据或key",
+      "milestone": "M7",
+      "status": "in_progress",
+      "evidence": [
+        "2026-10-27最后四项联合验收：详见 docs/afterframe-upgrade.md 最终结果；原始日志保存在不入Git的 .test-artifacts/final-four-*。"
+      ],
+      "progress_note": "最终便携程序实际导入/导出/安全删除、DPAPI、模型和WebView2通过，发行清单与隐私检查通过；安装器已构建。当前正式安装保护阻止覆盖，用户暂无独立账户/机器，实际安装/升级/卸载验收保留待完成。"
+    },
+    {
+      "id": "PC24",
+      "domain": "光影集保留",
+      "feature": "云端独立凭证与确认/无自动重试",
+      "photocollection_now": "DPAPI/浏览器会话key/中转确认",
+      "afterframe_now": "存在key回退/自动标注等宽松行为",
+      "decision": "保留PC",
+      "implementation": "本地/云域隔离，MCP写和付费单独授权，安全结果下载",
+      "acceptance": "所有未授权操作0请求，断连unknown可查不盲重试",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27最后四项联合验收：详见 docs/afterframe-upgrade.md 最终结果；原始日志保存在不入Git的 .test-artifacts/final-four-*。"
+      ],
+      "progress_note": "独立凭证、逐次明确授权、拒绝零请求、授权凭证固定、双端安全请求编号持久化、断连unknown/重开不重发通过；浏览器总任务与子任务回执同步已修复，无真实付费调用。"
+    },
+    {
+      "id": "PC25",
+      "domain": "光影集保留",
+      "feature": "本地Python插件与事务兼容",
+      "photocollection_now": "AST被动发现、参数调用、事务回滚",
+      "afterframe_now": "MCP是新增接口而非替代",
+      "decision": "保留PC",
+      "implementation": "保留现有插件名/参数/日志与Context；新增能力用兼容版本扩展，不在扫描时执行插件",
+      "acceptance": "被动发现无执行副作用、错误更新回滚；不把Python插件宣传为沙箱",
+      "milestone": "M0",
+      "status": "verified",
+      "evidence": [
+        "2026-10-27固定十任务批次验收：后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。"
+      ],
+      "progress_note": "保持AST被动发现、插件名/参数/日志/Context；ctx.photos复用事务可见自身更新，插件评分记为人工来源，失败整体回滚。明确API版本1，不冒充沙箱。 本批统一验收通过；真实千问画质与安装包发行不在本次验证范围。"
+    }
+  ],
+  "ui_revision": {
+    "date": "2026-10-20",
+    "status": "verified",
+    "requirements": 6,
+    "tests": "frontend/tests/workspace.spec.mjs",
+    "remaining_scope": "Other feature decisions retain their pending status; this is not the completion of all 99 decisions.",
+    "validation": {
+      "backend": 80,
+      "backend_note": "Unchanged in the media batch; last full backend run passed.",
+      "frontend_logic": 23,
+      "desktop_local_web_browser": 54,
+      "standalone_browser": 38,
+      "builds": [
+        "desktop",
+        "browser"
+      ],
+      "goal_complete": false
+    }
+  },
+  "batch_policy": {
+    "unit": "distinct feature ids from the existing 99-task registry",
+    "task_count": 10,
+    "verification_gate": "Implement the full scope of all 10 selected tasks before running builds, tests and acceptance together. Internal substeps do not count as tasks. Carry the batch across turns.",
+    "historical_substep_batches_are_not_ten_tasks": true,
+    "final_batch_exception": {
+      "feature_ids": [
+        "AF70",
+        "AF71",
+        "PC23",
+        "PC24"
+      ],
+      "authorization": "2026-10-27 用户：最后4项一起做",
+      "verification_gate": "Finish all four implementations before running combined builds, tests and acceptance."
+    }
+  },
+  "active_batch": {
+    "id": "final-migration-runtime-release-cloud-4",
+    "status": "pending_installation_acceptance",
+    "feature_ids": [
+      "AF70",
+      "AF71",
+      "PC23",
+      "PC24"
+    ],
+    "verification_started": true,
+    "tasks": [
+      {
+        "id": "AF70",
+        "feature": "迁移前备份与版本拒绝",
+        "implementation_status": "verified",
+        "acceptance": "中断/磁盘满/旧库/跨盘与DPAPI失败恢复",
+        "progress_note": "已验证原子备份、磁盘满/硬中断/复制损坏恢复、真实跨卷迁移、导出别名与回执迁移、DPAPI跨账户失败及重新保存；原片hash保持。"
+      },
+      {
+        "id": "AF71",
+        "feature": "桌面/网页/本地系统特例",
+        "implementation_status": "implemented",
+        "acceptance": "安装/升级/窄屏/离线/旧链接各运行时检查",
+        "progress_note": "桌面/Web生产构建、离线窄屏旧链接、实际WebView2六路径和真实CPU/WASM模型通过；安装/升级部分按用户明确决定延期，未完成整项验收。"
+      },
+      {
+        "id": "PC23",
+        "feature": "Windows安装/便携/安全升级",
+        "implementation_status": "implemented",
+        "acceptance": "测试隔离库/安装保留数据，包无私人数据或key",
+        "progress_note": "最终便携程序实际导入/导出/安全删除、DPAPI、模型和WebView2通过，发行清单与隐私检查通过；安装器已构建。当前正式安装保护阻止覆盖，用户暂无独立账户/机器，实际安装/升级/卸载验收保留待完成。"
+      },
+      {
+        "id": "PC24",
+        "feature": "云端独立凭证与确认/无自动重试",
+        "implementation_status": "verified",
+        "acceptance": "所有未授权操作0请求，断连unknown可查不盲重试",
+        "progress_note": "独立凭证、逐次明确授权、拒绝零请求、授权凭证固定、双端安全请求编号持久化、断连unknown/重开不重发通过；浏览器总任务与子任务回执同步已修复，无真实付费调用。"
+      }
+    ],
+    "progress_note": "四项完整实现后统一验证；AF70/PC24通过。用户明确暂无独立测试账户/电脑，保留安装验收待完成；不覆盖当前正式安装。",
+    "verification": {
+      "date": "2026-10-27",
+      "verified_feature_ids": [
+        "AF70",
+        "PC24"
+      ],
+      "remaining_feature_ids": [
+        "AF71",
+        "PC23"
+      ],
+      "installation_acceptance": "deferred_by_user",
+      "user_decision": "暂时没有，保留安装验收待完成",
+      "report": "docs/afterframe-upgrade.md",
+      "private_evidence_directory": ".test-artifacts/",
+      "limitations": "未实际安装/升级/卸载，不声称99项全部验证；未调用付费服务。全量首轮发现问题后做相关复验，未将重叠用例相加。"
+    }
+  },
+  "completed_batches": [
+    {
+      "id": "media-frames-video-10",
+      "status": "verified",
+      "feature_ids": [
+        "AF07",
+        "AF42",
+        "AF43",
+        "AF44",
+        "AF45",
+        "AF46",
+        "AF47",
+        "AF48",
+        "AF63",
+        "AF74"
+      ],
+      "verification_started": true,
+      "tasks": [
+        {
+          "id": "AF07",
+          "feature": "HEIC/HEIF/TIFF统一显示",
+          "implementation_status": "verified",
+          "acceptance": "横竖/透明/ICC测试；冷解码不阻塞UI",
+          "progress_note": "方向/ICC/透明度及16位TIFF回归通过；TIFF/HEIC真实高清解码与持久缓存通过。同步缓存前后端版本为pc-display-2，未改变旧水印源解码。"
+        },
+        {
+          "id": "AF42",
+          "feature": "22种EXIF相框/用户模板",
+          "implementation_status": "verified",
+          "acceptance": "旧草稿导出金样保持，横竖长幅字体布局正确",
+          "progress_note": "22模板×横幅/竖幅/长幅布局渲染、旧v1像素金样、两端中英文模板保存和WebP真实导出通过；来源hash不变。"
+        },
+        {
+          "id": "AF43",
+          "feature": "品牌/个人Logo覆盖",
+          "implementation_status": "verified",
+          "acceptance": "Logo授权记录随包；手动覆盖优先，透明边缘无光晕",
+          "progress_note": "透明Logo预乘采样边缘、手动优先级、个人资产验证和旧快照保留通过；复用已有品牌/署名及授权来源文件。"
+        },
+        {
+          "id": "AF44",
+          "feature": "机型名称规范与用户别名",
+          "implementation_status": "verified",
+          "acceptance": "原始字段可查、别名可恢复、未知机型可用",
+          "progress_note": "精确品牌/机型映射、用户别名严格校验和原始EXIF保留通过；别名提供器维持按需加载与图库代次隔离。"
+        },
+        {
+          "id": "AF45",
+          "feature": "视频入库与封面/元信息",
+          "implementation_status": "verified",
+          "acceptance": "原片只读，损坏视频不阻塞导入，照片计数不回归",
+          "progress_note": "真实FFmpeg合成视频导入/坏片隔离/删除留源、两端视频播放及照片计数隔离通过；复制迁库与合并覆盖视频和相框资产。"
+        },
+        {
+          "id": "AF46",
+          "feature": "悬停关键帧预览",
+          "implementation_status": "verified",
+          "acceptance": "离开停止请求/不持续自动播放，prefers-reduced-motion可静态",
+          "progress_note": "两端真实界面验证650ms不切帧、1s后关键帧、移出恢复封面、reduced-motion保持静态及手动关键帧；资源预算和取消回归通过。"
+        },
+        {
+          "id": "AF47",
+          "feature": "灯箱视频播放器",
+          "implementation_status": "verified",
+          "acceptance": "视频未就绪不只播声音，键盘/焦点/字幕语义清楚",
+          "progress_note": "两端真实视频验证不自动播放、Space播放/暂停、VTT一条字幕加载显示、关闭恢复播放按钮焦点；照片灯箱完整回归通过。"
+        },
+        {
+          "id": "AF48",
+          "feature": "HEVC等兼容代理",
+          "implementation_status": "verified",
+          "acceptance": "源hash不变、重复请求不重转、代理尺寸/音画同步可验",
+          "progress_note": "真实本机FFmpeg代理尺寸、时间/音画相对时序、完整源hash、重复请求/取消/缓存保护通过；浏览器明确依赖原生编解码，不宣称执行FFmpeg。"
+        },
+        {
+          "id": "AF63",
+          "feature": "文件级复制/拖出/定位",
+          "implementation_status": "verified",
+          "acceptance": "不得从网页任意读盘；原片不写、不冒充已有OS权限",
+          "progress_note": "2026-10-26 AF63闭环：复用WebView2现有窗口的STA UI线程，停止在独立后台STA线程运行OLE拖放；只接受已登记照片ID，拖放只协商Copy，前台窗口/真实按键预检，提前松开/取消/到期退出与互斥。正式启动器+实际React照片信息栏→HTTP→Windows原生接收区真实投放成功，副本及原片SHA-256一致；合成窗口复制→空白取消→再复制及真实手势超时取消通过。仅桌面窗口就绪后声明drag能力，本机Web无窗口时保留复制/下载，纯Web文件分享或下载。未引入编译器、辅助EXE或新依赖。"
+        },
+        {
+          "id": "AF74",
+          "feature": "多格式/高分辨率/安全导出",
+          "implementation_status": "verified",
+          "acceptance": "无静默缩小/原图覆盖/半成品成功，元数据策略明确",
+          "progress_note": "实际JPEG/PNG/WebP、元数据策略、冲突编号/失败清理/原片hash/原子登记回归通过；保留省略质量时的旧默认95，网页版导出返回实际尺寸。两端新模板导出真实字节验收通过。"
+        }
+      ],
+      "progress_note": "固定10项AF07、AF42–AF48、AF63、AF74全部实现后统一验证；失败修复与复验已闭环，10项均已验收。未用子步骤抵数。整体99项目标继续。",
+      "verification": {
+        "date": "2026-10-26",
+        "passed_feature_ids": [
+          "AF07",
+          "AF42",
+          "AF43",
+          "AF44",
+          "AF45",
+          "AF46",
+          "AF47",
+          "AF48",
+          "AF63",
+          "AF74"
+        ],
+        "remaining_feature_ids": [],
+        "summary": "2026-10-26统一验证：后端完整355通过，边界补充13通过；前端198通过；桌面完整221中176首轮通过、45修复后全通过；网页完整243中221首轮通过、22经两轮修复全通过。最终两构建及icon通过；随后桌面媒体/高清14、相框视频3、网页相框视频/导出4及两端关键帧/VTT各1复验通过。不是最终源码又跑一遍全部套件。",
+        "audit": "272份初始副本hash一致；52份文档283个本地链接有效；无私人Git候选；git diff --check通过。",
+        "private_evidence_directory": ".test-artifacts/afterframe-upgrade/",
+        "af63_closure": "2026-10-26 AF63闭环：复用WebView2现有窗口的STA UI线程，停止在独立后台STA线程运行OLE拖放；只接受已登记照片ID，拖放只协商Copy，前台窗口/真实按键预检，提前松开/取消/到期退出与互斥。正式启动器+实际React照片信息栏→HTTP→Windows原生接收区真实投放成功，副本及原片SHA-256一致；合成窗口复制→空白取消→再复制及真实手势超时取消通过。仅桌面窗口就绪后声明drag能力，本机Web无窗口时保留复制/下载，纯Web文件分享或下载。未引入编译器、辅助EXE或新依赖。",
+        "closure_checks": "本次补充：文件传递接口5通过、Catalog/受管理启动重开6通过、桌面全屏1通过、图标1通过；272份初始副本哈希一致，差异空白检查通过。沿用本批此前完整套件与修复复验，不声称本次再次运行全部前后端及浏览器套件。 最后补齐文件传递校验错误的中英文文案后，前端198项、文件传递5项再次通过，桌面/纯Web生产构建再次通过。最终审计52文档283本地链接有效，Git候选无测试数据或私人文件。"
+      }
+    },
+    {
+      "id": "similarity-and-library-preservation-10",
+      "status": "verified",
+      "feature_ids": [
+        "AF61",
+        "AF62",
+        "PC01",
+        "PC02",
+        "PC03",
+        "PC04",
+        "PC05",
+        "PC07",
+        "PC08",
+        "PC09"
+      ],
+      "verification_started": true,
+      "tasks": [
+        {
+          "id": "AF61",
+          "feature": "近重复库/感知哈希",
+          "implementation_status": "verified",
+          "acceptance": "不同场景/裁切/重编码样片标定；默认仅建议不删图",
+          "progress_note": "已完成本批统一验证：Native/Browser版本化pHash、BK-tree、本地显式可取消索引、来源校验、全库候选分页；独立阈值与可选本地CLIP复核，仅供人工审阅。"
+        },
+        {
+          "id": "AF62",
+          "feature": "右键查相似/检查器相似条",
+          "implementation_status": "verified",
+          "acceptance": "候选排序稳定，RAW/JPEG来源不重复混算，人工确认",
+          "progress_note": "已完成本批统一验证：右键与Shift+F10菜单、检查器八张相似条、展开候选、原查看器联动、稳定排序和拍摄去重；双语/主题/窄屏沿用现有组件。"
+        },
+        {
+          "id": "PC01",
+          "feature": "拍摄/文件双口径与RAW+JPG分组",
+          "implementation_status": "verified",
+          "acceptance": "同一张RAW+JPEG默认一拍摄；派生作品另计",
+          "progress_note": "已完成本批统一验证：RAW/JPEG唯一配对、拍摄/文件双口径、代表文件/影集排序与来源记录保留；不自动重组旧库单例。"
+        },
+        {
+          "id": "PC02",
+          "feature": "收藏与人工颜色圆环",
+          "implementation_status": "verified",
+          "acceptance": "升级不重解释旧颜色，快捷动作不互相覆盖",
+          "progress_note": "已完成本批统一验证：人工色标/收藏/旗标各自保留，新增派生色板与独立筛选；快捷修改刷新当前结果。"
+        },
+        {
+          "id": "PC03",
+          "feature": "时间线年月日树与照片",
+          "implementation_status": "verified",
+          "acceptance": "旧URL/日期未知/跨时区口径回归",
+          "progress_note": "已完成本批统一验证：时间线树/照片共用范围与双口径、未知/无效日期/跨时区墙钟、分页与迟到响应保护。"
+        },
+        {
+          "id": "PC04",
+          "feature": "器材统计与精确/分组直方图",
+          "implementation_status": "verified",
+          "acceptance": "统计总数/点击过滤与范围一致",
+          "progress_note": "已完成本批统一验证：保留精确/分组直方图与指标；当前范围可选、AND下钻、锁定口径与范围一致。"
+        },
+        {
+          "id": "PC05",
+          "feature": "月报/年报/镜头报告",
+          "implementation_status": "verified",
+          "acceptance": "升级前后相同样本数字一致",
+          "progress_note": "已完成本批统一验证：月/年/镜头报告保留原指标、设置与叙述；日期交集/双总数、月末闰年和过去12月边界。"
+        },
+        {
+          "id": "PC07",
+          "feature": "Chinese-CLIP中文语义检索",
+          "implementation_status": "verified",
+          "acceptance": "无标签也能语义召回；不同模型不得混向量",
+          "progress_note": "已完成本批统一验证：本地Chinese-CLIP模型revision及原片/预览/向量来源校验，原子写入与有限缓存、FAISS失效、按图语义检索；schema25复制合并保留。"
+        },
+        {
+          "id": "PC08",
+          "feature": "语义智能影集与人工候选确认",
+          "implementation_status": "verified",
+          "acceptance": "旧关键词/阈值/已确认成员不丢",
+          "progress_note": "已完成本批统一验证：重新匹配保留人工成员和旧参数，新候选人工确认，取消/迟到请求保护，仅明确保存更新；语义和规则类型独立。"
+        },
+        {
+          "id": "PC09",
+          "feature": "人物确认→影集快照",
+          "implementation_status": "verified",
+          "acceptance": "后续聚类不自动重写已建影集",
+          "progress_note": "已完成本批统一验证：已有实时人物视图和普通影集快照保持独立；补充重分配及重分析不得改变快照的回归用例。"
+        }
+      ],
+      "progress_note": "固定10个独立ID完整实现后统一开启验证；失败修复与复验已闭环，未开启下一批。",
+      "verification": {
+        "date": "2026-10-26",
+        "passed_feature_ids": [
+          "AF61",
+          "AF62",
+          "PC01",
+          "PC02",
+          "PC03",
+          "PC04",
+          "PC05",
+          "PC07",
+          "PC08",
+          "PC09"
+        ],
+        "remaining_feature_ids": [],
+        "summary": "后端完整372通过，补充范围/日期/索引取消等10通过（含3个新增用例）；逻辑205与icon1通过，最终Native/Web两构建通过。Native完整224首轮221通过/3失败，46项复验关闭原3失败但新增图表测试等待了错误接口；修正为/photos/ids后最终新交互4项全过。Web完整246首轮239通过/7旧版本断言失败，修正后11项复验10过/1新增备份失败夹具断言失败（空预留文件），保留原清单和有效备份逐字节断言后最终4项全过。最终仅余CSS内边距调整，两构建及两端各4项再通过。不是最终源码再次全量跑完所有套件。",
+        "audit": "272个初始备份文件SHA一致，原片SHA/复制合并/备份失败回滚通过，git diff --check通过，无私人Git候选。中英文宽窄相似界面截图已检查。",
+        "private_evidence_directory": ".test-artifacts/afterframe-upgrade/similarity-library-10/",
+        "limitations": "当前源码运行时验收，不含新安装包/发布。浏览器未启用语义模型；桌面使用本地Chinese-CLIP。外观裁切漏检/低细节误判由界面提示；无自动删图。"
+      }
+    },
+    {
+      "id": "sources-discover-location-lifecycle-10",
+      "status": "verified",
+      "feature_ids": [
+        "AF06",
+        "AF64",
+        "AF65",
+        "AF66",
+        "AF67",
+        "AF68",
+        "AF69",
+        "PC18",
+        "PC21",
+        "PC22"
+      ],
+      "verification_started": true,
+      "tasks": [
+        {
+          "id": "AF06",
+          "feature": "导出图匹配外部RAW来源",
+          "implementation_status": "verified",
+          "acceptance": "连拍/改名/跨机同名不误绑，保留人工确认",
+          "progress_note": "Native/Browser 独立 RAW 登记、名称/时间/机型线索及冲突、人工确认、SHA/版本检查、清除关联与合并保留通过；不改 CaptureGroup 或原片。"
+        },
+        {
+          "id": "AF64",
+          "feature": "回忆/人物/地点/影集Discover",
+          "implementation_status": "verified",
+          "acceptance": "不覆盖手选12图；无GPS可按日期兜底",
+          "progress_note": "保留手选12图与启动展示页，追加回忆/人物/地点/影集折叠区及持久偏好；无GPS按日期兜底，无效日期与现有人物入口回归通过。"
+        },
+        {
+          "id": "AF65",
+          "feature": "本地地图/聚类/视窗筛选",
+          "implementation_status": "verified",
+          "acceptance": "日界线/无GPS/十万点截断提示、纯本地基础地图",
+          "progress_note": "离线 Natural Earth 底图、Native R*Tree/Browser 网格、日界线/精确范围、十万点聚合/300点截断及下钻通过；中英文宽窄深浅地图截图已复核。"
+        },
+        {
+          "id": "AF66",
+          "feature": "人工地点与来源优先",
+          "implementation_status": "verified",
+          "acceptance": "手工优先、清除回落GPS；公开导出默认无地点",
+          "progress_note": "独立人工地点与SHA/版本绑定、人工优先、清除回落、20步撤销和迁移保留通过；无效地点响应被拒绝，不影响原查看器，公开包无地点记录。"
+        },
+        {
+          "id": "AF67",
+          "feature": "增量监听/缺失核验/重定位",
+          "implementation_status": "verified",
+          "acceptance": "重复事件幂等，移出库不立即重导，磁盘断开可恢复",
+          "progress_note": "Windows 目录变化合批与周期补扫、Browser 显式授权及前台扫描、重复事件合并、断开状态、路径/内容墓碑与SHA重定位回归通过；移出记录不自动复活。"
+        },
+        {
+          "id": "AF68",
+          "feature": "移出图库/磁盘回收站",
+          "implementation_status": "verified",
+          "acceptance": "原片hash/存在性恒定，在用作品版本阻止回收",
+          "progress_note": "Native软移出/Browser完整归档、关系保留与恢复、在用/原片保护、显式派生回收与恢复日志、目标冲突/中断回归通过；修复移出文字索引残留和旧草稿归档来源重定位。"
+        },
+        {
+          "id": "AF69",
+          "feature": "派生图/RAW资源集合",
+          "implementation_status": "verified",
+          "acceptance": "旧ID/影集/草稿不变；新派生来源可追踪",
+          "progress_note": "来源图保留旧ID，区分拍摄组/人工RAW/暗房/水印水彩/拼图切图，80节点/6层截断与继续查看、冻结编辑来源及归档引用保护通过。"
+        },
+        {
+          "id": "PC18",
+          "feature": "纯Web持久图库/备份/重连",
+          "implementation_status": "verified",
+          "acceptance": "清浏览器缓存重授权恢复，无服务器也可用",
+          "progress_note": "目录为权威、可重建索引及资源缓存、开库会话隔离、句柄缓存丢失后离线重开及显式重新授权恢复通过；合成目录测试，备份维护互斥与分块核验通过。"
+        },
+        {
+          "id": "PC21",
+          "feature": "公开作品白名单导出和静态站",
+          "implementation_status": "verified",
+          "acceptance": "未选照片/源路径/人脸/GPS/密钥绝不进入包",
+          "progress_note": "显式白名单派生选片、默认不选、公开清单与JPEG净化、前后SHA校验、访客本地入口通过；实际合成公开构建仅含两张选中图，无私有字段/EXIF，解码像素一致，公开UI4项通过。"
+        },
+        {
+          "id": "PC22",
+          "feature": "目录迁移/独立模型/导出路径",
+          "implementation_status": "verified",
+          "acceptance": "跨盘中断回滚，模型可单独放置，旧库保留",
+          "progress_note": "Native目标盘暂存/核验/发布、失败回滚、旧库/外部原片/独立模型保留及新资产复制合并通过；Browser分块核验与最后写清单通过。中断为合成注入测试，未做真实跨物理磁盘拔盘实验。"
+        }
+      ],
+      "progress_note": "固定10个独立任务全部完成实现后才统一运行验证；首轮失败已修复并定向复验闭环。未以子步骤抵数，未开启下一批。",
+      "verification": {
+        "date": "2026-10-26",
+        "passed_feature_ids": [
+          "AF06",
+          "AF64",
+          "AF65",
+          "AF66",
+          "AF67",
+          "AF68",
+          "AF69",
+          "PC18",
+          "PC21",
+          "PC22"
+        ],
+        "remaining_feature_ids": [],
+        "summary": "后端完整384项首轮375通过/9失败，85项复验84通过/1失败，最终12项通过；前端逻辑首轮211通过/1失败，修复后相关10项通过。Native完整225项首轮169通过/56失败，99项复验96通过/3失败，最终7项通过。Web完整252项首轮236通过/16失败，21项复验20通过/1失败，最终8项通过（含新增扫描检查）。最终Native/Web/带合成内容Showcase构建、公开UI4项、icon1项通过。不是最终源码再次全量运行所有套件。",
+        "audit": "272份初始备份SHA一致；合成原片、迁移/备份/回收保护通过；两张合成公开图像素一致且无EXIF/私有字段；847个Git候选未发现私人路径/数据候选；git diff --check通过。",
+        "private_evidence_directory": ".test-artifacts/",
+        "evidence_logs": [
+          "lifecycle-progress.json",
+          "lifecycle-native-ui.log",
+          "lifecycle-native-retry.log",
+          "lifecycle-native-final.log",
+          "lifecycle-web-final.log",
+          "lifecycle-public-ui-final.log",
+          "lifecycle-relink-retry-2.log",
+          "lifecycle-public-final-audit.json",
+          "lifecycle-backup-audit.json"
+        ],
+        "limitations": "源码运行时与合成图库验收，不包含安装包发行、真实跨物理磁盘拔盘或云端付费画质验证。Web重授权使用合成目录句柄。公开站没有部署。"
+      }
+    },
+    {
+      "id": "watermark-watercolor-darkroom-plugins-10",
+      "status": "verified",
+      "feature_ids": [
+        "PC10",
+        "PC11",
+        "PC12",
+        "PC13",
+        "PC14",
+        "PC15",
+        "PC16",
+        "PC19",
+        "PC20",
+        "PC25"
+      ],
+      "verification_started": true,
+      "tasks": [
+        {
+          "id": "PC10",
+          "feature": "持久水印草稿/状态/复制",
+          "implementation_status": "verified",
+          "acceptance": "关闭重开/离开保护/跨窗口冲突/批量参数不变",
+          "progress_note": "保留草稿恢复/复制/状态/撤销与离开保护；补保存会话代次防迟到响应、Web修改后恢复draft状态及modified_since_export一致性。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC11",
+          "feature": "逐草稿参数批量导出",
+          "implementation_status": "verified",
+          "acceptance": "不同草稿比对预览/输出，取消保留成功项",
+          "progress_note": "提交时冻结各草稿参数，导出只覆盖显式字段；两端编号/去重/失败继续/成功保留，旧版本导出不标记新版本已导出，取消传递到文件发布。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC12",
+          "feature": "沉浸光感与无署名稳定布局",
+          "implementation_status": "verified",
+          "acceptance": "中心署名区域外输出像素一致",
+          "progress_note": "保留独立ambient与旧frame渲染引擎；沉浸光感无署名时照片和两侧信息位置保持，新增中心区域外像素回归。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC13",
+          "feature": "本地艺术字字体与wonder图案",
+          "implementation_status": "verified",
+          "acceptance": "授权/缺字回退/图案固定属性不回归",
+          "progress_note": "保留所有OFL字体、缺字回退和固定wonder图案；浏览器字体加载失败不永久缓存拒绝，复原后可重试，补资产/固定图案回归。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC14",
+          "feature": "专用千问水彩工作流",
+          "implementation_status": "verified",
+          "acceptance": "极端比例/主体边缘/本地改版不计费",
+          "progress_note": "保留专用千问协议/独立密钥/比例技术留边/纸面及55%-85%布局；两端生成前核对原片SHA，Web增加专用layout与标题确认校验，本地改版不调用云。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC15",
+          "feature": "最多100张批量水彩与逐张标题",
+          "implementation_status": "verified",
+          "acceptance": "部分失败/断连unknown不重发，已存作品可用",
+          "progress_note": "保留100张范围和逐张结果/标题；提交冻结原片哈希与模型，逐项保留unknown计费状态且无重试；标题应用检查生成作品revision，避免覆盖人工修改。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC16",
+          "feature": "水彩→水印固定海报来源",
+          "implementation_status": "verified",
+          "acceptance": "改水彩不改旧水印；在用版本不清理",
+          "progress_note": "固定海报revision及引用保护保留；新水印快照记录海报SHA，读取/导出拒绝损坏来源；历史revision URL正确解析，排版跳过中断文件且不覆盖旧字节。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC19",
+          "feature": "16位RAW与摄影调整/仿色",
+          "implementation_status": "verified",
+          "acceptance": "旧recipe回放；16位源验证；最终输出位深如实标注",
+          "progress_note": "纯TS像素/配方内核提取core，两端共享并保留browser兼容入口；保留曝光/WB/曲线/HSL/Lab/几何/图层/LUT、16位输入及如实8位输出。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC20",
+          "feature": "暗房编辑记录与源SHA256",
+          "implementation_status": "verified",
+          "acceptance": "源改动拒绝套旧配方，编辑重开/备份恢复",
+          "progress_note": "保留100状态、独立参数工程与导出、SHA/版本并发保护和备份；修复Browser缓存File尚在但链接原片已改变时仍可保存的漏洞。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        },
+        {
+          "id": "PC25",
+          "feature": "本地Python插件与事务兼容",
+          "implementation_status": "verified",
+          "acceptance": "被动发现无执行副作用、错误更新回滚；不把Python插件宣传为沙箱",
+          "progress_note": "保持AST被动发现、插件名/参数/日志/Context；ctx.photos复用事务可见自身更新，插件评分记为人工来源，失败整体回滚。明确API版本1，不冒充沙箱。 十项实现后统一验证，首轮失败已修复并定向复验通过。"
+        }
+      ],
+      "progress_note": "固定10项完整实现后统一验证；首轮失败已修复并复验关闭。未以子步骤抵数，尚未开启下一批。",
+      "verification": {
+        "date": "2026-10-27",
+        "verified_feature_ids": [
+          "PC10",
+          "PC11",
+          "PC12",
+          "PC13",
+          "PC14",
+          "PC15",
+          "PC16",
+          "PC19",
+          "PC20",
+          "PC25"
+        ],
+        "remaining_feature_ids": [],
+        "summary": "后端全量392项首轮390通过/2失败；修复后相关48项通过，最后增加横竖幅及空信息布局检查、刷新旧ambient预览后相关23项通过。逻辑214项、Native全量225项通过，最终新服务水彩/署名9项通过。Web全量255项首轮254通过/1旧测试缺少标题确认字段失败；补未确认零发送断言及确认流程后相关4项通过。Native/Web/空内容Showcase构建、icon1通过。首轮失败已关闭，未声称最终源码重新全量运行所有套件。",
+        "audit": "272份初始备份SHA一致；851个Git候选未发现私人数据库、模型、日志、截图、密钥或测试目录候选；合成原片保护与署名区域外像素检查通过；宽屏深色和窄屏浅色截图复核。",
+        "private_evidence_directory": ".test-artifacts/",
+        "evidence_logs": [
+          "creation-backend.log",
+          "creation-backend-retry.log",
+          "creation-final-backend.log",
+          "creation-logic.log",
+          "creation-native-ui.log",
+          "creation-native-retry.log",
+          "creation-web-ui.log",
+          "creation-web-retry.log",
+          "creation-build-native.log",
+          "creation-build-web.log",
+          "creation-showcase-build.log",
+          "creation-icon.log",
+          "creation-final-audit.json"
+        ],
+        "limitations": "仅源码运行时与合成图库验收；未调用付费AI，真实千问画质未验收。未生成新安装包、部署、提交或推送。"
+      }
+    },
+    {
+      "id": "domestic-ai-annotation-settings-10",
+      "status": "verified",
+      "feature_ids": [
+        "AF12",
+        "AF35",
+        "AF49",
+        "AF50",
+        "AF51",
+        "AF52",
+        "AF53",
+        "AF54",
+        "AF55",
+        "AF56"
+      ],
+      "verification_started": true,
+      "tasks": [
+        {
+          "id": "AF12",
+          "feature": "加密设置导出/迁移",
+          "implementation_status": "verified",
+          "acceptance": "错口令/篡改/旧版本拒绝；Web会话密钥不自动持久化",
+          "progress_note": "选定偏好AES-GCM/PBKDF2加密迁移；可选AI工作室账户密钥包默认关闭，预览确认后原子导入为新账户，Web密钥仅会话保存。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF35",
+          "feature": "AI手写字",
+          "implementation_status": "verified",
+          "acceptance": "换色/移动不重复计费，错字可弃用，本地字体功能保留",
+          "progress_note": "独立手写生成、可选参考图、黑白转alpha、本地改色/位置/缩放/人工核对导出，保留原字体功能。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF49",
+          "feature": "多供应商图像适配",
+          "implementation_status": "verified",
+          "acceptance": "模型/协议/地区/account不混用；未授权0调用，失败不跨厂商自动重试",
+          "progress_note": "官方Qwen与Ark独立配置、模型/地区能力、Windows加密与Web会话密钥、独立转发协议，零自动调用/跨供应商重试。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF50",
+          "feature": "25风格预设与自定义prompt",
+          "implementation_status": "verified",
+          "acceptance": "旧水彩不变；非水彩按各模型能力明确尺寸限制",
+          "progress_note": "25份可查看提示词预设和自定义prompt，两端按模型能力显示输出尺寸限制，专用水彩不改。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF51",
+          "feature": "重绘对比/历史版本",
+          "implementation_status": "verified",
+          "acceptance": "切版本不重新计费、不改变在用水印来源",
+          "progress_note": "不可变结果/父版本、来源对比、历史选择、DerivedGraph、迁移/备份/回收引用保护。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF52",
+          "feature": "自动描述/标签/OCR/地点猜测",
+          "implementation_status": "verified",
+          "acceptance": "字段验证、人工优先、无上传默认；不伪称GPS真值",
+          "progress_note": "结构化描述/双语标签/OCR/地点猜测，去EXIF/GPS，人工标注优先，猜测人工确认/否决只记录来源、不写GPS。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF53",
+          "feature": "单张/多选/影集/缺失标注任务",
+          "implementation_status": "verified",
+          "acceptance": "失败不重发计费POST，取消保留已成功照片结果",
+          "progress_note": "单张/多选/影集规则/缺失/导入固定范围和10分钟授权令牌，逐项结果/计费状态/取消，无自动重发。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF54",
+          "feature": "导入自动标注",
+          "implementation_status": "verified",
+          "acceptance": "未经授权0云请求；新导入不意外计费历史积压",
+          "progress_note": "导入记录本次新增IDs，活动中心仅提示并打开范围确认，零隐式云调用。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF55",
+          "feature": "双语标签数量/描述长度",
+          "implementation_status": "verified",
+          "acceptance": "模型格式错可人工修，中文英文标签可检索",
+          "progress_note": "版本化结构校验、数量/字数上限、Unicode规范化/去重、原始坏JSON保存和本地修复。 统一验证通过；真实供应商画质未做付费验证。"
+        },
+        {
+          "id": "AF56",
+          "feature": "标注结果融入检索",
+          "implementation_status": "verified",
+          "acceptance": "不把无标签语义召回退化成仅LIKE",
+          "progress_note": "双语描述/OCR/标签复用既有QueryAST与文字索引，新增明确字段检索入口，保留独立语义搜索。 统一验证通过；真实供应商画质未做付费验证。"
+        }
+      ],
+      "progress_note": "固定十项完整实现后统一验证；首轮失败修复并定向复验通过；已归档，未开启下一批。",
+      "verification": {
+        "date": "2026-10-27",
+        "verified_feature_ids": [
+          "AF12",
+          "AF35",
+          "AF49",
+          "AF50",
+          "AF51",
+          "AF52",
+          "AF53",
+          "AF54",
+          "AF55",
+          "AF56"
+        ],
+        "remaining_feature_ids": [],
+        "summary": "后端全量403项：399通过、4个旧schema/表数量断言失败；更新后相关21项通过，追加取消/来源变更/历史合并后AI专项9项通过。逻辑220项、桌面界面全量227项、relay10项、icon1项通过。Web全量256项：249通过、7失败；6个旧schema断言及1个预览切换时测试解码竞态已修复，最终相关10项含新加密包界面用例全部通过。最终Native/Web构建均exit0，最终桌面AI/文字相关4项通过。首轮失败均关闭，不声称最终源码重新全量跑过全部套件。",
+        "audit": "272份初始副本SHA一致；最终Git候选无私人数据库/权重/日志/截图/凭证。深浅主题及窄屏截图复核，AI页面分页缩略图与手写alpha正常。两个本次测试临时目录路径转义问题已移回忽略区。",
+        "evidence_logs": [
+          "ai-batch-backend.log",
+          "ai-batch-backend-retry.log",
+          "ai-batch-final-backend.log",
+          "ai-batch-logic.log",
+          "ai-batch-native-ui.log",
+          "ai-batch-web-ui.log",
+          "ai-batch-final-native-build.log",
+          "ai-batch-final-web-build.log",
+          "ai-batch-final-native-retry.log",
+          "ai-batch-final-web-retry.log",
+          "ai-batch-relay.log",
+          "ai-batch-icon.log",
+          "ai-batch-audit.json"
+        ],
+        "private_evidence_directory": ".test-artifacts/",
+        "limitations": "合成图库、合成模型响应与真实本地处理链验收；未验证真实账户权限/模型画质，未调用付费AI、打包、部署、提交或推送。"
+      }
+    },
+    {
+      "id": "local-vision-layers-agent-10",
+      "status": "verified",
+      "feature_ids": [
+        "AF09",
+        "AF11",
+        "AF37",
+        "AF38",
+        "AF39",
+        "AF57",
+        "AF58",
+        "AF59",
+        "AF60",
+        "AF73"
+      ],
+      "verification_started": true,
+      "tasks": [
+        {
+          "id": "AF09",
+          "feature": "中英文实时切换",
+          "implementation_status": "verified",
+          "acceptance": "两语言不丢正在编辑状态，所有新文案齐全",
+          "progress_note": "新增视觉/图层/Agent界面、任务状态与错误使用现有中英体系；语言切换与中英宽窄界面复验通过，编辑内容保持。"
+        },
+        {
+          "id": "AF11",
+          "feature": "工具偏好重启恢复",
+          "implementation_status": "verified",
+          "acceptance": "重启恢复布局/工具偏好而不改旧草稿",
+          "progress_note": "图层折叠/吸附/隐藏素材与AI工作室选项接入图库级偏好；作品文字/几何/深度留在工程，密钥/审批不持久化；两端重开检查通过。"
+        },
+        {
+          "id": "AF37",
+          "feature": "可排序蒙层",
+          "implementation_status": "verified",
+          "acceptance": "调层级/alpha撤销与导出一致，LUT不污染文字",
+          "progress_note": "蒙层、文字、贴纸共用混合堆栈/排序/透明度/撤销及渲染；实际像素、旧工程、切图与备份相关回归通过。"
+        },
+        {
+          "id": "AF38",
+          "feature": "深度感知文字/贴纸",
+          "implementation_status": "verified",
+          "acceptance": "遮挡坐标对齐，模型缺失能正常无深度编辑",
+          "progress_note": "DepthAnythingV2-Small本地CPU与量化WASM真实推理通过；SHA+模型版本缓存、源绑定、深度阈值/羽化、缺模型普通编辑、取消/保存重开通过。"
+        },
+        {
+          "id": "AF39",
+          "feature": "主体抠图与贴纸库",
+          "implementation_status": "verified",
+          "acceptance": "不同主体可选、毛发/边缘样片验收、纯本地、原图只读",
+          "progress_note": "SlimSAM固定许可与哈希离线导入，两端真实多主体输出、实例ID和透明PNG通过；每库贴纸隐藏/导出/重开保持作品。公开样片发现并修正置信度直接映射的残影；复杂反光/毛发不保证精确，须人工核对和补点。"
+        },
+        {
+          "id": "AF57",
+          "feature": "37工具覆盖",
+          "implementation_status": "verified",
+          "acceptance": "37功能族映射齐全；写/付费分别经App审批",
+          "progress_note": "37族严格schema与现有services/共享渲染器适配完成；读取真实服务、写审批/原片只读及应用内文字工程端到端通过。"
+        },
+        {
+          "id": "AF58",
+          "feature": "双向选择桥",
+          "implementation_status": "verified",
+          "acceptance": "“这些”不串库/不使用过期ID，深定位不拉全库图片",
+          "progress_note": "图库UUID/聚焦窗口/15秒selectionVersion桥、100张上限、过期拒绝与应用定位接入；过期/换库/单次领取检查通过。"
+        },
+        {
+          "id": "AF59",
+          "feature": "Agent任务可见可取消",
+          "implementation_status": "verified",
+          "acceptance": "不出现隐藏付费任务；取消本机不误报退款",
+          "progress_note": "所有Agent工具请求进入活动记录，审批摘要/来源/范围/子任务/计费状态可查；取消/单次执行/中断不重试通过。仅未领取请求可暂停，不虚构运行中暂停。"
+        },
+        {
+          "id": "AF60",
+          "feature": "MCP本机运行与集成设置",
+          "implementation_status": "verified",
+          "acceptance": "非本机来源/错误token拒绝，secret不进工具结果",
+          "progress_note": "默认关闭且重启禁用的本机Streamable HTTP MCP；token、Host/Origin/loopback、代理拒绝、限额、独立scope与国内AI单独批准通过；纯Web说明不开放监听。"
+        },
+        {
+          "id": "AF73",
+          "feature": "图层深度/描边/发光/直接操作",
+          "implementation_status": "verified",
+          "acceptance": "8方向手柄/旋转吸附/撤销/裁切后不漂移",
+          "progress_note": "LayerDocument v2冻结坐标；八向独立缩放、旋转/吸附/撤销、描边阴影发光与深度共用预览导出。实测修正旋转与顶部缩放手柄重叠；两端保存/重开及裁切映射通过。"
+        }
+      ],
+      "progress_note": "固定10个任务完整实现后统一验证；发现的产品问题已修复并复验，归档本批，不将最后4项算入本批。",
+      "verification": {
+        "date": "2026-10-27",
+        "verified_feature_ids": [
+          "AF09",
+          "AF11",
+          "AF37",
+          "AF38",
+          "AF39",
+          "AF57",
+          "AF58",
+          "AF59",
+          "AF60",
+          "AF73"
+        ],
+        "remaining_feature_ids": [],
+        "summary": "后端首轮417项：413通过、4个旧迁移断言失败；修正后相关26项通过。追加本地视觉/Agent13项、真实多主体2项、真实读取适配8项通过（有重叠，不相加冒充总数）。逻辑223通过。桌面首轮228项147通过81失败；更新夹具与新图层语义后复验105通过2个夹具遗漏，后续15通过关闭两遗漏；新增贴纸发现手柄重叠后修复、两项通过；最终深度/Agent/浏览专项20项通过。Web首轮最终全量260项：253通过5失败2个显式模型测试跳过；修正旧版本/队列断言后最终相关15项全通过，含真实WASM模型与贴纸；另真实模型导入/取消/深度重开1项通过。最终两构建、图标1项与diff检查通过。未声称最终源码重新全量跑过所有套件。",
+        "audit": "272初始备份SHA一致；Git候选无私人数据库/权重/日志/截图；深浅主题截图已检查。",
+        "evidence_logs": [
+          "vision-agent-backend.log",
+          "vision-agent-backend-fixes.log",
+          "vision-backend-final.log",
+          "agent-read.log",
+          "vision-real-multi-native.log",
+          "vision-frontend-final-2.log",
+          "vision-agent-browser-native.log",
+          "vision-native-retry-2.log",
+          "vision-native-supplement.log",
+          "vision-native-sticker-2.log",
+          "vision-depth-ui-native.log",
+          "vision-web-retry.log",
+          "vision-web-final-retry.log",
+          "vision-depth-ui-web.log",
+          "vision-final-native-package-assets.log",
+          "vision-final-web-package-assets.log",
+          "vision-icon-final.log",
+          "vision-final-audit.json",
+          "agent-boundary-backend.log",
+          "agent-boundary-browser.log"
+        ],
+        "private_evidence_directory": ".test-artifacts/",
+        "limitations": "真实本地CPU/WASM与合成图库回归；公开样片仅人工边缘检查，复杂发丝/反光不保证精确。未调用付费AI、未上传私人照片、未打包/部署/提交/推送。最后4项发行与迁移专项仍待。",
+        "followup_audit": "完成审计补充：Agent字号schema原允许1024而共享编辑器上限1000，现统一为1–1000。补实际最小/最大字号审批与保存，以及多照片真实检索/空结果断言。后端相关14项、浏览器端到端2项通过；原片hash保持。"
+      }
+    }
+  ]
+}

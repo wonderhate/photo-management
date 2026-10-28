@@ -132,7 +132,7 @@ def test_auto_scan_imports_existing_images_and_excludes_derivatives(client, imag
     shutil.copy2(first,root/'first.jpg')
     (root/'subfolder').mkdir()
     shutil.copy2(second,root/'subfolder'/'second.jpg')
-    for name in ('thumbnails','previews','watermark_previews','exports'):
+    for name in ('thumbnails','previews','watermark_previews','exports','documents','assets'):
         (root/name).mkdir()
         shutil.copy2(derived,root/name/'must-not-import.jpg')
     monkeypatch.setattr(import_service,'DATA',root)

@@ -1,17 +1,51 @@
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+
+class AnnotationResult(BaseModel):
+    model_config=ConfigDict(extra='forbid',strict=True)
+    version: Literal[1]
+    expected_revision: int = Field(ge=0,le=9007199254740990)
+    source_hash: str = Field(pattern='^[a-f0-9]{64}$')
+    caption: str = Field(max_length=4000)
+    tags: list[str] = Field(max_length=100)
+    detected_text: str | None = Field(default=None,max_length=20000)
+    provider: str = Field(min_length=1,max_length=80)
+    model: str = Field(min_length=1,max_length=160)
+    @field_validator('version',mode='before')
+    @classmethod
+    def exact_version(cls,value):
+        if type(value) is not int or value!=1:raise ValueError('Invalid photo annotation.')
+        return value
+    @field_validator('provider','model')
+    @classmethod
+    def nonblank(cls,value):
+        if not value.strip():raise ValueError('Invalid photo annotation.')
+        return value.strip()
+    @field_validator('caption')
+    @classmethod
+    def caption_text(cls,value):return value.strip()
+    @field_validator('tags')
+    @classmethod
+    def tag_names(cls,value):return list(dict.fromkeys(v.strip()[:100] for v in value if v.strip()))
 
 class ImportRequest(BaseModel):
     paths: list[str] = Field(min_length=1, max_length=10000)
     recursive: bool = True
 
 class PhotoUpdate(BaseModel):
+    user_description: str | None = Field(default=None,max_length=4000)
+    add_tags: list[str] | None = Field(default=None,max_length=100)
+    remove_tags: list[str] | None = Field(default=None,max_length=100)
+    restore_ai_tags: list[str] | None = Field(default=None,max_length=100)
+    flag: Literal['picked','rejected','unmarked'] | None = None
     favorite: bool | None = None
     rating: int | None = Field(default=None, ge=0, le=5)
     color_label: str | None = Field(default=None, pattern='^(red|yellow|green|blue|none)$')
-    tags: list[str] | None = Field(default=None, max_length=100)
+    tags: list[str] | None = Field(default=None, max_length=200)
 
 class BatchEditRequest(BaseModel):
+    user_description: str | None = Field(default=None,max_length=4000)
+    flag: Literal['picked','rejected','unmarked'] | None = None
     photo_ids: list[str] = Field(min_length=1, max_length=10000)
     favorite: bool | None = None
     rating: int | None = Field(default=None, ge=0, le=5)
@@ -36,8 +70,29 @@ class FaceAnalysisRequest(BaseModel):
     photo_ids: list[str] = Field(default_factory=list,max_length=10000)
     threshold: float = Field(default=.45,ge=.3,le=.95)
 
+class FaceImportPolicy(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    enabled: bool = Field(strict=True)
+
 class FaceAssignRequest(BaseModel):
     person_id: str | None = None
+    version: str | None = None
+
+class FaceCoverRequest(BaseModel):
+    face_id: str | None = None
+    revision: str
+
+class FaceMergeRequest(BaseModel):
+    source_ids: list[str] = Field(min_length=1,max_length=100)
+    target_id: str
+    revisions: dict[str,str]
+
+class FaceMoveRequest(BaseModel):
+    face_versions: dict[str,str] = Field(min_length=1,max_length=1000)
+    name: str | None = Field(default=None,max_length=120)
+
+class FaceGroupDecisionRequest(BaseModel):
+    revisions: dict[str,str] = Field(min_length=1,max_length=100)
 
 class SmartRequest(BaseModel):
     keywords: list[str] = Field(min_length=1, max_length=16)
@@ -54,7 +109,8 @@ class SmartRequest(BaseModel):
 class AlbumRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     person_id: str | None = Field(default=None, min_length=1, max_length=120)
-    type: Literal['normal', 'smart'] = 'normal'
+    type: Literal['normal', 'smart', 'rule'] = 'normal'
+    query: dict | None = None
     keywords: list[str] = Field(default_factory=list, max_length=16)
     match_mode: Literal['all', 'any'] = 'any'
     threshold: float = Field(default=.38, ge=-1, le=1)
@@ -67,12 +123,54 @@ class AlbumRequest(BaseModel):
         if not name.strip(): raise ValueError('影集名称不能为空')
         return name.strip()
 
+    @model_validator(mode='after')
+    def valid_rule(self):
+        from .services.photo_query import normalize
+        if self.type == 'rule':
+            self.query = normalize(self.query)
+            if self.person_id or self.photo_ids or self.scores or self.keywords:raise ValueError('Invalid photo query.')
+        elif self.query is not None:raise ValueError('Invalid photo query.')
+        return self
+
 class AlbumUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    query: dict | None = None
     cover_photo_id: str | None = None
     person_id: str | None = Field(default=None, min_length=1, max_length=120)
 
+    @field_validator('query')
+    @classmethod
+    def valid_query(cls,value):
+        from .services.photo_query import normalize
+        return normalize(value)
+
+    @field_validator('name')
+    @classmethod
+    def valid_name(cls,value):
+        if value is None or not value.strip():raise ValueError('影集名称不能为空')
+        return value.strip()
+
+class PhotoQueryRequest(BaseModel):
+    query: dict
+
+    @field_validator('query')
+    @classmethod
+    def valid_query(cls,value):
+        from .services.photo_query import normalize
+        return normalize(value)
+
 class AlbumOrderRequest(BaseModel):
     photo_ids: list[str] = Field(default_factory=list, max_length=10000)
+
+class AlbumDeleteRequest(BaseModel):
+    ids: list[str] = Field(min_length=1,max_length=1000)
+
+    @field_validator('ids')
+    @classmethod
+    def unique_ids(cls,values):
+        import re
+        if len(set(values))!=len(values) or any(not re.fullmatch(r'[a-zA-Z0-9-]{1,80}',value) for value in values):raise ValueError('影集选择无效')
+        return values
 
 class PluginRunRequest(BaseModel):
     params: dict = Field(default_factory=dict)
@@ -81,6 +179,16 @@ class IdsRequest(BaseModel):
     ids: list[str] = Field(default_factory=list, max_length=1000)
 
 class WatermarkOptions(BaseModel):
+    frame_v2: dict | None = None
+
+    @field_validator('frame_v2')
+    @classmethod
+    def frame_snapshot(cls,value):
+        if value is not None:
+            from .frame_v2 import validate_frame
+            validate_frame(value)
+        return value
+
     template: Literal['frame', 'ambient'] = 'frame'
     style: Literal['modern_info_bar', 'classic_frame'] = 'modern_info_bar'
     show_brand_logo: bool = True
@@ -101,7 +209,7 @@ class WatermarkOptions(BaseModel):
     saturation: float = Field(default=1.25, ge=0, le=3)
     photo_scale: float = Field(default=.88, ge=.5, le=.99)
     shadow: bool = True
-    format: Literal['jpg','png'] = 'jpg'
+    format: Literal['jpg','png','webp'] = 'jpg'
     quality: int = Field(default=95, ge=1, le=100)
     long_edge: int = Field(default=4096, ge=0, le=16000)
     filename_template: str = Field(default='{original}_watermark', min_length=1, max_length=180)
@@ -163,7 +271,7 @@ class SettingsRequest(BaseModel):
     thumbnail_quality: int = Field(default=85, ge=30, le=100)
     count_mode: Literal['capture','file'] = 'capture'
     preview_preference: Literal['jpeg','raw'] = 'jpeg'
-    export_format: Literal['jpg','png'] = 'jpg'
+    export_format: Literal['jpg','png','webp'] = 'jpg'
     export_quality: int = Field(default=95, ge=1, le=100)
     export_long_edge: int = Field(default=4096, ge=0, le=16000)
     focal_bands: list[float] = Field(default_factory=lambda:[24,35,60,100,200], min_length=5, max_length=5)
