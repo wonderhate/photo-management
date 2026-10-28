@@ -91,6 +91,21 @@ from . import runtime_control
 app.include_router(catalog_router)
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173','http://localhost:8000','http://127.0.0.1:8000'], allow_methods=['GET','POST','PATCH','DELETE','PUT'], allow_headers=['Content-Type','X-PhotoCollection-Session','X-PhotoCollection-Library'], expose_headers=['X-PhotoCollection-Session','X-PhotoCollection-Library'])
 
+# Keep these exact-host rules aligned with edgeone.json. Google resources are
+# allowed only in the sandboxed satellite document, never in the library UI.
+# Source: https://developers.google.com/maps/domains (reviewed 2026-10-28).
+SATELLITE_CSP = "default-src 'none'; script-src 'self' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com blob:; worker-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://maps.googleapis.com https://mapsresources-pa.googleapis.com https://maps.gstatic.com https://khm.google.com https://khm.googleapis.com https://khm0.google.com https://khm0.googleapis.com https://khm1.google.com https://khm1.googleapis.com https://khms0.google.com https://khms0.googleapis.com https://khms1.google.com https://khms1.googleapis.com https://khms2.google.com https://khms2.googleapis.com https://khms3.google.com https://khms3.googleapis.com; connect-src https://maps.googleapis.com https://mapsresources-pa.googleapis.com https://maps.gstatic.com https://csi.gstatic.com https://khm.google.com https://khm.googleapis.com https://khm0.google.com https://khm0.googleapis.com https://khm1.google.com https://khm1.googleapis.com https://khms0.google.com https://khms0.googleapis.com https://khms1.google.com https://khms1.googleapis.com https://khms2.google.com https://khms2.googleapis.com https://khms3.google.com https://khms3.googleapis.com; font-src https://fonts.gstatic.com; frame-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; form-action 'none'"
+SATELLITE_HEADERS = {
+    '/maps/satellite.' + extension: {
+        'Cross-Origin-Embedder-Policy': 'unsafe-none',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Content-Security-Policy': SATELLITE_CSP,
+        'Cache-Control': 'no-cache',
+    }
+    for extension in ('html', 'js', 'css')
+}
+
 @app.middleware('http')
 async def protect_local_requests(request: Request, call_next):
     origin = request.headers.get('origin')
@@ -130,11 +145,15 @@ async def protect_local_requests(request: Request, call_next):
     response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
     if response.headers.get('content-type', '').startswith('text/html') and request.url.path not in ('/docs', '/redoc', '/docs/oauth2-redirect'):
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://ibasemaps-api.arcgis.com https://api.maptiler.com; media-src 'self' blob:; connect-src 'self' https://ibasemaps-api.arcgis.com https://api.maptiler.com; object-src 'none'; frame-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
     if request.url.path.startswith('/assets/vision-worker-'):
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; object-src 'none'"
     if request.url.path in {'/raw-1.6.0/'+name for name in ('index.js','worker.js','libraw.js','libraw.wasm')}:
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'"
+    if request.url.path in SATELLITE_HEADERS:
+        # Only the sandboxed map document and its two public assets opt out of
+        # COEP. The application and private-media routes stay isolated.
+        response.headers.update(SATELLITE_HEADERS[request.url.path])
     return response
 
 @app.exception_handler(ValueError)

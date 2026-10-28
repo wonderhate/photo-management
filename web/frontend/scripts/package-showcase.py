@@ -1,12 +1,28 @@
 """Package the public allowlist, never local author code or credentials."""
 import hashlib
 import json
+import re
 import subprocess
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def bundled_map_paths():
+    """Read the trusted source manifest, never a build's editable metadata."""
+    public = ROOT / 'frontend/public'
+    metadata = json.loads((public / 'maps/earth/metadata.json').read_text(encoding='utf-8'))
+    paths = {'maps/land-110m.json', 'maps/satellite.html', 'maps/satellite.js',
+             'maps/satellite.css', 'maps/earth/metadata.json',
+             'maps/earth/SHA256SUMS.txt', 'licenses/nasa-blue-marble.json',
+             'licenses/leaflet-BSD-2-Clause.txt', 'licenses/leaflet-source.json'}
+    for name in metadata['files']:
+        if not re.fullmatch(r'(?:globe\.jpg|\d+/\d+-\d+\.jpg)', name):
+            raise ValueError('Invalid bundled map path: ' + name)
+        paths.add('maps/earth/' + name)
+    return paths
 
 
 def validate_public(source):
@@ -16,7 +32,8 @@ def validate_public(source):
     if not (source / 'index.html').is_file():
         raise ValueError('Build the public showcase first.')
     allowed_root = {'index.html', 'windows.html', 'sw.js', 'site-notes.js', 'site-glass.css', 'site-glass.js', 'local-file-worker.js', 'pageview.js', 'robots.txt', 'sitemap.xml', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'edgeone.json'}
-    public_paths = {'about/index.html', 'lumina/index.html', 'en/index.html', 'en/about/index.html', 'en/lumina/index.html', 'maps/land-110m.json'}
+    map_paths = bundled_map_paths()
+    public_paths = {'about/index.html', 'lumina/index.html', 'en/index.html', 'en/about/index.html', 'en/lumina/index.html'} | map_paths
     allowed_dirs = {'assets', 'local-assets', 'raw-1.6.0', 'licenses', 'portfolio'}
     for p in files:
         rel = p.relative_to(source)
@@ -29,6 +46,12 @@ def validate_public(source):
             raise ValueError('Private author code cannot be published.')
         if p.stat().st_size > 25 * 1024 * 1024:
             raise ValueError('Public file exceeds 25 MiB: ' + rel.as_posix())
+        if rel.as_posix() in map_paths:
+            original = ROOT / 'frontend/public' / rel
+            if (not original.is_file() or original.is_symlink()
+                    or not original.resolve().is_relative_to((ROOT / 'frontend/public').resolve())
+                    or original.read_bytes() != p.read_bytes()):
+                raise ValueError('Map asset does not match its bundled source: ' + rel.as_posix())
     index = (source / 'index.html').read_text(encoding='utf-8')
     if 'windows.html' not in {p.name for p in files} or "unsafe-inline'" in index:
         raise ValueError('Missing download page or unexpected inline script policy.')
@@ -39,6 +62,9 @@ def validate_public(source):
         raise ValueError('Unselected images in the public build.')
     if not any(b'wss://ai.photomanagement.online/cloud-art' in p.read_bytes() for p in files if p.suffix in {'.js', '.mjs'}):
         raise ValueError('Build must use the formal WSS relay URL.')
+    actual_paths = {p.relative_to(source).as_posix() for p in files}
+    if not map_paths.issubset(actual_paths):
+        raise ValueError('Incomplete offline map assets: ' + ', '.join(sorted(map_paths - actual_paths)))
     return files, catalog
 
 

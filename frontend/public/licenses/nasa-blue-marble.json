@@ -1,0 +1,22 @@
+{
+  "name": "NASA Blue Marble: Next Generation - July 2004 with Topography",
+  "attribution": "NASA Earth Observatory",
+  "producer": "Reto Stöckli, NASA Earth Observatory (NASA Goddard Space Flight Center)",
+  "source": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography/july/world.topo.200407.3x21600x10800.jpg",
+  "source_page": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography/",
+  "credits_page": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/",
+  "source_sha256": "40a42c4511ccfbcdc6928d026a50da190e718772c7e6141ebd4ee9dbe946eda8",
+  "source_bytes": 21796912,
+  "source_dimensions": [
+    21600,
+    10800
+  ],
+  "source_nominal_resolution_meters": 2000,
+  "terms": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+  "usage": "NASA informational imagery, generally not subject to U.S. copyright. Attribution is retained. No NASA insignia, promotion or endorsement is included. This source has no third-party copyright notice.",
+  "conversion": "Equirectangular global image resized with Lanczos to 16384x8192, then successive 2x reductions for zoom levels 0-4; 682 JPEG tiles of 512x512. Globe texture 2048x1024 resized directly from source. JPEG quality 83, progressive, optimized, 4:4:4. No administrative boundary overlay.",
+  "asset_manifest": "/maps/earth/SHA256SUMS.txt",
+  "asset_manifest_sha256": "ad6fa905ea8c5b13425888f2f73fc45dfefe3d42e55be3549a536eeca9bb18fb",
+  "metadata": "/maps/earth/metadata.json",
+  "reviewed": "2026-10-28"
+}

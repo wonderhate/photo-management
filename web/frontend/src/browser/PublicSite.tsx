@@ -10,7 +10,9 @@ import './public-home.css';
 type Translate=(zh:string,en:string)=>string;
 function readRoute(){
   const hash=location.hash.slice(1)||'/',index=hash.indexOf('?');
-  return {path:index<0?hash:hash.slice(0,index),photo:new URLSearchParams(index<0?'':hash.slice(index+1)).get('photo')||new URLSearchParams(location.search).get('photo')||''};
+  const path=index<0?hash:hash.slice(0,index),anchor=path.replace(/^\/#/,'');
+  const section=['works','lumina','about','gallery'].includes(anchor)?anchor:'';
+  return {path:section?'/':path,section,photo:new URLSearchParams(index<0?'':hash.slice(index+1)).get('photo')||new URLSearchParams(location.search).get('photo')||''};
 }
 function photoTitle(photo:PublicPhoto,t:Translate){return photo.title||t('未命名作品','Untitled photograph');}
 
@@ -80,6 +82,7 @@ export default function PublicSite(){
   useEffect(()=>{const media=matchMedia('(prefers-reduced-motion: reduce)'),change=()=>{setReduced(media.matches);if(media.matches)setPlaying(false);};media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
   useEffect(()=>{if(previousPath.current!==route.path){previousPath.current=route.path;setSearch('');openedHere.current=false;window.scrollTo({top:0,behavior:'instant'});main.current?.focus({preventScroll:true});}},[route.path]);
   useEffect(()=>{const onScroll=()=>setStuck(window.scrollY>8);onScroll();window.addEventListener('scroll',onScroll,{passive:true});return()=>window.removeEventListener('scroll',onScroll);},[]);
+  useEffect(()=>{if(status!=='ready'||!route.section)return;const frame=requestAnimationFrame(()=>document.getElementById(route.section)?.scrollIntoView({block:'start',behavior:reduced?'instant':'smooth'}));return()=>cancelAnimationFrame(frame);},[status,route.section,reduced]);
   useEffect(()=>{if(status!=='ready')return;const nodes=Array.from(document.querySelectorAll<HTMLElement>('.public-home .rv'));if(!nodes.length)return;
     if(reduced||!('IntersectionObserver'in window)){nodes.forEach(node=>node.classList.add('in'));return;}
     const io=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){entry.target.classList.add('in');io.unobserve(entry.target);}},{rootMargin:'0px 0px -8% 0px',threshold:.12});
@@ -104,7 +107,7 @@ export default function PublicSite(){
   function openPhoto(id:string){openedHere.current=true;navigatePhoto(id);}
   function closePhoto(){if(openedHere.current){openedHere.current=false;history.back();}else navigatePhoto('',true);}
   function pageHref(path:string){const url=new URL(location.href);url.searchParams.delete('photo');url.hash=path;return url.pathname+url.search+url.hash;}
-  function sectionHref(id:string){return home?'#'+id:pageHref('/')+'#'+id;}
+  function sectionHref(id:string){const url=new URL(location.href);url.searchParams.delete('photo');url.hash=id;return url.pathname+url.search+url.hash;}
   async function copyQQ(){
     try{await navigator.clipboard.writeText(creator.qq);}
     catch{const field=document.createElement('textarea');field.value=creator.qq;document.body.appendChild(field);field.select();try{document.execCommand('copy');}catch{}field.remove();}
@@ -120,7 +123,6 @@ export default function PublicSite(){
         <a className="home-brand" href={pageHref('/')} aria-label={t('Wonder · 光影集 — 回到首页','Wonder · Lumina — back to the homepage')}><b>Wonder</b><span>{t('光影集 / Lumina','Lumina')}</span></a>
         <nav className="nav" aria-label={t('主导航','Main navigation')}>
           <a href={sectionHref('works')} aria-current={home?'page':undefined}>{t('作品','Work')}</a>
-          <a href={sectionHref('lumina')}>{t('光影集','Lumina')}</a>
           <a href={aboutHref}>{t('关于我','About')}</a>
           <a href="/windows.html">{t('下载','Download')}</a>
         </nav>

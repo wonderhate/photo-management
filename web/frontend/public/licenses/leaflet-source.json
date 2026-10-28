@@ -1,0 +1,11 @@
+{
+  "name": "Leaflet",
+  "version": "1.9.4",
+  "license": "BSD-2-Clause",
+  "license_file": "leaflet-BSD-2-Clause.txt",
+  "source": "https://github.com/Leaflet/Leaflet/tree/v1.9.4",
+  "license_source": "https://github.com/Leaflet/Leaflet/blob/v1.9.4/LICENSE",
+  "homepage": "https://leafletjs.com/",
+  "bundled_from": "leaflet@1.9.4 npm package",
+  "usage": "Local map rendering and view-based tile loading. No third-party API key or imagery is distributed with the library."
+}

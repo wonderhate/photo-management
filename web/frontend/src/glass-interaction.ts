@@ -10,7 +10,7 @@ export const GLASS_SURFACE_SELECTOR=[
   '.recent-panel','.hover-preview','.public-photo-info','.public-lightbox-bar','.public-lightbox-navigation','.public-thumbnails',
   '.display-panel','.facet-popover','.facet-workbench','.library-toolbar','.selection-toolbar',
   '.chart-panel','.editor-panel','.collage-controls','.split-options','.stage-toolbar','.collage-toolbar','.split-toolbar',
-  '.album-list-toolbar','.album-overview-controls','.timeline-sidebar','.map-controls','.art-task',
+  '.album-list-toolbar','.album-overview-controls','.timeline-sidebar','.map-controls','.map-connection','.map-selected-card','.map-view-switch','.leaflet-control-zoom','.art-task',
   '.public-header','.public-search','.public-cover-controls',
 ].join(',');
 
@@ -23,7 +23,7 @@ export const GLASS_CONTROL_SELECTOR=[
 const excludedSelector=[
   '[data-glass-exclude]','[data-liquid-glass="off"]','[inert]',
   '.photo-image','.photo-card','.lut-thumbnail','.lut-choice','.art-work-open',
-  '.map-cluster','.leaflet-marker-icon','.leaflet-control',
+  '.map-cluster','.satellite-photo-pin','.map-photo-fan','.globe-pin','.leaflet-marker-icon','.leaflet-control-attribution',
   '.layer-handle','.text-handle','.crop-handle','.composition-handle','.split-handle',
   '.collage-slot','.collage-canvas','.layer-canvas','.text-canvas','.composition-canvas','.split-canvas',
   '.color-dot','.color-dots','.rating-stars','.color-swatch','.palette-swatch','.palette-swatches',

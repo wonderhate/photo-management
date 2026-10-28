@@ -1,5 +1,8 @@
 import {browserApiModule} from './fixtures/browser-api-module.mjs';
 import {test,expect} from '@playwright/test';
+import {installOfflineEarthProbe,exerciseOfflineEarth} from './fixtures/offline-earth-map.mjs';
+import {installRegionalTiles,exerciseRegionalSatellite,syntheticArcGISKey,syntheticMapTilerKey} from './fixtures/regional-satellite.mjs';
+import {installSatelliteSDK,exerciseSatelliteMap,syntheticMapKey,assertMapPhotoFan} from './fixtures/satellite-map.mjs';
 import {readdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
@@ -148,7 +151,7 @@ test('browser overview queries read metadata only and relation edits preserve jo
 
 test.beforeEach(async({context})=>{
   await context.addInitScript(()=>{
-    if(location.origin!=='http://127.0.0.1:4185')return;
+    if(window!==top||location.origin!=='http://127.0.0.1:4185')return;
     window.__syntheticReady=(async()=>{
     localStorage.setItem('onboarded','1');
     FileSystemHandle.prototype.queryPermission=async()=>localStorage.getItem('deny-library')?'denied':'granted';
@@ -815,8 +818,8 @@ for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`lifecycle batch offline
   await call(page,'/locations/photos/'+p.id,'PUT',{source_hash:record.source_hash,expected_revision:0,operation:'set',value:{latitude:30,longitude:120,country:'China',city:'Hangzhou',label:'Lake',accuracy_m:100}});
   await page.evaluate(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);
   await page.setViewportSize({width,height:1000});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/?page=locations');await page.reload();
-  await expect(page.locator('.locations-page')).toBeVisible();await expect(page.locator('.map-cluster')).toHaveCount(1);await expect.poll(()=>page.locator('.photo-map svg path').count()).toBeGreaterThan(1);
-  await page.locator('.photo-map').focus();await page.keyboard.press('+');await page.getByRole('button',{name:lang==='zh'?'全世界':'Whole world',exact:true}).click();
+  await expect(page.locator('.locations-page')).toBeVisible();await page.getByRole('button',{name:lang==='zh'?'离线地图':'Offline map',exact:true}).click();await expect(page.locator('.map-cluster')).toHaveCount(1);await expect.poll(()=>page.locator('.photo-map svg path').count()).toBeGreaterThan(1);
+  const world=await page.locator('.photo-map svg').getAttribute('viewBox');await page.locator('.photo-map').focus();await page.keyboard.press('+');await expect(page.locator('.photo-map svg')).not.toHaveAttribute('viewBox',world);const zoomed=await page.locator('.photo-map svg').getAttribute('viewBox');await page.keyboard.press('ArrowRight');await expect(page.locator('.photo-map svg')).not.toHaveAttribute('viewBox',zoomed);await page.getByRole('button',{name:lang==='zh'?'全世界':'Whole world',exact:true}).click();await expect(page.locator('.photo-map svg')).toHaveAttribute('viewBox',world);
   await expect(page.locator('.map-cluster')).toHaveCount(1);await page.screenshot({path:info.outputPath('lifecycle-map.png'),fullPage:true});
 });
 
@@ -869,4 +872,55 @@ test('creation preservation batch exports independent drafts, continues failures
   const saved=await call(page,'/watermark/drafts/'+a.id);expect(saved.modified_since_export).toBe(false);
   const edited=await call(page,'/watermark/drafts/'+a.id,'PUT',{revision:saved.revision,settings_json:{...saved.settings_json,quality:80}});expect(edited.status).toBe('draft');expect(edited.modified_since_export).toBe(true);
   expect(await page.evaluate(async()=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await(await(await window.__synthetic.originals.getFileHandle('synthetic.jpg')).getFile()).arrayBuffer()))].join(','))).toBe(before);
+});
+
+for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`browser satellite map isolates Google and keeps original photos private ${width} ${lang}`,async({page},info)=>{
+  const probe=await installSatelliteSDK(page),photo=await imported(page),record=await call(page,'/locations/photos/'+photo.id);
+  await call(page,'/locations/photos/'+photo.id,'PUT',{source_hash:record.source_hash,expected_revision:0,operation:'set',value:{latitude:30,longitude:120,country:'China',city:'Hangzhou',label:'Lake',accuracy_m:100}});
+  const hash=()=>page.evaluate(async()=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await(await(await window.__synthetic.originals.getFileHandle('synthetic.jpg')).getFile()).arrayBuffer()))].join(',')),before=await hash();
+  await page.evaluate(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);
+  await page.setViewportSize({width,height:1000});await page.goto('/#/?page=locations');await page.reload();
+  await exerciseSatelliteMap(page,probe,info,lang);
+  expect(await hash()).toBe(before);
+  const library=await page.evaluate(async()=>await(await(await window.__synthetic.data.getFileHandle('library.json')).getFile()).text());
+  expect(library).not.toContain(syntheticMapKey);expect(library).not.toContain('photo-google-maps-key-v1');
+});
+
+for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`browser NASA satellite keeps the whole Earth and photos available offline ${width} ${lang}`,async({page},info)=>{
+  test.setTimeout(90000);const probe=await installOfflineEarthProbe(page),photo=await imported(page),record=await call(page,'/locations/photos/'+photo.id);
+  await call(page,'/locations/photos/'+photo.id,'PUT',{source_hash:record.source_hash,expected_revision:0,operation:'set',value:{latitude:30,longitude:120,country:'China',city:'Hangzhou',label:'Lake',accuracy_m:100}});
+  const hash=()=>page.evaluate(async()=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await(await(await window.__synthetic.originals.getFileHandle('synthetic.jpg')).getFile()).arrayBuffer()))].join(',')),before=await hash();
+  await page.evaluate(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);await page.setViewportSize({width,height:1000});await page.goto('/#/?page=locations');await page.reload();
+  await exerciseOfflineEarth(page,probe,info,lang,{checkOfflineCache:true});expect(await hash()).toBe(before);
+});
+
+
+test('browser offline satellite expands a real photo cluster into individual local previews',async({page},info)=>{
+  page.on('dialog',dialog=>dialog.accept());const probe=await installOfflineEarthProbe(page),base=await imported(page);
+  const hash=()=>page.evaluate(async()=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await(await(await window.__synthetic.originals.getFileHandle('synthetic.jpg')).getFile()).arrayBuffer()))].join(',')),before=await hash();
+  await closeForOrdering(page);
+  await page.evaluate(async base=>{
+    const h=await window.__synthetic.data.getFileHandle('library.json'),m=JSON.parse(await(await h.getFile()).text());
+    m.photos=['earth-a','earth-b'].map((id,i)=>({...base,id,file_name:`Earth-${i+1}.jpg`,capture_group_id:id,files:base.files.map(file=>({...file,id,file_name:`Earth-${i+1}.jpg`}))}));m.revision++;
+    const photos=await window.__synthetic.data.getDirectoryHandle('photos');
+    for(const suffix of ['-thumb.jpg','-preview.jpg']){const file=await(await photos.getFileHandle(base.id+suffix)).getFile();for(const id of ['earth-a','earth-b']){const out=await(await photos.getFileHandle(id+suffix,{create:true})).createWritable();await out.write(file);await out.close();}}
+    const writer=await h.createWritable();await writer.write(JSON.stringify(m));await writer.close();window.showDirectoryPicker=async()=>window.__synthetic.data;
+  },base);
+  await page.getByRole('button',{name:'打开本地图库或备份',exact:true}).click();await expect(page.locator('.app-shell')).toBeVisible();
+  for(const id of ['earth-a','earth-b']){const record=await call(page,'/locations/photos/'+id);await call(page,'/locations/photos/'+id,'PUT',{source_hash:record.source_hash,expected_revision:0,operation:'set',value:{latitude:30,longitude:120,country:'China',city:'Hangzhou',label:'Lake',accuracy_m:100}});}
+  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/?page=locations');await page.reload();await page.getByRole('button',{name:'卫星地图',exact:true}).click();
+  const pin=page.locator('.satellite-photo-pin');await expect(pin).toHaveCount(1);await expect(pin).toContainText('2');await pin.hover();await expect(page.locator('.map-photo-fan button')).toHaveCount(2);
+  for(const img of await page.locator('.map-photo-fan button img').all())await expect.poll(()=>img.evaluate(node=>node.complete&&node.naturalWidth>0)).toBe(true);
+  await assertMapPhotoFan(page);await page.locator('.leaflet-satellite-map').screenshot({path:info.outputPath('nasa-cluster-fan.png')});
+  await page.locator('.map-photo-fan button').last().click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(probe.external).toEqual([]);expect(await hash()).toBe(before);
+});
+
+for(const [width,lang] of [[1440,'zh'],[390,'en']])test(`browser regional Leaflet loads viewport tiles and recovers without exposing photos ${width} ${lang}`,async({page},info)=>{
+  test.setTimeout(90000);const probe=await installRegionalTiles(page),photo=await imported(page),record=await call(page,'/locations/photos/'+photo.id);
+  await call(page,'/locations/photos/'+photo.id,'PUT',{source_hash:record.source_hash,expected_revision:0,operation:'set',value:{latitude:30,longitude:120,country:'China',city:'Hangzhou',label:'Lake',accuracy_m:100}});
+  const hash=()=>page.evaluate(async()=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',await(await(await window.__synthetic.originals.getFileHandle('synthetic.jpg')).getFile()).arrayBuffer()))].join(',')),before=await hash();
+  await page.evaluate(lang=>{localStorage.setItem('lang',lang);localStorage.setItem('theme',lang==='en'?'light':'dark');},lang);await page.setViewportSize({width,height:1000});await page.goto('/#/?page=locations');await page.reload();
+  await exerciseRegionalSatellite(page,probe,info,lang,{failures:lang==='zh'});expect(await hash()).toBe(before);
+  const library=await page.evaluate(async()=>await(await(await window.__synthetic.data.getFileHandle('library.json')).getFile()).text());expect(library).not.toContain(syntheticArcGISKey);expect(library).not.toContain(syntheticMapTilerKey);
 });

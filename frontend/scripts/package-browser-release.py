@@ -1,6 +1,7 @@
 """Package the public browser build and an explicit, data-free relay source list."""
 import hashlib
 import json
+import re
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -19,10 +20,26 @@ RELAY_FILES = ['LICENSE', 'cloud_relay/__init__.py', 'cloud_relay/app.py',
                'backend/app/services/qwen_protocol.py']
 
 
+def bundled_map_paths():
+    """Read the trusted source manifest, never a build's editable metadata."""
+    public = ROOT / 'frontend/public'
+    metadata = json.loads((public / 'maps/earth/metadata.json').read_text(encoding='utf-8'))
+    paths = {'maps/land-110m.json', 'maps/satellite.html', 'maps/satellite.js',
+             'maps/satellite.css', 'maps/earth/metadata.json',
+             'maps/earth/SHA256SUMS.txt', 'licenses/nasa-blue-marble.json',
+             'licenses/leaflet-BSD-2-Clause.txt', 'licenses/leaflet-source.json'}
+    for name in metadata['files']:
+        if not re.fullmatch(r'(?:globe\.jpg|\d+/\d+-\d+\.jpg)', name):
+            raise ValueError('Invalid bundled map path: ' + name)
+        paths.add('maps/earth/' + name)
+    return paths
+
+
 def public_files(folder):
     if folder.is_symlink():
         raise ValueError('The public build directory must not be a symbolic link')
     base = folder.resolve()
+    map_paths = bundled_map_paths()
     files = []
     for path in sorted(folder.rglob('*')):
         name = path.relative_to(folder)
@@ -32,7 +49,8 @@ def public_files(folder):
             continue
         if (any(part.startswith('.') for part in name.parts)
                 or (len(name.parts) == 1 and name.name not in PUBLIC_FILES)
-                or (len(name.parts) > 1 and name.parts[0] not in PUBLIC_DIRS)
+                or (len(name.parts) > 1 and name.parts[0] not in PUBLIC_DIRS
+                    and name.as_posix() not in map_paths)
                 or path.suffix.lower() in {'.db', '.sqlite', '.sqlite3', '.log', '.pem', '.key'}):
             raise ValueError(f'Unexpected public asset refused: {name}')
         if name.parts[0] == 'assets' and path.suffix not in {'.js', '.css'}:
@@ -44,9 +62,10 @@ def public_files(folder):
             if name.name not in {'index.js', 'worker.js', 'libraw.js', 'libraw.wasm'}:
                 raise ValueError(f'Unexpected RAW runtime asset refused: {name}')
             source = ROOT / 'frontend/node_modules/libraw-wasm/dist' / name.name
-        elif name.parts[0] == 'licenses':
+        elif name.parts[0] in {'licenses', 'maps'}:
             source = ROOT / 'frontend/public' / name
         if source is not None and (not source.is_file() or source.is_symlink()
+                                   or (name.parts[0] == 'maps' and not source.resolve().is_relative_to((ROOT / 'frontend/public').resolve()))
                                    or source.read_bytes() != path.read_bytes()):
             raise ValueError(f'Public asset does not match its bundled source: {name}')
         if path.stat().st_size > 25 * 1024 * 1024:
@@ -54,6 +73,9 @@ def public_files(folder):
         files.append((path, name.as_posix()))
     if len(files) > 20000:
         raise ValueError('Public build exceeds the 20000-file limit')
+    actual = {name for _, name in files}
+    if any(name.startswith('maps/') for name in actual) and not map_paths.issubset(actual):
+        raise ValueError('Incomplete offline map assets: ' + ', '.join(sorted(map_paths - actual)))
     return files
 
 
@@ -87,6 +109,8 @@ def package():
     files = public_files(folder)
     if not PUBLIC_FILES.issubset({name for _, name in files}):
         raise ValueError('The browser build is missing required public files')
+    if not bundled_map_paths().issubset({name for _, name in files}):
+        raise ValueError('The browser build is missing offline map assets')
     if not any(RELAY_URL in path.read_text(encoding='utf-8')
                for path, name in files if name.startswith('assets/') and name.endswith('.js')):
         raise ValueError('Rebuild with VITE_ART_RELAY_URL=' + RELAY_URL)

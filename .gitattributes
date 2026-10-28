@@ -1,3 +1,5 @@
 
 # Preserve verbatim third-party license texts, including original whitespace.
 **/licenses/** -whitespace
+# The Earth metadata records the digest of this standard LF checksum manifest.
+**/maps/earth/SHA256SUMS.txt text eol=lf
