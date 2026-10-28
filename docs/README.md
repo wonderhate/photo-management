@@ -1,5 +1,8 @@
 # 文档索引
 
+- [Windows 2.7.0 公开试用验收](windows-2.7.0-verification.md)
+- [正式网站、下载与浏览器图库部署](../web/docs/windows-downloads-2026-10-28.md)
+
 - [本地主体、深度与混合图层](local-vision-and-layers.md)
 - [本地 Agent / MCP、审批与任务恢复](local-agent.md)
 
