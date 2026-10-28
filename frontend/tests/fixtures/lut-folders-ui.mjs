@@ -2,8 +2,13 @@ import {expect} from '@playwright/test';
 import {imageDigest} from './text-ui.mjs';
 export async function exerciseLutFolders(page,info,lang,addFile){
  const t=(zh,en)=>lang==='en'?en:zh,panel=page.locator('.lut-panel'),photo=page.locator('.edit-image img'),original=await imageDigest(photo),sourceName=await photo.getAttribute('alt');
- await panel.locator(':scope > summary').click();await panel.getByRole('button',{name:t('关联样式目录','Link LUT directory'),exact:true}).click();
- const folder=panel.locator('.lut-folders article').last();await expect(folder.getByText(/可用|Available/)).toBeVisible();
+ await panel.locator(':scope > summary').click();
+ const link=panel.getByRole('button',{name:t('关联样式目录','Link LUT directory'),exact:true});
+ await panel.getByRole('button',{name:t('扫描关联目录','Scan linked directories'),exact:true}).click();await expect(link).toBeEnabled();
+ const known=await panel.locator('.lut-folders article').evaluateAll(rows=>rows.map(row=>row.dataset.folder));
+ await link.click();await expect(link).toBeEnabled();
+ const added=(await panel.locator('.lut-folders article').evaluateAll(rows=>rows.map(row=>row.dataset.folder))).filter(id=>!known.includes(id));expect(added).toHaveLength(1);
+ const folder=panel.locator(`.lut-folders article[data-folder="${added[0]}"]`);await expect(folder.getByText(/可用|Available/)).toBeVisible();
  const rootToggle=folder.locator('.lut-tree-node').first().getByRole('button',{name:/展开或收起目录|Expand or collapse folder/}).first();if(await rootToggle.getAttribute('aria-expanded')!=='true')await rootToggle.click();
  const cinema=folder.getByRole('button',{name:t('展开或收起目录 Cinema','Expand or collapse folder Cinema'),exact:true});await expect(cinema).toBeVisible();await cinema.locator('..').getByRole('button',{name:/查看|View/}).click();
  const choice=panel.getByRole('button',{name:t('应用 LUT Directory.cube','Apply LUT Directory.cube'),exact:true});await expect(choice).toBeVisible();await expect(choice).toContainText('Log');await expect(choice.locator('img')).toBeVisible();

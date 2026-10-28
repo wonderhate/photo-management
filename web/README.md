@@ -12,7 +12,7 @@
 
 `frontend/src` 保留复用的界面组件；所有默认构建入口均为浏览器模式。`cloud_relay` 及 `assets` 已移除对原桌面仓库的路径依赖。
 
-2.7.0 整合版已于 2026-10-28 上线，接入“改版”的新版浏览器光影集，同时保留原网站的作品展示、介绍、下载和作者发布逻辑。全站指针柔光缩为原半径的 1/3，图库选择可跳过并在导入时继续。整合范围、构建兼容和验证记录见 [官网与新版光影集整合](docs/website-lumina-integration.md)。
+2.7.1 整合版已于 2026-10-28 上线，接入“改版”的新版浏览器光影集，同时保留原网站的作品展示、介绍、下载和作者发布逻辑。全站指针柔光缩为原半径的 1/3，图库选择可跳过并在导入时继续。整合范围、构建兼容和验证记录见 [官网与新版光影集整合](docs/website-lumina-integration.md)。
 
 ## 安装和启动
 
@@ -126,4 +126,4 @@ git commit -m "说明本次修改"
 
 页面结构参考个人开发者软件的 [Everything 下载页](https://www.voidtools.com/downloads/)及 [SumatraPDF 下载页](https://www.sumatrapdfreader.org/download-free-pdf-viewer)：并列安装版与 ZIP，明确架构、大小和校验信息；未使用其图片、文案或品牌资源。
 
-Windows 2.7.0 公开试用和线上部署记录见 [新版下载维护](docs/windows-downloads-2026-10-28.md)。Linux 继续提供独立标记的 2.6.1 预览包。
+Windows 2.7.1 公开试用和线上部署记录见 [新版下载维护](docs/windows-downloads-2026-10-28.md)。Linux 继续提供独立标记的 2.6.1 预览包。

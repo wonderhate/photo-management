@@ -61,3 +61,12 @@ ONNX Runtime 使用包内提供的外置 WASM 条件，与视觉 Worker 已指�
 Windows 安装包与 ZIP 在 GitHub、新加坡主机及下载服务卷内完整 SHA 一致，HEAD 和首尾 Range 与本机文件一致。1.0 旧下载保留。安装覆盖、升级和卸载仍按原计划保留验收，2.7.0 公开试用不宣称完成这些项目。
 
 最终生产复验：177 个公开资源逐文件 SHA 与本地一致；发现并修复 ONNX `.mjs` 被静态主机当作二进制类型的问题，构建按准确资源名生成 JavaScript/WASM MIME 规则，同时将规则纳入离线缓存版本。生产 JavaScript/WASM 类型、单一 Worker CSP 和页面隔离头通过，增强后的展示整合 17 项再次通过。此前初次部署 `dpikreru7nds` 的包保留用于追溯。
+
+
+## 2.7.1 最终更新
+
+当前 Windows 版本为 2.7.1，直链位于 `/downloads/2.7.1/`，GitHub 发布为 `v2.7.1`。2.7.0、1.0 与 Linux 2.6.1 均保留。
+
+正式部署 `dprx8vykpso1`，网站 ZIP SHA-256 为 `0c2a5446990aa9997ba19ec51ac6f038f2d8e9b9fc7981f81dc458b0518104b0`。18 张照片及原有作品、导航、语言和主题逻辑保持一致；177 个公开文件的 SHA、JavaScript/WASM 类型和安全头全部通过，线上七条路由、窄屏、图库跳过和稍后导入提示、2.7.1 下载入口通过。两个 Windows 包在 GitHub、主机和服务卷内完整 SHA 一致，HTTPS HEAD 与首尾 Range 通过。
+
+Caddy 沿用历史命名的活动文件 `/config/Lumina-Caddyfile-2.7.0`，已热加载三个版本的精确文件允许列表；重建仍使用原 Compose 命令和命名卷。更新前备份为 `/config/Lumina-Caddyfile.before-2.7.1`。此次仅更新下载配置，没有重启中转。
