@@ -5,7 +5,7 @@
 本地优先的摄影照片管理软件。当前版本 **2.7.0**（公开试用），提供 Windows 桌面应用和本机网页版；默认进入摄影空间。
 
 [![Checks](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml/badge.svg)](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml)
-[最新下载](https://github.com/wonderhate/photo-management/releases/latest) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
+[Windows 2.7.0 公开试用](https://github.com/wonderhate/photo-management/releases/tag/v2.7.0) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
 
 ## 正式网站与浏览器本地图库
 

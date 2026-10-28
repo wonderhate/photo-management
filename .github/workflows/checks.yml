@@ -60,5 +60,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/frontend/package-lock.json
       - run: npm ci --prefix web/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: web/frontend
       - run: npm --prefix web test
       - run: npm --prefix web run build
