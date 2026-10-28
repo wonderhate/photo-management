@@ -93,6 +93,9 @@ def main() -> None:
     from backend.app.main import app
     import uvicorn
     sock = socket.socket()
+    # POSIX keeps recently closed loopback connections in TIME_WAIT across exec.
+    # This permits rebinding that port after shutdown, without SO_REUSEPORT.
+    if os.name != 'nt':sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         sock.bind(('127.0.0.1', args.port or 8000))
     except OSError:

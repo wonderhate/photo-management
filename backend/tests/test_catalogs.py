@@ -154,7 +154,8 @@ def test_managed_process_reopens_two_catalogs_with_fresh_sessions_and_keeps_orig
                 if value['run_id']!=previous:known_pids.add(value['pid']);return value
             except (FileNotFoundError,json.JSONDecodeError):pass
             time.sleep(.05)
-        raise AssertionError('Managed launcher did not publish a new ready status')
+        logs=list((catalogs/'desktop-state').rglob('desktop.log'));detail=logs[0].read_text('utf-8')[-4000:] if logs else 'No launcher log in the isolated profile'
+        raise AssertionError('Managed launcher did not publish a new ready status: '+detail)
     def request(path,method='GET',value=None,headers=None):
         data=None if value is None else json.dumps(value).encode()
         req=Request(last_status['url']+'/api'+path,data=data,method=method,headers={'Content-Type':'application/json',**(headers or {})})
