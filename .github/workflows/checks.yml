@@ -6,6 +6,7 @@ on:
     branches: [main]
 env:
   ONNXRUNTIME_NODE_INSTALL: skip
+  PHOTO_TEST_PYTHON: python
 permissions:
   contents: read
 jobs:
@@ -27,8 +28,11 @@ jobs:
       - run: npm run build --prefix frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: npx playwright test
-        working-directory: frontend
+      - name: Install video regression tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
