@@ -1,5 +1,5 @@
 import {existingPhotoSource} from './storage';
-import {current,directory,librarySession,commit,writeFile,localFile,original,uid,now,assertCurrentRevision} from './storage';
+import {current,directory,librarySession,commit,writeFile,localFile,original,uid,now,assertCurrentRevision,runLibraryLock} from './storage';
 import type {LocalEdit,LocalPhoto} from './storage';
 import type {EditRecipe} from './editing';
 import {validateRecipe} from './editing';
@@ -12,7 +12,7 @@ import type {EditRecord} from '../core/editor-adapter';
 export async function hashFile(file:Blob){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer())),v=>v.toString(16).padStart(2,'0')).join('');}
 export function editScope(){const base=directory(),id=current().id,generation=librarySession();return {base,id,check:()=>{if(librarySession()!==generation||directory()!==base||current().id!==id)throw new Error('Library changed. Reopen the current library.');}};}
 export async function saveEdit(file:File,recipe:EditRecipe,photoId:string|null,id?:string,profile?:SourceDecodeProfile,expectedRevision?:number):Promise<LocalEdit>{
-  validateRecipe(recipe);recipe=structuredClone(recipe);const scope=editScope(),editId=id||uid();return navigator.locks.request('photocollection-edit:'+scope.id+':'+editId,async()=>{
+  validateRecipe(recipe);recipe=structuredClone(recipe);const scope=editScope(),editId=id||uid();return runLibraryLock('photocollection-edit:'+scope.id+':'+editId,async()=>{
     scope.check();await assertCurrentRevision();scope.check();const previous=current().edits?.find(e=>e.id===editId),hash=await hashFile(file),decode_profile=sourceDecodeProfile(profile??previous?.decode_profile);scope.check();
     if(id&&!previous)throw new Error('Record not found.');
     if(previous&&previous.recipe.version>=3&&recipe.version<previous.recipe.version)throw new Error('Text edits require a compatible editor.');
@@ -73,5 +73,5 @@ export async function saveDerivative(blob:Blob,name:string,sourcePhotoId:string|
       await commit(s=>{ensure();s.photos.push(p);});published=true;scope.check();return p;
     }finally{let absent=false;if(!published)try{const disk=JSON.parse(await(await localFile('library.json',scope.base)).text());absent=Array.isArray(disk.photos)&&!disk.photos.some((p:{id:string})=>p.id===id);}catch{/* Preserve uncertain output files for recovery. */}if(!published&&absent)for(const entry of owned)try{const handle=await folder.getFileHandle(entry.name),file=await handle.getFile();if(await handle.isSameEntry(entry.handle)&&(file.size===0||await hashFile(file)===entry.hash))await folder.removeEntry(entry.name);}catch{/* Keep files whose ownership cannot be confirmed. */}}
   };
-  return frozen?navigator.locks.request('photocollection-edit:'+scope.id+':'+frozen.id,run):run();
+  return frozen?runLibraryLock('photocollection-edit:'+scope.id+':'+frozen.id,run):run();
 }

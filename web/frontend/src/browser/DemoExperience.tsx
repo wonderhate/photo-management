@@ -1,47 +1,67 @@
 import {useEffect,useRef,useState} from 'react';
-import {ArrowLeft,Download,FolderOpen,RotateCcw} from 'lucide-react';
+import {ArrowLeft,Download,FolderOpen,ImagePlus} from 'lucide-react';
 import {bt,browserError} from './text';
-import {EditSession} from './edit-session';
-import {renderFrameV2} from './frame-v2-render';
-import {createDemoImage,demoRecipe,demoFrame} from './demo-image';
-import type {DemoFrame} from './demo-image';
+import ToolsPage from './ToolsPage';
+import WatermarkPage from '../WatermarkPage';
+import MediaImage from '../media/MediaImage';
+import DownloadLink from '../media/DownloadLink';
+import {CameraNamesProvider} from '../workspace/CameraNames';
+import {createTemporaryLibrary,importTemporaryPhoto} from './temporary-library';
+import {publishedSample} from './published-sample';
+import type {ExportResult,WatermarkOptions} from '../types';
+import type {EditRecord,EditDestination} from '../core/editor-adapter';
 import './demo-experience.css';
 
+// Serialize StrictMode/remount cleanup before opening another temporary session.
+let temporaryTail:Promise<unknown>=Promise.resolve();
 export default function DemoExperience({onClose,onCreate}:{onClose:()=>void;onCreate:()=>void}){
-  const [exposure,setExposure]=useState(0),[saturation,setSaturation]=useState(0),[frame,setFrame]=useState<DemoFrame>('paper');
-  const [ready,setReady]=useState(false),[busy,setBusy]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[attempt,setAttempt]=useState(0);
-  const [preview,setPreview]=useState(''),[size,setSize]=useState('');
-  const session=useRef<EditSession|null>(null),output=useRef<Blob|null>(null),url=useRef('');
+  const [illustration,setIllustration]=useState(false);
+  const [ready,setReady]=useState(false),[step,setStep]=useState<1|2|3>(1);
+  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+  const [photoId,setPhotoId]=useState(''),[watermarkId,setWatermarkId]=useState(''),[draftId,setDraftId]=useState('');
+  const [result,setResult]=useState<ExportResult|null>(null),[hasSource,setHasSource]=useState(false);
+  const session=useRef<Awaited<ReturnType<typeof createTemporaryLibrary>>|null>(null);
+  const record=useRef<EditRecord|null>(null),watermarkOptions=useRef<WatermarkOptions|undefined>(undefined);
+  const guard=useRef<(()=>Promise<boolean>)|null>(null),saveWatermark=useRef<(()=>Promise<boolean>)|null>(null);
+  const heading=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{
-    let alive=true;setReady(false);setBusy(true);setError('');setPreview('');output.current=null;
-    const editor=new EditSession();session.current=editor;
-    void createDemoImage().then(file=>editor.open(file)).then(()=>{if(alive)setReady(true);}).catch(e=>{if(alive){setError(browserError(e));setBusy(false);}});
-    return()=>{alive=false;editor.dispose();session.current=null;URL.revokeObjectURL(url.current);url.current='';};
-  },[attempt]);
-  useEffect(()=>{
-    if(!ready||!session.current)return;
-    let alive=true;const editor=session.current;setBusy(true);setError('');setNotice('');output.current=null;
-    const timer=setTimeout(()=>{void(async()=>{
-      const rendered=await editor.export(demoRecipe(exposure,saturation),0,'png',100);
-      const blob=frame==='none'?rendered.blob:await renderFrameV2(rendered.blob,demoFrame(frame),undefined,0,'png',100);
-      if(!alive)return;
-      const bitmap=await createImageBitmap(blob);const dimensions=`${bitmap.width} × ${bitmap.height}`;bitmap.close();if(!alive)return;
-      URL.revokeObjectURL(url.current);url.current=URL.createObjectURL(blob);output.current=blob;setPreview(url.current);setSize(dimensions);setBusy(false);
-    })().catch(e=>{if(alive){setError(browserError(e));setBusy(false);}});},100);
-    return()=>{alive=false;clearTimeout(timer);};
-  },[ready,exposure,saturation,frame,attempt]);
-  function download(){
-    if(busy||!output.current||!url.current)return;
-    const link=document.createElement('a');link.href=url.current;link.download='lumina-demo-edited.png';document.body.append(link);link.click();link.remove();
-    setNotice(bt('已请求下载示例 PNG，请在浏览器下载记录中查看。示例未保存到任何图库。','Demo PNG download requested. Check your browser downloads. Nothing was saved to a library.'));
+    let alive=true;let release!:()=>void;
+    const released=new Promise<void>(resolve=>{release=resolve;});
+    const opening=temporaryTail.then(()=>createTemporaryLibrary());
+    temporaryTail=opening.then(async value=>{await released;await value.dispose();}).catch(()=>{});
+    void opening.then(async value=>{if(!alive)return;session.current=value;const sample=await publishedSample();if(!alive||!value.active())return;const id=await importTemporaryPhoto(sample.file);if(alive&&value.active()){setIllustration(sample.illustration);setHasSource(true);setPhotoId(id);setReady(true);}}).catch(e=>{if(alive)setError(browserError(e));});
+    return()=>{alive=false;session.current=null;release();};
+  },[]);
+  useEffect(()=>{if(ready)heading.current?.focus();},[step,ready]);
+  function sourceChanged(){setPhotoId('');record.current=null;setHasSource(true);setResult(null);setDraftId('');setWatermarkId('');watermarkOptions.current=undefined;}
+  function prepared(value:EditRecord){record.current=value;}
+  function sent(destination:EditDestination){setWatermarkId(destination.id);setDraftId('');setResult(null);setNotice('');setStep(2);}
+  async function sample(){
+    if(busy||!session.current?.active())return;
+    setBusy(true);setError('');
+    try{if(guard.current&&!await guard.current())return;const sample=await publishedSample();if(!session.current?.active())return;const id=await importTemporaryPhoto(sample.file);sourceChanged();setIllustration(sample.illustration);setPhotoId(id);setReady(true);}
+    catch(e){setError(browserError(e));}finally{setBusy(false);}
   }
-  function change(action:()=>void){setBusy(true);setNotice('');action();}
-  return <main className="demo-experience"><header><button onClick={onClose}><ArrowLeft size={17}/>{bt('返回开始页','Back to start')}</button><span className="demo-badge">{bt('示例体验 · 不需要图库','DEMO · NO LIBRARY NEEDED')}</span></header>
-    <div className="demo-intro"><h1>{bt('先做出一张自己的作品。','Make your first finished image.')}</h1><p>{bt('用这张程序绘制的山景插画试试调色和装裱，再下载真实 PNG。它不是摄影作品，也不是你的照片。','Try color adjustments and framing on this generated mountain illustration, then download a real PNG. This is an illustration, not a photograph or one of your files.')}</p></div>
-    <div className="demo-layout"><section className="demo-stage" data-liquid-glass="panel" aria-label={bt('示例作品预览','Demo image preview')} aria-busy={busy}>{preview?<img data-glass-exclude src={preview} alt={bt('程序绘制的山景示例，带 GENERATED DEMO 标识','Generated mountain illustration marked GENERATED DEMO')}/>:<p role="status">{bt('正在准备示例…','Preparing the demo…')}</p>}<p role="status">{busy?bt('正在更新预览…','Updating preview…'):preview?`${size} · PNG`:''}</p></section>
-      <section className="demo-controls" data-liquid-glass="panel" aria-label={bt('示例调整','Demo adjustments')}><h2>{bt('1. 调整与装裱','1. Adjust and frame')}</h2><label>{bt('亮度','Exposure')} <output>{exposure>0?'+':''}{exposure.toFixed(1)} EV</output><input aria-label={bt('示例亮度','Demo exposure')} type="range" min={-1.5} max={1.5} step={.1} value={exposure} disabled={!ready} onChange={e=>change(()=>setExposure(Number(e.target.value)))}/></label><label>{bt('饱和度','Saturation')} <output>{saturation>0?'+':''}{saturation}</output><input aria-label={bt('示例饱和度','Demo saturation')} type="range" min={-100} max={60} value={saturation} disabled={!ready} onChange={e=>change(()=>setSaturation(Number(e.target.value)))}/></label><label>{bt('边框','Frame')}<select aria-label={bt('示例边框','Demo frame')} value={frame} disabled={!ready} onChange={e=>change(()=>setFrame(e.target.value as DemoFrame))}><option value="paper">{bt('米白相框','Paper frame')}</option><option value="dark">{bt('深色相框','Dark frame')}</option><option value="none">{bt('无边框','No frame')}</option></select></label><button disabled={!ready||exposure===0&&saturation===0&&frame==='paper'} onClick={()=>change(()=>{setExposure(0);setSaturation(0);setFrame('paper');})}><RotateCcw size={16}/>{bt('重置示例','Reset demo')}</button>
-      <h2>{bt('2. 下载作品','2. Download your image')}</h2><button className="primary" disabled={busy||!preview||!!error} onClick={download}><Download size={17}/>{bt('下载示例 PNG','Download demo PNG')}</button><p className="muted">{bt('预览与下载使用同一张生成图片。文件由浏览器下载；不会写入图库或改动原片。','The download is the same image as the preview. Your browser downloads the file; no library or original is changed.')}</p>{notice&&<p role="status" className="demo-notice">{notice}</p>}{error&&<div role="alert" className="error-box"><p>{error}</p><button onClick={()=>setAttempt(v=>v+1)}>{bt('重新准备示例','Reload demo')}</button></div>}
-      <hr/><h2>{bt('想用自己的照片？','Ready for your own photographs?')}</h2><p>{bt('创建图库保存位置，再选择原片。退出后示例调整会清空；想保留请先下载。','Choose a library location, then your photos. Demo edits reset when you leave; download first to keep them.')}</p><button onClick={onCreate}><FolderOpen size={17}/>{bt('建立我的图库','Set up my library')}</button></section></div>
-    <p className="demo-privacy">{bt('示例由光影集在本机绘制，沿用暗房调色与相框渲染。无需目录授权，不使用云端 AI。','Lumina draws this illustration locally using the darkroom color engine and frame renderer. No directory permission or cloud AI is needed.')}</p>
+  async function back(){
+    if(busy)return;
+    setBusy(true);setError('');
+    try{if(step===2&&saveWatermark.current&&!await saveWatermark.current())return;setNotice('');setStep(step===3?2:1);setResult(null);}
+    catch(e){setError(browserError(e));}finally{setBusy(false);}
+  }
+  async function exit(create=false){
+    if(busy)return;
+    if(step===2){if(saveWatermark.current&&!await saveWatermark.current())return;}else if(guard.current&&!await guard.current())return;
+    if(hasSource&&!confirm(bt('退出会清空本次临时作品。需要保留请先在第 3 步下载，确定退出？','Leaving clears this temporary session. Download your image in step 3 to keep it. Leave now?')))return;
+    setBusy(true);await session.current?.dispose();(create?onCreate:onClose)();
+  }
+  const titles=[bt('1. 光影暗房','1. Lumina Darkroom'),bt('2. 水印工坊','2. Watermark Workshop'),bt('3. 下载作品','3. Download your image')];
+  return <main className="demo-experience demo-workflow"><header><button disabled={busy} onClick={()=>void exit()}><ArrowLeft size={17}/>{bt('返回开始页','Back to start')}</button><span className="demo-badge">{bt('本机体验 · 无需建库','LOCAL TRYOUT · NO LIBRARY NEEDED')}</span></header>
+    <div className="demo-intro"><h1>{bt('从一张示例照片，完成一次创作。','Create a finished image from a sample photograph.')}</h1><p>{bt('使用这张公开示例，在完整暗房中调整，再到水印工坊装裱、署名，最后下载作品。不需要先选照片或建立图库；调整仅保留在本次页面内。','Use this published sample in the full darkroom, then frame and sign it in the Watermark Workshop before downloading. No photo selection or library setup is required. Edits stay in this page session.')}</p></div>
+    <ol className="demo-steps" aria-label={bt('创作步骤','Creation steps')}>{titles.map((title,index)=><li key={index} aria-current={step===index+1?'step':undefined}><span>{title}</span><small>{index===0?bt('示例照片与完整调整','Sample photo and full editing'):index===1?bt('相框、信息与署名','Frames, metadata and signature'):bt('预览并另存成品','Preview and save a copy')}</small></li>)}</ol>
+    <section className="demo-workspace" aria-labelledby="demo-step-title"><div className="demo-step-heading"><h2 id="demo-step-title" ref={heading} tabIndex={-1}>{titles[step-1]}</h2>{step>1&&<button disabled={busy} onClick={()=>void back()}><ArrowLeft size={16}/>{step===2?bt('返回光影暗房','Back to darkroom'):bt('返回水印工坊','Back to watermark')}</button>}{step===1&&!ready&&<button disabled={busy||!session.current?.active()} onClick={()=>void sample()}><ImagePlus size={16}/>{bt('重新载入示例','Reload sample')}</button>}</div>
+      {!ready&&!error&&<p role="status">{bt('正在准备本机工作区…','Preparing the local workspace…')}</p>}
+      {illustration&&ready&&<p className="muted">{bt('当前为程序绘制的插画示例，不是摄影作品。','The current sample is a program-drawn illustration, not a photograph.')}</p>}{error&&<p role="alert" className="error-box">{error}</p>}{notice&&<p role="status" className="demo-notice">{notice}</p>}
+      {ready&&<CameraNamesProvider>{step===1?<ToolsPage mode="darkroom" photoId={photoId} guard={guard} notify={setNotice} onPage={()=>{}} onCollage={()=>{}} onSend={sent} workflow={{recordId:record.current?.id,onPrepared:prepared,onSourceChange:sourceChanged}}/>:step===2?<WatermarkPage ids={[watermarkId]} onChoose={()=>void back()} onJob={()=>{}} notify={setNotice} draftId={draftId} onSaved={setDraftId} guard={guard} workflow={{onExport:value=>{setResult(value);setNotice('');setStep(3);},saveRef:saveWatermark,initialOptions:watermarkOptions.current,onOptions:value=>{watermarkOptions.current=value;}}}/>:result&&<div className="demo-result demo-stage" data-liquid-glass="panel"><MediaImage data-glass-exclude src={result.url} alt={bt('最终导出作品','Final exported image')} mediaPriority={0}/><div><h3>{bt('作品准备好了','Your image is ready')}</h3><p>{result.width} × {result.height} · {result.format?.toUpperCase()}</p><p className="demo-result-name">{result.file_name}</p><DownloadLink className="primary demo-download" href={result.url} download={result.file_name}><Download size={17}/>{bt('下载作品','Download image')}</DownloadLink><p className="muted">{bt('下载与这里的预览使用同一份成品。原片保持只读，导出不携带原片 EXIF、GPS 或 XMP；相框中的可见文字仍会保留。','The download and this preview use the same finished file. Originals are read only. Exports omit source EXIF, GPS and XMP; visible text in the frame remains.')}</p></div></div>}</CameraNamesProvider>}
+    </section><footer className="demo-privacy"><p>{bt('本次编辑、模板与导出仅暂存在页面内存中。水印工坊沿用完整本地功能，不提供云端 AI。退出前请下载需要保留的作品。','Edits, templates and exports stay in page memory. The Watermark Workshop provides its full local features without cloud AI. Download anything you want to keep before leaving.')}</p><button disabled={busy} onClick={()=>void exit(true)}><FolderOpen size={17}/>{bt('建立长期保存的图库','Set up a library for lasting storage')}</button></footer>
   </main>;
 }

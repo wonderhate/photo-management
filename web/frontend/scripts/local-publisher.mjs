@@ -50,12 +50,21 @@ async function body(req,limit){const chunks=[];let size=0;for await(const b of r
 export async function createPublisher({port=4178,session=randomBytes(32).toString('hex'),work=resolve(root,'.local-notes/publisher'),sdkFactory=token=>new Makers({token,region:'china',retries:0,timeout:45}),build,verify}={}){
   if(!/^[a-f0-9]{64}$/.test(session))throw new Error('Invalid owner session.');
   const secret=session;
-  const source=resolve(work,'content'),manifest=resolve(source,'portfolio/manifest.json'),credentials=resolve(work,'edgeone-token.dpapi'),out=resolve(root,'frontend/dist-showcase');
+  const source=resolve(work,'content'),manifest=resolve(source,'portfolio/manifest.json'),sampleManifest=resolve(source,'demo/sample.json'),credentials=resolve(work,'edgeone-token.dpapi'),out=resolve(root,'frontend/dist-showcase');
   const python=await exists(resolve(root,'.venv/Scripts/python.exe'))?resolve(root,'.venv/Scripts/python.exe'):'python';
   let token=process.env.EDGEONE_API_TOKEN||'',job=null,release=null,mutating=false,lastIssue=null,credentialWarning='';
   if(!token&&await exists(credentials))try{token=await dpapi(await readFile(credentials,'utf8'),true);}catch{/* Moved or different-user credentials need re-entry. */}
   await mkdir(resolve(source,'portfolio/images'),{recursive:true});
   async function catalog(){try{return validatePortfolio(JSON.parse(await readFile(manifest,'utf8')));}catch(e){if(e.code!=='ENOENT')fail('本机草稿损坏；请保留文件并从历史发布包恢复。');return structuredClone(emptyPortfolio);}}
+  async function sample(){
+    if(!await exists(sampleManifest))return null;
+    if(await realpath(sampleManifest)!==sampleManifest||(await stat(sampleManifest)).size>4096)fail('体验示例配置无效，请重新选择示例照片。');
+    let value;try{value=JSON.parse(await readFile(sampleManifest,'utf8'));}catch{fail('体验示例配置无效，请重新选择示例照片。');}
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==5||Object.keys(value).some(key=>!['version','src','width','height','sha256'].includes(key))||value.version!==1||typeof value.src!=='string'||!/^\/demo\/images\/[a-f0-9]{64}\.jpg$/.test(value.src)||value.src!=='/demo/images/'+value.sha256+'.jpg'||!Number.isInteger(value.width)||!Number.isInteger(value.height)||value.width<1||value.height<1||Math.max(value.width,value.height)>4096)fail('体验示例配置无效，请重新选择示例照片。');
+    const filename=resolve(source,'.'+value.src);if(await realpath(filename)!==filename||!(await stat(filename)).isFile())fail('体验示例照片无效。');
+    const bytes=await readFile(filename),image=publicJPEG(bytes);if(hash(bytes)!==value.sha256||hash(image.data)!==value.sha256||image.width!==value.width||image.height!==value.height)fail('体验示例照片校验失败，请重新选择示例照片。');
+    return {value,data:image.data};
+  }
   async function checkCatalog(value){const clean=validatePortfolio(value);for(const p of clean.photos){for(const url of [p.src,p.thumbnail]){const filename=resolve(source,'.'+url);if(!(await stat(filename)).isFile()||await realpath(filename)!==filename)fail('展示副本无效。');const image=publicJPEG(await readFile(filename));if(hash(image.data)!==url.split('/').at(-1).slice(0,-4))fail('展示副本校验失败。');if(url===p.src&&(image.width!==p.width||image.height!==p.height))fail('展示照片尺寸不匹配。');}}return clean;}
   async function owner(client){const project=await client.projects.get({projectId});if(project.projectId!==projectId||project.name!==projectName)fail('Token 对应的项目与正式网站不匹配，已停止。');return client;}
   async function buildRelease(){
@@ -74,6 +83,7 @@ export async function createPublisher({port=4178,session=randomBytes(32).toStrin
       const client=publish?await owner(sdkFactory(token)):null;
       job.message='正在构建并校验公开网站…';
       await atomic(manifest,JSON.stringify(await checkCatalog(await catalog()),null,2));
+      await sample();
       release=await buildRelease();job.message='本机预览和网站 ZIP 已就绪。';
       if(client){
         job.message='正在上传到现有 EdgeOne 项目…';
@@ -100,19 +110,31 @@ export async function createPublisher({port=4178,session=randomBytes(32).toStrin
         if(auth.length!==expected.length||!timingSafeEqual(auth,expected))fail('作者会话无效，请使用启动时的完整地址。',401);
         const action=name.slice('/author/api/'.length);
         if(req.method==='GET'&&action==='instance'){json(200,{publisher:'lumina-local-publisher-v1',root:hash(root),projectId});return;}
-        if(req.method==='GET'&&action==='state'){json(200,{catalog:await catalog(),credential:!!token,credentialWarning,canRemember:process.platform==='win32',project:projectName,job,release:!!release,lastIssue});return;}
+        if(req.method==='GET'&&action==='state'){let sampleValue=null,sampleError='';try{sampleValue=(await sample())?.value||null;}catch{sampleError='体验示例照片或配置损坏，请重新选择照片或恢复内置示例；尚未发布。';}json(200,{catalog:await catalog(),sample:sampleValue,sampleError,credential:!!token,credentialWarning,canRemember:process.platform==='win32',project:projectName,job,release:!!release,lastIssue});return;}
+        if(req.method==='GET'&&action==='sample-image'){const image=await sample();if(!image)fail('尚未选择体验示例照片。',404);res.writeHead(200,{'Content-Type':'image/jpeg',...headers});res.end(image.data);return;}
         if(req.method==='GET'&&action==='download'){if(!release)fail('请先生成网站包。',404);res.writeHead(200,{'Content-Type':'application/zip','Content-Disposition':'attachment; filename="Lumina-website.zip"',...headers});res.end(await readFile(release));return;}
         if(req.method==='GET'&&action.startsWith('image/')){const file=action.slice(6);if(!/^[a-f0-9]{64}\.jpg$/.test(file))fail('照片不存在。',404);res.writeHead(200,{'Content-Type':'image/jpeg',...headers});res.end(await readFile(resolve(source,'portfolio/images',file)));return;}
         if(req.method!=='POST')fail('方法不允许。',405);
         if(req.headers.origin!=='http://'+host)fail('缺少本机来源。',403);
         if(job?.busy||mutating)fail('正在保存、构建或发布，请等待完成。',409);
         mutating=true;mutation=true;
-        if(action==='image'){
+        if(action==='image'||action==='sample'){
           if(req.headers['content-type']!=='image/jpeg')fail('只接受 JPEG 展示副本。');
-          const image=publicJPEG(await body(req,25*1024*1024)),id=hash(image.data);await atomic(resolve(source,'portfolio/images',id+'.jpg'),image.data);json(200,{id,src:'/portfolio/images/'+id+'.jpg',width:image.width,height:image.height});return;
+          const image=publicJPEG(await body(req,25*1024*1024)),id=hash(image.data);
+          if(action==='sample'){
+            if(Math.max(image.width,image.height)>4096)fail('体验示例照片长边不能超过 4096 像素。');
+            const folder=resolve(source,'demo/images');await mkdir(folder,{recursive:true});if(await realpath(folder)!==folder||await realpath(dirname(folder))!==dirname(folder))fail('体验示例保存目录无效。');
+            const value={version:1,src:'/demo/images/'+id+'.jpg',width:image.width,height:image.height,sha256:id};
+            await atomic(resolve(folder,id+'.jpg'),image.data);await atomic(sampleManifest,JSON.stringify(value,null,2));release=null;job=null;json(200,value);return;
+          }
+          await atomic(resolve(source,'portfolio/images',id+'.jpg'),image.data);json(200,{id,src:'/portfolio/images/'+id+'.jpg',width:image.width,height:image.height});return;
         }
         if(req.headers['content-type']!=='application/json')fail('只接受 JSON 请求。',415);
         const value=JSON.parse((await body(req,8*1024*1024)).toString('utf8'));
+        if(action==='sample-reset'){
+          if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length)fail('示例重置请求无效。');
+          await unlink(sampleManifest).catch(e=>{if(e.code!=='ENOENT')throw e;});release=null;job=null;json(200,{sample:null});return;
+        }
         if(action==='draft'){
           const clean=await checkCatalog(value);if(await exists(manifest))await atomic(manifest+'.previous',await readFile(manifest));await atomic(manifest,JSON.stringify(clean,null,2));release=null;job=null;json(200,{saved:true});return;
         }
@@ -133,7 +155,7 @@ export async function createPublisher({port=4178,session=randomBytes(32).toStrin
         }
         if(action==='build'||action==='publish'){
           if(action==='publish'&&!token)fail('请先在下方配置 EdgeOne Makers 发布 Token。');
-          await checkCatalog(await catalog());job={busy:true,message:'正在准备…'};json(202,{started:true});void execute(action==='publish');return;
+          await checkCatalog(await catalog());await sample();job={busy:true,message:'正在准备…'};json(202,{started:true});void execute(action==='publish');return;
         }
         fail('接口不存在。',404);
       }

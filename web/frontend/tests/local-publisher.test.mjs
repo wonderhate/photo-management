@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,access,mkdir} from 'node:fs/promises';
+import {mkdtemp,readFile,writeFile,access,mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {request as httpRequest,createServer} from 'node:http';
@@ -11,6 +11,43 @@ await mkdir(fileURLToPath(new URL('../../.test-artifacts/',import.meta.url)),{re
 
 const jpeg=Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAACAAMDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDn6KKK8M+iP//Z','base64');
 const hash=b=>createHash('sha256').update(b).digest('hex');
+
+test('owner sample is independent, sanitized, authenticated, resettable and checked before building',async()=>{
+  const base=fileURLToPath(new URL('../../.test-artifacts/',import.meta.url)),work=await mkdtemp(base+'publisher-sample-');let builds=0,releaseBuild;
+  const buildGate=new Promise(resolve=>{releaseBuild=resolve;});
+  const publisher=await createPublisher({port:0,work,build:async()=>{builds++;await buildGate;return work+'/synthetic.zip';},sdkFactory:()=>{throw new Error('Sample changes must never call a remote service.');}});
+  const url=new URL(publisher.url),origin=url.origin,auth={Authorization:'Bearer '+url.hash.slice(1),Origin:origin};
+  const request=(name,{method='POST',data={},headers={}}={})=>fetch(origin+'/author/api/'+name,{method,headers:{...auth,'Content-Type':Buffer.isBuffer(data)?'image/jpeg':'application/json',...headers},body:method==='GET'?undefined:Buffer.isBuffer(data)?data:JSON.stringify(data)});
+  const state=async()=>{const response=await request('state',{method:'GET'});assert.equal(response.status,200);return response.json();};
+  try{
+    assert.equal((await state()).sample,null);assert.equal((await request('sample-image',{method:'GET'})).status,404);
+    assert.equal((await fetch(origin+'/author/api/sample-image')).status,401);
+    assert.equal((await request('sample',{data:jpeg,headers:{Origin:'https://photomanagement.online'}})).status,403);
+    assert.equal((await request('sample',{data:jpeg.subarray(0,100)})).status,400);
+    assert.equal((await request('sample',{data:jpeg,headers:{'Content-Type':'image/png'}})).status,400);
+    const metadata=Buffer.from('Exif\0\0GPS:synthetic-sample-original-name.jpg'),length=Buffer.alloc(2);length.writeUInt16BE(metadata.length+2);
+    const input=Buffer.concat([jpeg.subarray(0,2),Buffer.from([255,225]),length,metadata,jpeg.subarray(2)]),before=hash(input);
+    const response=await request('sample',{data:input});assert.equal(response.status,200);const sample=await response.json();
+    assert.deepEqual(sample,{version:1,src:'/demo/images/'+hash(jpeg)+'.jpg',width:3,height:2,sha256:hash(jpeg)});
+    assert.equal(hash(input),before);const saved=await readFile(work+'/content'+sample.src);assert.deepEqual(saved,jpeg);assert.ok(!saved.includes(metadata));
+    assert.deepEqual(JSON.parse(await readFile(work+'/content/demo/sample.json','utf8')),sample);
+    assert.deepEqual((await state()).sample,sample);assert.equal((await state()).catalog.photos.length,0);
+    const preview=await request('sample-image',{method:'GET'});assert.equal(preview.headers.get('content-type'),'image/jpeg');assert.equal(preview.headers.get('cache-control'),'no-store');assert.equal(hash(Buffer.from(await preview.arrayBuffer())),sample.sha256);
+    assert.equal((await request('build')).status,202);
+    for(let i=0;i<100&&!builds;i++)await new Promise(resolve=>setTimeout(resolve,10));assert.equal(builds,1);
+    assert.equal((await request('sample',{data:input})).status,409);assert.equal((await request('sample-reset')).status,409);
+    releaseBuild();for(let i=0;i<100&&(await state()).job.busy;i++)await new Promise(resolve=>setTimeout(resolve,10));assert.equal((await state()).release,true);
+    assert.equal((await request('sample',{data:input})).status,200);assert.equal((await state()).release,false);
+    const wide=Buffer.from(jpeg),sof=wide.indexOf(Buffer.from([255,192]));assert.notEqual(sof,-1);wide.writeUInt16BE(5000,sof+7);
+    assert.equal((await request('sample',{data:wide})).status,400);assert.deepEqual((await state()).sample,sample);
+    await writeFile(work+'/content/demo/sample.json',JSON.stringify({...sample,src:'/demo/images/../../private.jpg'}));
+    const damaged=await state();assert.equal(damaged.sample,null);assert.match(damaged.sampleError,/重新选择照片/);
+    assert.equal((await request('build')).status,400);assert.equal(builds,1);
+    assert.equal((await request('sample-reset',{data:{unexpected:true}})).status,400);assert.equal((await request('sample-reset')).status,200);
+    assert.equal((await state()).sample,null);assert.equal((await request('sample-image',{method:'GET'})).status,404);
+    await assert.rejects(access(work+'/content/demo/sample.json'));assert.deepEqual(await readFile(work+'/content'+sample.src),saved);assert.equal(hash(input),before);
+  }finally{releaseBuild();await new Promise(resolve=>publisher.server.close(resolve));}
+});
 
 test('owner upload strips metadata, validates drafts, rejects cross-site writes and publishes only the fixed project',async()=>{
   const base=fileURLToPath(new URL('../../.test-artifacts/',import.meta.url));

@@ -1,5 +1,6 @@
 const session=location.hash.slice(1),$=id=>document.getElementById(id);
 let catalog,dirty=false,busy=false,polling=false,jobBusy=false,uploadTarget='all';
+let sampleHash='',sampleSequence=0;
 async function api(name,data,method='POST'){
   const r=await fetch('/author/api/'+name,{method,headers:{Authorization:'Bearer '+session,...(data instanceof Blob?{'Content-Type':'image/jpeg'}:{'Content-Type':'application/json'})},body:method==='GET'?undefined:data instanceof Blob?data:JSON.stringify(data||{})});
   const body=await r.json();if(!r.ok)throw Error(body.error||'操作失败。');return body;
@@ -47,12 +48,29 @@ async function save(){
   await api('draft',catalog);dirty=false;$('status').textContent='草稿已保存在本机。';
 }
 async function run(task){if(busy)return;lock(true);$('error').textContent='';try{await task();}catch(e){error(e);}finally{lock(jobBusy);}}
+function renderSample(value){
+  const image=$('sample-preview');$('sample-empty').hidden=!!value;image.hidden=!value;boundary($('reset-sample'),!value);$('sample-meta').textContent=value?value.width+' × '+value.height+' · JPEG · 下一次发布的默认示例':'';
+  if(!value){sampleHash='';sampleSequence++;image.removeAttribute('src');return;}if(sampleHash===value.sha256)return;sampleHash=value.sha256;const own=++sampleSequence;
+  fetch('/author/api/sample-image',{headers:{Authorization:'Bearer '+session}}).then(async response=>{if(!response.ok)throw Error('无法读取体验示例照片。');const blob=await response.blob();if(own!==sampleSequence)return;const url=URL.createObjectURL(blob);image.onload=image.onerror=()=>URL.revokeObjectURL(url);image.src=url;}).catch(e=>{if(own===sampleSequence){sampleHash='';error(e);}});
+}
 async function state(){const s=await api('state',null,'GET');$('auth-state').textContent=s.credential?'发布凭据已配置 · '+s.project:'尚未配置发布凭据。预览与保存草稿仍然可用。';if(s.credentialWarning)$('credential-feedback').textContent=s.credentialWarning;$('remember').dataset.boundary=s.canRemember?'':'1';$('remember').disabled=!s.canRemember;if(!s.canRemember)$('remember').checked=false;
+  renderSample(s.sample);
+  if(s.sampleError){boundary($('reset-sample'),false);$('sample-meta').textContent=s.sampleError;error(Error(s.sampleError));}
   $('download').hidden=!s.release;if(s.release)$('download').href='/author/download#'+session;
   jobBusy=!!s.job?.busy;if(s.job){$('status').textContent=s.job.message;if(s.job.error)$('error').textContent=s.job.error;lock(jobBusy);if(jobBusy&&!polling){polling=true;setTimeout(async()=>{polling=false;try{await state();}catch(e){lock(false);error(e);}},1800);}}
   return s;
 }
-async function derivative(bitmap,edge){const scale=Math.min(1,edge/Math.max(bitmap.width,bitmap.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(bitmap.width*scale));c.height=Math.max(1,Math.round(bitmap.height*scale));c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.9));c.width=c.height=1;if(!blob)throw Error('无法创建展示副本。');return api('image',blob);}
+async function derivative(bitmap,edge,action='image'){const scale=Math.min(1,edge/Math.max(bitmap.width,bitmap.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(bitmap.width*scale));c.height=Math.max(1,Math.round(bitmap.height*scale));c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.9));c.width=c.height=1;if(!blob)throw Error('无法创建展示副本。');return api(action,blob);}
+$('choose-sample').onclick=()=>{if(!busy)$('sample-file').click();};
+$('sample-file').onchange=()=>void run(async()=>{
+  const file=$('sample-file').files[0];try{
+    if(!file)return;if(file.size>128*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('请选择不超过 128 MiB 的 JPEG、PNG 或 WebP。');
+    $('status').textContent='正在准备公开体验示例…';const bitmap=await createImageBitmap(file,{imageOrientation:'from-image'});
+    try{if(bitmap.width*bitmap.height>150000000)throw Error('照片像素过大，请先导出较小的展示图片。');await derivative(bitmap,2560,'sample');}finally{bitmap.close();}
+    await state();$('status').textContent='体验示例已保存在本机，将在下一次发布后供访客使用。';
+  }finally{$('sample-file').value='';}
+});
+$('reset-sample').onclick=()=>void run(async()=>{await api('sample-reset',{});await state();$('status').textContent='已恢复内置示例，将在下一次发布后生效。';});
 $('choose-files').onclick=()=>chooseUpload('all');
 $('files').onchange=()=>void run(async()=>{
   const files=[...$('files').files],target=uploadTarget;

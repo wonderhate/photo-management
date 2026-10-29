@@ -20,6 +20,13 @@ try{
   const buffers=await page.evaluate(()=>['#154f39','#d5a240','#315fcb','#893eac'].map(color=>{const c=document.createElement('canvas');c.width=120;c.height=80;const x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,120,80);return c.toDataURL('image/png').split(',')[1];}));
   const files=buffers.map((data,i)=>({name:'synthetic-private-filename-'+i+'.png',mimeType:'image/png',buffer:Buffer.from(data,'base64')}));
   const before=files.map(f=>createHash('sha256').update(f.buffer).digest('hex'));
+  await page.locator('#sample-file').setInputFiles(files[0]);
+  await expect(page.getByText('体验示例已保存在本机，将在下一次发布后供访客使用。',{exact:true})).toBeVisible();
+  await expect(page.locator('#sample-preview')).toHaveJSProperty('naturalWidth',120);await expect(page.locator('#sample-preview')).toHaveJSProperty('naturalHeight',80);
+  const sampleState=await(await page.request.get(u.origin+'/author/api/state',{headers:auth})).json();expect(sampleState.catalog.photos).toHaveLength(0);expect(sampleState.sample.src).toMatch(/^\/demo\/images\/[a-f0-9]{64}\.jpg$/);expect(JSON.stringify(sampleState.sample)).not.toContain('synthetic-private-filename');
+  const sampleBytes=await(await page.request.get(u.origin+'/author/api/sample-image',{headers:auth})).body();expect(createHash('sha256').update(sampleBytes).digest('hex')).toBe(sampleState.sample.sha256);
+  await page.locator('#reset-sample').click();await expect(page.locator('#sample-empty')).toBeVisible();await expect(page.locator('#sample-preview')).toBeHidden();
+  await page.locator('#sample-file').setInputFiles(files[2]);await expect(page.locator('#sample-preview')).toHaveJSProperty('naturalWidth',120);await page.reload();await expect(page.locator('#sample-preview')).toHaveJSProperty('naturalWidth',120);
   await page.getByLabel('网站名称',{exact:true}).fill('Wonder 的视觉日记');
   await upload(page.locator('#choose-files'),files.slice(0,2));await expect(page.locator('.photo')).toHaveCount(2);
   await expect(page.getByLabel('网站名称',{exact:true})).toHaveValue('Wonder 的视觉日记');

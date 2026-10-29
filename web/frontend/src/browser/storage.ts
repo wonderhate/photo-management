@@ -50,6 +50,7 @@ import type {StoredSplit} from '../core/split-record';
 import type {SplitEditSource} from '../core/edit-lineage';
 import {validateEditLineageGraph,validateSplitEditOutput} from '../core/edit-lineage-graph';
 import type {SplitEditOutput} from '../core/edit-lineage-graph';
+import {isMemoryDirectory} from './memory-directory';
 
 export interface Directory extends FileSystemDirectoryHandle {
   values():AsyncIterableIterator<FileSystemHandle>;
@@ -96,6 +97,10 @@ let browsing:Library|null=null;
 let queue:Promise<unknown>=Promise.resolve();
 let restoring:Promise<Library|null>|undefined;
 let sessionGeneration=0,sessionNonce='',openAttempt=0;
+let temporaryRoot:Directory|null=null;
+const temporaryOperations=new Set<Promise<unknown>>(),temporaryLocks=new Map<string,Promise<unknown>>();
+const temporaryHandles=new Map<string,unknown>();
+let temporaryClosing:Promise<unknown>=Promise.resolve();
 const MAX_MANIFEST_BYTES=64*1024*1024;
 export const mediaSession=()=>sessionNonce;
 export const librarySession=()=>sessionGeneration;
@@ -104,6 +109,22 @@ export const now=()=>new Date().toISOString();
 export const uid=()=>crypto.randomUUID();
 export const LIBRARY_REQUIRED='lumina:library-required';
 export function hasLibrary(){return !!root&&!!library;}
+export function isTemporaryLibrary(){return !!root&&!!library&&root===temporaryRoot;}
+/** Native locks for real libraries; a single-window queue only for the demo. */
+export function runLibraryLock<T>(name:string,operation:()=>Promise<T>):Promise<T>{
+  const temporary=isTemporaryLibrary(),base=root,generation=librarySession();
+  const check=()=>{if(temporary&&(root!==base||librarySession()!==generation))throw new DOMException('The temporary session has ended.','AbortError');};
+  const run=async()=>{check();const result=await operation();check();return result;};
+  let pending:Promise<T>;
+  if(typeof navigator!=='undefined'&&navigator.locks)pending=navigator.locks.request(name,run);
+  else{
+    if(!temporary)return Promise.reject(new Error('Use the current desktop Chrome or Edge over HTTPS.'));
+    pending=(temporaryLocks.get(name)||Promise.resolve()).catch(()=>{}).then(run);
+    temporaryLocks.set(name,pending);void pending.finally(()=>{if(temporaryLocks.get(name)===pending)temporaryLocks.delete(name);}).catch(()=>{});
+  }
+  if(temporary){temporaryOperations.add(pending);void pending.finally(()=>temporaryOperations.delete(pending)).catch(()=>{});}
+  return pending;
+}
 export function isBrowsing(){return !!browsing&&!library;}
 export function beginBrowsing(){
   if(hasLibrary())return;
@@ -119,6 +140,7 @@ export function directory():Directory {requireLibrary();return root!;}
 
 async function handlesDB(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('photocollection-browser-handles',1);r.onupgradeneeded=()=>r.result.createObjectStore('handles');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 export async function handleValue<T>(key:string,value?:T):Promise<T|undefined>{
+  if(isTemporaryLibrary()){if(value===undefined)return temporaryHandles.get(key) as T|undefined;temporaryHandles.set(key,value);return value;}
   const db=await handlesDB();try{return await new Promise<T|undefined>((resolve,reject)=>{const tx=db.transaction('handles',value===undefined?'readonly':'readwrite'),store=tx.objectStore('handles');const r=value===undefined?store.get(key):store.put(value,key);let result:T|undefined;r.onsuccess=()=>{result=r.result};tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error);tx.onerror=()=>reject(tx.error);});}finally{db.close();}
 }
 function safeParts(path:string){const p=path.split('/');if(!p.length||p.some(s=>!s||s==='.'||s==='..'||/[\\\x00-\x1f]/.test(s)))throw new Error('Invalid local file path.');return p;}
@@ -231,6 +253,7 @@ export function validate(value:unknown):Library {
 async function readManifest(base:FileSystemDirectoryHandle,name='library.json'){const file=await localFile(name,base);if(file.size>MAX_MANIFEST_BYTES)throw new Error('Library metadata exceeds 64 MiB.');return validate(JSON.parse(await file.text()));}
 export async function openLibrary(handle:Directory,create=false){
   const attempt=++openAttempt,ensureOpening=()=>{if(openAttempt!==attempt)throw new Error('Library changed. Reopen the current library.');};
+  await temporaryClosing;ensureOpening();
   if(await handle.requestPermission({mode:'readwrite'})!=='granted')throw new Error('Write permission is required for the library data directory.');
   ensureOpening();
   let next:Library;
@@ -240,23 +263,43 @@ export async function openLibrary(handle:Directory,create=false){
     next={application:'photocollection-browser',version:24,id:uid(),revision:0,sources:[],photos:[],albums:[],drafts:[],works:[],jobs:[],settings:{...defaults,data_dir:handle.name},art:{image_model:'qwen-image-3.0',title_model:'qwen3-vl-plus'}};
     await writeFile('library.json',JSON.stringify(next),handle);
   }
-  ensureOpening();root=handle;library=next;browsing=null;sessionGeneration++;sessionNonce=uid();sources.clear();clearURLs();
+  ensureOpening();root=handle;library=next;browsing=null;temporaryRoot=null;sessionGeneration++;sessionNonce=uid();sources.clear();clearURLs();
   for(const source of next.sources){let cached:Directory|undefined,granted=false;try{cached=await handleValue<Directory>(next.id+':'+source.id);ensureOpening();granted=!!cached&&await cached.queryPermission({mode:'read'})==='granted';}catch{/* Handles are a convenience cache; the directory manifest remains authoritative. */}ensureOpening();if(cached&&granted)sources.set(source.id,cached);}
   try{await handleValue('last-library',handle);}catch{/* Opening an explicitly granted directory must still work without IndexedDB. */}ensureOpening();
   // Completed results are durable; interrupted billable jobs must never be retried.
   if(next.jobs.some(j=>['running','queued','submitted'].includes(j.status)))await commit(s=>interruptTasks(s.jobs));
   return current();
 }
-export function restoreLibrary():Promise<Library|null>{return restoring??=(async()=>{const h=await handleValue<Directory>('last-library');if(h&&await h.queryPermission({mode:'readwrite'})==='granted'){// No permission prompt outside a user gesture.
-    const next=await readManifest(h);root=h;library=next;browsing=null;sessionGeneration++;sessionNonce=uid();sources.clear();clearURLs();for(const source of next.sources){const v=await handleValue<Directory>(next.id+':'+source.id);if(v&&await v.queryPermission({mode:'read'})==='granted')sources.set(source.id,v);}if(next.jobs.some(j=>['running','queued','submitted'].includes(j.status)))await commit(s=>interruptTasks(s.jobs));return current();
-  }return null;})();}
+/** Mount an isolated memory directory without reading or changing remembered handles. */
+export async function openTemporaryLibrary(handle:Directory){
+  if(!isMemoryDirectory(handle)||hasLibrary())throw new Error('Close the current library before starting a temporary session.');
+  const attempt=++openAttempt;await temporaryClosing;
+  if(openAttempt!==attempt||hasLibrary())throw new DOMException('The temporary session has ended.','AbortError');
+  const next:Library={application:'photocollection-browser',version:24,id:uid(),revision:0,sources:[],photos:[],albums:[],drafts:[],works:[],jobs:[],settings:{...defaults,data_dir:handle.name,export_format:'png',export_long_edge:0,export_quality:100},art:{image_model:'qwen-image-3.0',title_model:'qwen3-vl-plus'}};
+  await writeFile('library.json',JSON.stringify(next),handle);
+  if(openAttempt!==attempt||hasLibrary())throw new DOMException('The temporary session has ended.','AbortError');
+  root=handle;library=next;browsing=null;temporaryRoot=handle;temporaryHandles.clear();sessionGeneration++;sessionNonce=uid();sources.clear();clearURLs();return next;
+}
+export function restoreLibrary():Promise<Library|null>{
+  if(isTemporaryLibrary())return Promise.resolve(null);
+  return restoring??=(async()=>{
+    const attempt=++openAttempt,check=()=>{if(openAttempt!==attempt)throw new Error('Library changed. Reopen the current library.');};
+    await temporaryClosing;check();const h=await handleValue<Directory>('last-library');check();
+    if(h&&await h.queryPermission({mode:'readwrite'})==='granted'){
+      // No permission prompt outside a user gesture.
+      check();const next=await readManifest(h);check();root=h;library=next;browsing=null;temporaryRoot=null;sessionGeneration++;sessionNonce=uid();sources.clear();clearURLs();
+      for(const source of next.sources){const v=await handleValue<Directory>(next.id+':'+source.id);check();if(v&&await v.queryPermission({mode:'read'})==='granted'){check();sources.set(source.id,v);}}
+      if(next.jobs.some(j=>['running','queued','submitted'].includes(j.status)))await commit(s=>interruptTasks(s.jobs));return current();
+    }return null;
+  })();
+}
 async function assertRevision(base:Directory,expected:Library){const disk=await readManifest(base);if(disk.id!==expected.id||disk.revision!==expected.revision)throw new Error('This library changed in another window. Reopen it before saving.');}
 export async function assertCurrentRevision(){const base=directory(),expected=current();await assertRevision(base,expected);if(directory()!==base||current().id!==expected.id)throw new Error('Library changed. Reopen the current library.');}
 export function commit(change:(value:Library)=>void):Promise<Library>{
   requireLibrary();
   assertLibraryWritable();
   const scope=current().id,base=directory(),generation=librarySession();
-  const run=async()=>navigator.locks.request('photocollection:'+scope,async()=>{
+  const run=async()=>runLibraryLock('photocollection:'+scope,async()=>{
     assertLibraryWritable();
     if(current().id!==scope||directory()!==base||librarySession()!==generation)throw new Error('Library changed. Reopen the current library.');
     const previous=current();const next=structuredClone(previous);change(next);next.version=24;next.revision=previous.revision+1;for(const j of next.jobs)for(const result of j.results)result.url='';validate(next);
@@ -270,9 +313,9 @@ export function commit(change:(value:Library)=>void):Promise<Library>{
 }
 export async function selectDirectory(mode:'read'|'readwrite'='read'):Promise<Directory>{const picker=(window as unknown as {showDirectoryPicker:(o:object)=>Promise<Directory>}).showDirectoryPicker;if(!picker)throw new Error('Use the current desktop Chrome or Edge over HTTPS.');return picker({mode,id:mode==='read'?'photo-sources':'photo-library'});}
 export async function connectSource(handle:Directory,sourceId?:string){
-  const base=directory(),scope=current().id,generation=librarySession();
+  const base=directory(),scope=current().id,generation=librarySession(),temporary=isTemporaryLibrary();
   const check=()=>{if(librarySession()!==generation||directory()!==base||current().id!==scope)throw new Error('Library changed. Reopen the current library.');};
-  if(await base.isSameEntry(handle)||await base.resolve(handle)!==null||await handle.resolve(base)!==null)throw new Error('Keep original photos and the library data directory separate.');check();
+  if(await base.isSameEntry(handle)||await base.resolve(handle)!==null||!temporary&&await handle.resolve(base)!==null)throw new Error('Keep original photos and the library data directory separate.');check();
   if(await handle.requestPermission({mode:'read'})!=='granted')throw new Error('Read permission was not granted.');
   check();let id=sourceId;
   if(!id)for(const [known,h] of sources){if(await h.isSameEntry(handle))id=known;check();}
@@ -289,7 +332,7 @@ export async function imageURLs(paths:string[]){
 }
 export async function imageURL(path:string){return (await imageURLs([path]))[0];}
 export function clearURLs(){resetMediaResources();}
-export function closeLibrary(){openAttempt++;sessionGeneration++;sessionNonce=uid();clearURLs();sources.clear();root=null;library=null;browsing=null;restoring=undefined;}
+export function closeLibrary(){if(isTemporaryLibrary())temporaryClosing=Promise.allSettled([...temporaryOperations]);openAttempt++;sessionGeneration++;sessionNonce=uid();clearURLs();sources.clear();temporaryHandles.clear();root=null;library=null;browsing=null;temporaryRoot=null;restoring=undefined;}
 export async function backup(){
   const leave=enterLibraryMutation();
   try{
