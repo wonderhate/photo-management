@@ -36,6 +36,76 @@ def bundled_demo_paths():
     return {'demo/source.json'} | {'demo/' + name for name in names}
 
 
+def owner_demo_paths(source):
+    """Only the explicitly selected, hash-pinned, metadata-free public sample."""
+    path = source / 'demo/sample.json'
+    if not path.exists():
+        return set()
+    if path.is_symlink() or path.stat().st_size > 2048:
+        raise ValueError('Invalid published demo photo.')
+    record = json.loads(path.read_text(encoding='utf-8'))
+    digest = record.get('sha256')
+    if (set(record) != {'version', 'src', 'width', 'height', 'sha256'}
+            or record.get('version') != 1 or not isinstance(digest, str)
+            or not re.fullmatch('[a-f0-9]{64}', digest)
+            or record.get('src') != '/demo/images/' + digest + '.jpg'
+            or any(type(record.get(key)) is not int or not 1 <= record[key] <= 8192
+                   for key in ('width', 'height'))):
+        raise ValueError('Invalid published demo photo.')
+    relative = record['src'].lstrip('/')
+    image = source / relative
+    if (not image.is_file() or image.is_symlink()
+            or not image.resolve().is_relative_to(source.resolve())
+            or image.stat().st_size > 25 * 1024 * 1024):
+        raise ValueError('Invalid published demo photo.')
+    data = image.read_bytes()
+    if hashlib.sha256(data).hexdigest() != digest or data[:2] != b'\xff\xd8':
+        raise ValueError('Published demo photo failed verification.')
+    pos, width, height, scanned, ended = 2, 0, 0, False, False
+    while pos < len(data):
+        if data[pos] != 255:
+            raise ValueError('Invalid published demo JPEG.')
+        pos += 1
+        while pos < len(data) and data[pos] == 255:
+            pos += 1
+        if pos >= len(data):
+            raise ValueError('Invalid published demo JPEG.')
+        marker = data[pos]
+        pos += 1
+        if marker == 217:
+            ended = True
+            break
+        if marker in (0, 1, 216) or 208 <= marker <= 215 or pos + 2 > len(data):
+            raise ValueError('Invalid published demo JPEG.')
+        if 225 <= marker <= 239 or marker == 254:
+            raise ValueError('Published demo JPEG contains private metadata.')
+        length = int.from_bytes(data[pos:pos + 2], 'big')
+        if length < 2 or pos + length > len(data):
+            raise ValueError('Invalid published demo JPEG.')
+        if marker in (192, 193, 194):
+            if length < 8:
+                raise ValueError('Invalid published demo JPEG.')
+            height = int.from_bytes(data[pos + 3:pos + 5], 'big')
+            width = int.from_bytes(data[pos + 5:pos + 7], 'big')
+        pos += length
+        if marker == 218:
+            scanned = True
+            while pos < len(data):
+                if data[pos] != 255:
+                    pos += 1
+                    continue
+                follow = pos + 1
+                while follow < len(data) and data[follow] == 255:
+                    follow += 1
+                if follow < len(data) and (data[follow] == 0 or 208 <= data[follow] <= 215):
+                    pos = follow + 1
+                    continue
+                break
+    if not ended or not scanned or pos != len(data) or (width, height) != (record['width'], record['height']):
+        raise ValueError('Invalid published demo JPEG dimensions or data.')
+    return {'demo/sample.json', relative}
+
+
 def validate_public(source):
     """Check a public build without producing an archive or touching owner state."""
     source = Path(source)
@@ -45,7 +115,8 @@ def validate_public(source):
     allowed_root = {'index.html', 'windows.html', 'sw.js', 'site-notes.js', 'site-glass.css', 'site-glass.js', 'local-file-worker.js', 'pageview.js', 'robots.txt', 'sitemap.xml', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'edgeone.json'}
     map_paths = bundled_map_paths()
     demo_paths = bundled_demo_paths()
-    public_paths = {'about/index.html', 'lumina/index.html', 'en/index.html', 'en/about/index.html', 'en/lumina/index.html'} | map_paths | demo_paths
+    selected_demo_paths = owner_demo_paths(source)
+    public_paths = {'about/index.html', 'lumina/index.html', 'en/index.html', 'en/about/index.html', 'en/lumina/index.html'} | map_paths | demo_paths | selected_demo_paths
     allowed_dirs = {'assets', 'local-assets', 'raw-1.6.0', 'licenses', 'portfolio'}
     for p in files:
         rel = p.relative_to(source)

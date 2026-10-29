@@ -1,5 +1,5 @@
 import {lutRootLabel} from '../core/lut-context';
-import {current,commit,handleValue,uid,assertCurrentRevision} from './storage';
+import {current,commit,handleValue,uid,assertCurrentRevision,isTemporaryLibrary} from './storage';
 import type {Directory} from './storage';
 import {editScope,hashFile} from './edit-storage';
 import {MAX_CUBE_BYTES} from '../core/cube-lut';
@@ -15,7 +15,7 @@ export async function listLutFolders(){const scope=editScope();await assertCurre
 export async function linkLutFolder(id?:string):Promise<LutFolder|null>{
   const scope=editScope();let directory:Directory;
   try{directory=await (window as any).showDirectoryPicker({mode:'read',id:'photo-lut-folder'});}catch(e){if(e instanceof DOMException&&e.name==='AbortError')return null;throw e;}
-  scope.check();if(await directory.isSameEntry(scope.base)||await scope.base.resolve(directory)!==null)throw new Error('Choose a directory outside the library.');scope.check();
+  scope.check();if(!isTemporaryLibrary()&&await directory.isSameEntry(scope.base)||await scope.base.resolve(directory)!==null)throw new Error('Choose a directory outside the library.');scope.check();
   const previous=id?current().lut_folders?.find(f=>f.id===id):undefined;if(id&&!previous)throw new Error('LUT folder not found.');
   for(const f of current().lut_folders||[]){const existing=await handleValue<Directory>(key(scope.id,f.binding));scope.check();if(existing&&await existing.isSameEntry(directory)){scope.check();if(id&&id!==f.id)throw new Error('This LUT directory is already linked.');return f;}}
   if(!id&&(current().lut_folders?.length||0)>=LUT_FOLDER_LIMIT)throw new Error('Too many LUT folders.');
@@ -35,7 +35,7 @@ export async function scanLutFolder(id:string):Promise<LutFolder>{
     children.sort((a,b)=>a.name.localeCompare(b.name));
     for(const h of children){scope.check();if(h.name.startsWith('.'))continue;if(entries.length>=LUT_ENTRY_LIMIT){truncated=true;return;}
       const path=prefix+h.name;if(!validLutPath(path)){truncated=true;continue;}
-      if(h.kind==='directory'){const next=await dir.getDirectoryHandle(h.name) as Directory;if(await next.isSameEntry(scope.base))continue;await walk(next,path+'/',depth+1);continue;}
+      if(h.kind==='directory'){const next=await dir.getDirectoryHandle(h.name) as Directory;if(!isTemporaryLibrary()&&await next.isSameEntry(scope.base))continue;await walk(next,path+'/',depth+1);continue;}
       if(!/\.cube$/i.test(h.name))continue;
       const entry:LutFolderEntry={path,stamp:'',asset:null,comments:[],error:'unreadable'};
       try{

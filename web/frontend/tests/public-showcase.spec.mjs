@@ -161,7 +161,8 @@ for(const [lang,theme,width]of [['zh','dark',1440],['en','light',390]])test(`pub
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await hero.getByRole('link',{name:lang==='zh'?'用示例体验':'Try the sample',exact:true}).click();
   await expect(page).toHaveURL(/local=1&demo=1/);
-  await expect(page.getByRole('button',{name:lang==='zh'?'下载示例 PNG':'Download demo PNG',exact:true})).toBeEnabled();
+  await expect(page.getByRole('heading',{name:lang==='zh'?'1. 光影暗房':'1. Lumina Darkroom',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:lang==='zh'?'打开照片 / RAW':'Open photo / RAW',exact:true})).toBeEnabled();
   expect(await page.evaluate(()=>window.__directoryPrompts)).toBe(0);
 });
 
