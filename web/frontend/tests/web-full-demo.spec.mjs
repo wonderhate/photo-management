@@ -116,6 +116,13 @@ for(const [lang,width,theme,format]of [['zh',1440,'dark','png'],['en',390,'light
   await page.getByLabel(/文件格式|File Format|File format/).selectOption(format);
   expect(downloads).toHaveLength(0);await page.screenshot({path:info.outputPath(`demo-watermark-${lang}.png`),fullPage:true,animations:'disabled'});
   await advanceToDownload(page,text);expect(downloads).toHaveLength(0);
+  const contrast=await page.locator('.demo-download').evaluate(link=>{
+    const style=getComputedStyle(link),luminance=color=>{
+      const rgb=color.match(/[\d.]+/g).slice(0,3).map(Number).map(value=>{value/=255;return value<=.04045?value/12.92:((value+.055)/1.055)**2.4;});
+      return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];
+    },a=luminance(style.color),b=luminance(style.backgroundColor);
+    return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  });expect(contrast,'The final download action must have readable text in both themes').toBeGreaterThanOrEqual(4.5);
   const material=await page.locator('.demo-stage').evaluate(panel=>{
     const image=panel.querySelector('img'),style=getComputedStyle(image),surface=getComputedStyle(panel);
     return {material:panel.getAttribute('data-liquid-glass'),backdrop:surface.backdropFilter,imageFilter:style.filter,imageBackdrop:style.backdropFilter};

@@ -24,5 +24,6 @@
 .demo-workflow .demo-result{position:static;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:32px;padding:28px;align-items:center}
 .demo-result img{width:100%;max-height:72vh;object-fit:contain}.demo-result h3{font-size:28px;margin:0 0 16px}.demo-result p{font-size:14px;line-height:1.7}
 .demo-download{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:12px 28px;border-radius:24px;margin:20px 0;background:var(--accent);color:var(--bg);text-decoration:none}
+:root:root[data-theme] .demo-workflow a.demo-download{color:var(--bg)}
 .demo-result-name{overflow-wrap:anywhere}.demo-workflow .demo-privacy{margin-top:32px;padding-top:20px;border-top:1px solid var(--line)}
 @media(max-width:760px){.demo-workflow{padding:16px}.demo-steps{gap:6px}.demo-steps li{padding:12px 10px;border-radius:12px}.demo-steps span{font-size:13px}.demo-steps small{font-size:11px}.demo-workflow .demo-result{grid-template-columns:1fr;padding:16px;gap:20px}.demo-workflow .library-picker{flex-basis:100%;max-width:100%}.demo-workflow .editor-toolbar .toolbar-spacer{display:none}.demo-workflow .draft-editor-bar>div{max-width:100%}}

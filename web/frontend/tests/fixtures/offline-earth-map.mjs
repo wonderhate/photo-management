@@ -47,7 +47,7 @@ export async function exerciseOfflineEarth(page,probe,info,lang,{checkOfflineCac
   await page.keyboard.press('+');await expect.poll(async()=>Number(await map.getAttribute('data-zoom'))).toBeCloseTo(initialZoom+2,4);
   const zoomed=await loadedTiles(page);expect(Math.max(...zoomed.map(url=>Number(url.split('/')[3])))).toBeGreaterThan(Math.max(...initial.map(url=>Number(url.split('/')[3]))));
   const beforePan=await position();await page.keyboard.press('ArrowRight');await expect.poll(position).not.toEqual(beforePan);
-  await map.scrollIntoViewIfNeeded();const beforeDrag=await position(),box=await map.boundingBox(),dragX=box.x+box.width*.35,dragY=box.y+box.height*.6;await page.mouse.move(dragX,dragY);await page.mouse.down();await page.mouse.move(dragX+60,dragY+24,{steps:4});await page.mouse.up();await expect.poll(position).not.toEqual(beforeDrag);
+  await map.scrollIntoViewIfNeeded();await expect(map.locator('.leaflet-pan-anim')).toHaveCount(0);const beforeDrag=await position(),box=await map.boundingBox(),dragX=box.x+box.width*.35,dragY=box.y+box.height*.6;await page.mouse.move(dragX,dragY);await page.mouse.down();await page.mouse.move(dragX+60,dragY+24,{steps:4});await page.mouse.up();await expect.poll(position).not.toEqual(beforeDrag);
   await button('全世界','Whole world').click();await expect.poll(async()=>Number(await map.getAttribute('data-zoom'))).toBeCloseTo(initialZoom,4);
   // A narrow viewport crops the fitted world horizontally; focus the photo's country.
   await page.locator('input[list="map-countries"]').fill('China');await expect(page.locator('.satellite-photo-pin')).toHaveCount(1);
