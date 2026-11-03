@@ -167,8 +167,8 @@ test('switching to a narrow viewport stops desktop exhibitions and preserves the
 test('optional exhibitions can pause, skip and return to standard photo viewing',async({page},info)=>{
   const {errors}=await synthetic(page);
   await page.goto('/?page=home');
-  await page.locator('.hero-photo-credit button').click();
-  await expect(page.locator('.viewer-counter')).toHaveText('1 / 7');
+  const cover=page.locator('.library-cover-credit');await expect(cover).toBeVisible();const name=await cover.innerText();await cover.click();
+  await expect(page.locator('.viewer-caption b')).toHaveText(name);await expect(page.locator('.viewer-counter')).toHaveText(/^[1-7] \/ 7$/);
   await page.getByLabel('摄影氛围',{exact:true}).check();
   await expect(page.locator('.aperture-intro')).toBeVisible();
   await page.getByRole('button',{name:'跳过开场',exact:true}).click();

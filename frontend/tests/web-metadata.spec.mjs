@@ -1,3 +1,4 @@
+import {browserApiModule} from './fixtures/browser-api-module.mjs';
 import {test,expect} from '@playwright/test';
 import {readFileSync,readdirSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -9,7 +10,7 @@ import {exerciseXmpRating} from './fixtures/xmp-rating.mjs';
 const repo=fileURLToPath(new URL('../../',import.meta.url)),python=process.env.PHOTO_TEST_PYTHON||repo+'.venv/Scripts/python.exe';
 const fixture=repo+'.test-artifacts/metadata-fixtures/';
 execFileSync(python,[repo+'frontend/tests/fixtures/make-metadata-jpegs.py',fixture]);
-const apiModule='/assets/'+readdirSync(new URL('../dist-web/assets/',import.meta.url)).find(f=>/^api-.*\.js$/.test(f));
+const apiModule=browserApiModule(fileURLToPath(new URL('../dist-web/assets/',import.meta.url)));
 const editorWorker='/assets/'+readdirSync(new URL('../dist-web/assets/',import.meta.url)).find(f=>/^edit-worker-.*\.js$/.test(f));
 const toolModule='/assets/'+readdirSync(new URL('../dist-web/assets/',import.meta.url)).find(f=>/^tool-preference-store-.*\.js$/.test(f));
 const payload=(name,source)=>({name,mimeType:'image/jpeg',buffer:readFileSync(fixture+source)});

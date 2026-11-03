@@ -93,7 +93,7 @@
   .asset-relationships, .source-card, .derived-card, .removed-photo-card,
   .plugin-row, .plugin-output, .capability-list > li, .catalog-settings fieldset, .catalog-preview, .catalog-pending,
   .metrics, .lifecycle, .report-controls, .segmented, .lens-row, .face-model-integrity,
-  .hero-actions, .hero-bottom, .collection-copy, .showcase-bottom, .showcase-hero .button-row,
+  .collection-copy,
   .browser-settings, .public-collection, .public-statement, .public-search, .public-cover-controls,
   .toast, .job-panel, .job-toast, .task-toast, .import-progress
 ) {
@@ -142,8 +142,7 @@
 }
 :root:root[data-material="liquid-glass"][data-theme] .scrim { background: rgb(0 0 0 / .48); }
 :root:root[data-material="liquid-glass"][data-theme="light"] .scrim { background: rgb(44 39 28 / .28); }
-:root:root[data-material="liquid-glass"][data-theme] :is(.collection-copy, .hero-bottom) :is(h3, p, small, a, span),
-:root:root[data-material="liquid-glass"][data-theme] .hero-actions .hero-secondary,
+:root:root[data-material="liquid-glass"][data-theme] .collection-copy :is(h3, p, small, a, span),
 :root:root[data-material="liquid-glass"][data-theme] .public-hero-bottom button {
   color: var(--text);
 }

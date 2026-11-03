@@ -1,7 +1,7 @@
 {
   "name": "photo-library-ui",
   "private": true,
-  "version": "2.7.3",
+  "version": "2.7.4",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --mode browser",
@@ -20,7 +20,8 @@
     "react-is": "^19.3.0",
     "react-window": "^1.8.11",
     "recharts": "^3.0.0",
-    "leaflet": "1.9.4"
+    "leaflet": "1.9.4",
+    "pmtiles": "4.5.0"
   },
   "devDependencies": {
     "@edgeone/makers-sdk": "0.1.0",

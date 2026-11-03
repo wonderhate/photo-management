@@ -1,7 +1,8 @@
-export type Page='ai-studio'|'home'|'locations'|'videos'|'photos'|'albums'|'smart'|'stats'|'reports'|'watermark'|'watermark-gallery'|'watercolor'|'timeline'|'compare'|'faces'|'settings'|'tools'|'darkroom';
-const pages:Page[]=['ai-studio','home','locations','videos','photos','albums','smart','stats','reports','watermark','watermark-gallery','watercolor','timeline','compare','faces','settings','tools','darkroom'];
+export type Page='ai-studio'|'home'|'locations'|'videos'|'photos'|'albums'|'smart'|'stats'|'reports'|'watermark'|'watermark-gallery'|'watercolor'|'timeline'|'compare'|'faces'|'settings'|'tools'|'darkroom'|'collage-gallery';
+const pages:Page[]=['ai-studio','home','locations','videos','photos','albums','smart','stats','reports','watermark','watermark-gallery','watercolor','timeline','compare','faces','settings','tools','darkroom','collage-gallery'];
 export function pageFromURL(pathname:string,search:string):Page{
   if(pathname==='/ai-studio')return 'ai-studio';
+  if(['/collage','/collage/gallery'].includes(pathname))return 'collage-gallery';
   if(pathname==='/tools')return 'tools';
   if(['/tools/darkroom','/tools/analyze','/tools/raw','/tools/edit'].includes(pathname))return 'darkroom';
   if(pathname==='/watercolor')return 'watercolor';

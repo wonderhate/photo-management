@@ -1,0 +1,17 @@
+{
+  "name": "PMTiles",
+  "version": "4.5.0",
+  "license": "BSD-3-Clause",
+  "license_file": "pmtiles-BSD-3-Clause.txt",
+  "source": "https://github.com/protomaps/PMTiles",
+  "license_source": "https://raw.githubusercontent.com/protomaps/PMTiles/main/LICENSE",
+  "license_sha256": "0371c38f338835f7fc13ed71176f3d92144e22c8b736a31cced57adbbeb647b3",
+  "bundled_from": "pmtiles@4.5.0 npm package",
+  "dependency": {
+    "name": "fflate",
+    "version": "0.8.3",
+    "license": "MIT",
+    "license_file": "fflate-MIT.txt"
+  },
+  "purpose": "Read local raster PMTiles archives; no provider URLs or API key required."
+}

@@ -23,7 +23,7 @@ async function fixture(){
 async function mapFixture(root){
   await cp(fileURLToPath(new URL('../public/maps',import.meta.url)),join(root,'maps'),{recursive:true});
   await mkdir(join(root,'licenses'),{recursive:true});
-  for(const name of ['nasa-blue-marble.json','leaflet-BSD-2-Clause.txt','leaflet-source.json'])await copyFile(fileURLToPath(new URL('../public/licenses/'+name,import.meta.url)),join(root,'licenses',name));
+  for(const name of ['nasa-blue-marble.json','leaflet-BSD-2-Clause.txt','leaflet-source.json','pmtiles-BSD-3-Clause.txt','pmtiles-source.json','fflate-MIT.txt'])await copyFile(fileURLToPath(new URL('../public/licenses/'+name,import.meta.url)),join(root,'licenses',name));
   await cp(fileURLToPath(new URL('../public/demo',import.meta.url)),join(root,'demo'),{recursive:true});
 }
 
@@ -32,7 +32,7 @@ test('public package validation accepts the complete registered map and its sour
   try{
     await mapFixture(root);
     for(const name of ['site-glass.css','site-glass.js','local-file-worker.js','assets/runtime.mjs','assets/runtime.wasm'])await writeFile(join(root,name),'synthetic public asset');
-    const result=validate(root);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/706 1/);
+    const result=validate(root);assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/709 1/);
     await writeFile(join(root,'maps/private.json'),'synthetic private data');
     const rejected=validate(root);assert.notEqual(rejected.status,0);assert.match(rejected.stderr,/Unexpected public artifact: maps\/private\.json/);
   }finally{await rm(root,{recursive:true,force:true});}
@@ -62,7 +62,7 @@ test('public package validation rejects altered, missing and unregistered map re
   const root=await fixture();
   try{
     await mapFixture(root);
-    for(const relative of ['maps/earth/4/31-15.jpg','maps/earth/metadata.json','maps/satellite.js','licenses/nasa-blue-marble.json','licenses/leaflet-BSD-2-Clause.txt','licenses/leaflet-source.json']){
+    for(const relative of ['maps/earth/4/31-15.jpg','maps/earth/metadata.json','maps/satellite.js','licenses/nasa-blue-marble.json','licenses/leaflet-BSD-2-Clause.txt','licenses/leaflet-source.json','licenses/pmtiles-BSD-3-Clause.txt','licenses/pmtiles-source.json','licenses/fflate-MIT.txt']){
       const file=join(root,relative),original=await readFile(file);
       await writeFile(file,'synthetic replacement');
       const changed=validate(root);assert.notEqual(changed.status,0,relative);assert.match(changed.stderr,/Map asset does not match its bundled source/);

@@ -12,7 +12,7 @@ Windows 安装包直接包含全部地图资源。两份 Vite 的浏览器构建
 
 浏览器必须等待该版本 service worker 的完整 `install` 成功，之后全球范围均可离线，包括从未浏览过的区域。注册成功或已显示部分瓦片不代表完整缓存就绪；初次可通过 `navigator.serviceWorker.ready` 等待，更新则观察新 worker 的安装和激活状态。任一下载失败会拒绝安装，原有活动 worker 不被半成品替换。浏览器清理站点存储后需要重新完成缓存。
 
-两个网站打包脚本从仓库中的 metadata 读取地图白名单，另外只接纳三个 Google 桥接文件、原有陆地底图、metadata、摘要与 NASA 信用记录，以及 Leaflet 许可和来源记录，共 692 个指定资源。逐文件比较构建结果和仓库来源；缺失瓦片、缺失信用、额外地图文件或被替换的内容都会阻止打包，构建输出不能通过修改自己的 metadata 扩展白名单。
+两个网站打包脚本从仓库中的 metadata 读取地图白名单，另外只接纳三个 Google 桥接文件、原有陆地底图、metadata、摘要与 NASA 信用记录，以及 Leaflet 许可和来源记录，加上 PMTiles／fflate 的三份许可与来源记录，共 695 个指定资源。逐文件比较构建结果和仓库来源；缺失瓦片、缺失信用、额外地图文件或被替换的内容都会阻止打包，构建输出不能通过修改自己的 metadata 扩展白名单。
 
 ## Leaflet 区域瓦片
 
@@ -56,3 +56,7 @@ Windows 服务的规则在 `backend/app/main.py`；独立静态站与根目录�
 - [Maps JavaScript API Key 与 Demo Key](https://developers.google.com/maps/documentation/javascript/get-api-key)
 
 2026-10-28 核对。旧版卫星 45° 影像已于 2026 年 5 月停用，本实现不依赖旧式 setTilt(45)；参见 [Google 地图类型](https://developers.google.com/maps/documentation/javascript/maptypes)。
+
+## 区域离线包
+
+区域 PMTiles 文件由用户在本机安装，不属于公开站点资源白名单，也不进入 service worker 首次缓存。PMTiles 4.5.0 只使用 FileSource 范围读取，元数据中的 URL 不会发起请求。运行时不新增网络域名或放宽 CSP；默认关闭已有在线高清，保留主动开启的进阶模式。两端发行审核要求带上 PMTiles BSD-3-Clause、fflate MIT 许可及来源记录。制作与使用见 [离线照片地图](offline-photo-map.md)。

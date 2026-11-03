@@ -7,7 +7,7 @@ export interface WorkspaceNavItem {id:string;label:string;icon:LucideIcon;active
 const groups=[
   {zh:'照片',en:'Photos',ids:['photos','locations','favorite','videos','timeline']},
   {zh:'整理',en:'Organize',ids:['albums','smart','faces','stats','reports']},
-  {zh:'创作',en:'Create',ids:['tools','watermark','watermark-gallery','watercolor','ai-studio']},
+  {zh:'创作',en:'Create',ids:['tools','watermark','watermark-gallery','collage-gallery','watercolor','ai-studio']},
   {zh:'偏好',en:'Preferences',ids:['settings']},
 ];
 export default function WorkspaceNavigation({items}:{items:WorkspaceNavItem[]}){
@@ -15,7 +15,7 @@ export default function WorkspaceNavigation({items}:{items:WorkspaceNavItem[]}){
   const [expanded,setExpanded]=useState(false);
   const [narrow,setNarrow]=useState(()=>matchMedia('(max-width: 760px)').matches);
   const english=getLang()==='en',bt=(zh:string,en:string)=>english?en:zh;
-  const primary=new Set(narrow?['photos','albums','tools']:['photos','locations','favorite','albums','tools','watermark-gallery']);
+  const primary=new Set(narrow?['photos','albums','tools']:['photos','locations','favorite','albums','tools','watermark-gallery','collage-gallery']);
   const selected=items.find(item=>item.active&&item.id==='favorite')||items.find(item=>item.active);
   const extras=items.filter(item=>!primary.has(item.id));
   const extraActive=extras.some(item=>item===selected);
@@ -36,7 +36,7 @@ export default function WorkspaceNavigation({items}:{items:WorkspaceNavItem[]}){
   function button(item:WorkspaceNavItem){return <button key={item.id} type="button" className="workspace-nav-icon" aria-label={t(item.label)} aria-current={selected===item?'page':undefined} onClick={()=>{setExpanded(false);item.select();}}><item.icon size={18} aria-hidden="true"/><span>{t(item.label)}</span></button>;}
   return <nav ref={nav} className="workspace-subnav workspace-labeled-nav" aria-label={t('工作区导航')}>
     {groups.map(group=>{const choices=items.filter(item=>primary.has(item.id)&&group.ids.includes(item.id));return choices.length>0&&<div key={group.en} className="workspace-nav-group"><span className="workspace-nav-heading">{bt(group.zh,group.en)}</span><div>{choices.map(button)}</div></div>;})}
-    <button ref={trigger} type="button" className="workspace-nav-icon workspace-more-trigger" aria-label={bt('更多功能','More features')} aria-expanded={expanded} aria-controls="workspace-more-panel" data-active={extraActive||undefined} onClick={()=>setExpanded(value=>!value)}><span>{extraActive?t(selected!.label):bt('更多','More')}</span><ChevronDown size={16} aria-hidden="true"/></button>
+    <button ref={trigger} type="button" className="workspace-nav-icon workspace-more-trigger" aria-label={bt('更多功能','More features')} aria-expanded={expanded} aria-controls="workspace-more-panel" data-active={extraActive||undefined} onClick={()=>setExpanded(value=>!value)}><span>{extraActive&&!narrow?t(selected!.label):bt('更多','More')}</span><ChevronDown size={16} aria-hidden="true"/></button>
     {expanded&&<div ref={panel} id="workspace-more-panel" className="workspace-more-panel" data-liquid-glass="panel" aria-label={bt('更多功能','More features')}>
       {groups.map(group=>{const choices=extras.filter(item=>group.ids.includes(item.id));return choices.length>0&&<section key={group.en}><h2>{bt(group.zh,group.en)}</h2><div>{choices.map(button)}</div></section>;})}
       {false}

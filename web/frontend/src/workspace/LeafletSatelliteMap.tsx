@@ -1,5 +1,9 @@
 import {useEffect,useRef,useState} from 'react';
-import type {Map as LeafletMap,TileLayer} from 'leaflet';
+import type {Map as LeafletMap,GridLayer,Marker} from 'leaflet';
+import {pickedLocationPoint} from '../core/location-point';
+import type {LocationPoint} from '../core/location-point';
+import type {OpenMapPack} from '../core/offline-map-pack';
+import {offlineMapLayer} from './offline-map-layer';
 import {bt} from '../browser/text';
 import type {GeoBounds} from '../core/photo-location';
 import type {MapCluster} from '../core/photo-map';
@@ -16,14 +20,15 @@ export type LeafletSatelliteMapProps={
   command:{id:number;camera:MapCamera};onBounds:(bounds:GeoBounds,camera:MapCamera)=>void;
   onSelect:(point:MapCluster)=>void;onDismiss:()=>void;onError:(message:string)=>void;
   loadNearby:(point:MapCluster,signal:AbortSignal)=>Promise<Photo[]>;onOpenPhoto:(id:string)=>void;
-  onConfigure?:()=>void;onFallback?:()=>void;
+  onConfigure?:()=>void;onFallback?:()=>void;packs?:OpenMapPack[];onPackIssue?:(name:string)=>void;
+  pointPicker?:{point:LocationPoint|null;onChange:(point:LocationPoint)=>void};
 };
 
 export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
   const {source,retry=0,clusters,photos,selected,command,onConfigure,onFallback}=props;
   const latest=useRef(props);latest.current=props;
   const host=useRef<HTMLDivElement>(null),snapshot=useRef<HTMLDivElement>(null);
-  const controls=useRef<{navigate:(camera:MapCamera)=>void;project:()=>void}|null>(null);
+  const controls=useRef<{navigate:(camera:MapCamera)=>void;project:()=>void;syncPoint:()=>void}|null>(null);
   const restartCamera=useRef<{provider:SatelliteSource['provider'];key:string;camera:MapCamera}|null>(null);
   const resolvedTiles=useRef<{provider:SatelliteSource['provider'];key:string;retry:number;attempt:number;value:SatelliteTiles}|null>(null);
   const [attempt,setAttempt]=useState(0),[status,setStatus]=useState<'loading'|'ready'|'error'|'configure'>('loading');
@@ -35,9 +40,10 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
   useEffect(()=>{
     const element=host.current;if(!element)return;
     const controller=new AbortController(),epochs=new MapViewportEpoch(),motion=matchMedia('(prefers-reduced-motion: reduce)');
-    let disposed=false,map:LeafletMap|undefined,layer:TileLayer|undefined,moving=false,waiting=false,suppressReport=false,epoch=0,navigationTarget:MapCamera|undefined;
+    let disposed=false,map:LeafletMap|undefined,layer:GridLayer|undefined,disposeLayer:(()=>void)|undefined,moving=false,waiting=false,suppressReport=false,epoch=0,navigationTarget:MapCamera|undefined;
     let deadline:ReturnType<typeof setTimeout>|undefined,poll:ReturnType<typeof setInterval>|undefined,fade:ReturnType<typeof setTimeout>|undefined,frame=0;
     let observer:ResizeObserver|undefined;
+    let pin:Marker|undefined,pinDragging=false,syncPoint=()=>{};
     setStatus('loading');setMessage('');setPositions([]);setFan(null);latest.current.onError('');
     const active=()=>!disposed&&!controller.signal.aborted;
     const clearWait=()=>{clearTimeout(deadline);clearInterval(poll);deadline=undefined;poll=undefined;};
@@ -49,7 +55,7 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
     }
     function freeze(){
       if(!map||!snapshot.current)return;
-      const rect=element!.getBoundingClientRect(),tiles=[...element!.querySelectorAll<HTMLImageElement>('.leaflet-tile')].filter(img=>img.complete&&img.naturalWidth>0);
+      const rect=element!.getBoundingClientRect(),tiles=[...element!.querySelectorAll<HTMLImageElement|HTMLCanvasElement>('.leaflet-tile')].filter(img=>img instanceof HTMLCanvasElement?img.dataset.ready==='true':img.complete&&img.naturalWidth>0);
       if(!rect.width||!rect.height||!tiles.length)return;
       const canvas=document.createElement('canvas'),scale=Math.min(devicePixelRatio||1,2);
       canvas.width=Math.ceil(rect.width*scale);canvas.height=Math.ceil(rect.height*scale);
@@ -61,11 +67,11 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
     }
     function failure(){
       if(disposed)return;clearWait();waiting=false;epochs.cancel();fadeSnapshot();
-      const text=source.provider==='nasa'?bt('离线底图未能完整加载，请重试。','The offline map did not finish loading. Please retry.'):bt('卫星影像暂时无法加载，请核对服务密钥或网络连接。可重试，或返回离线概览。','Satellite imagery could not load. Check the service key or connection, retry, or return to the offline overview.');
+      const text=source.provider==='nasa'||source.provider==='local'?bt('离线底图未能完整加载，请重试。','The offline map did not finish loading. Please retry.'):bt('卫星影像暂时无法加载，请核对服务密钥或网络连接。可重试，或返回离线概览。','Satellite imagery could not load. Check the service key or connection, retry, or return to the offline overview.');
       setMessage(text);setStatus('error');latest.current.onError(text);
     }
     function project(){
-      if(!map||disposed)return;const center=map.getCenter().lng,size=map.getSize();
+      if(!map||disposed)return;syncPoint();const center=map.getCenter().lng,size=map.getSize();
       setPositions(latest.current.clusters.map(p=>{const point=map!.latLngToContainerPoint([p.latitude,nearestWorldLongitude(p.longitude,center)]);return {id:p.photo_id,x:point.x,y:point.y};}).filter(p=>p.x>=-60&&p.y>=-60&&p.x<=size.x+60&&p.y<=size.y+60));
     }
     function queueProject(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;project();check(epoch);});}
@@ -76,8 +82,8 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
     function check(own:number){
       if(!active()||!waiting||!epochs.current(own)||moving||!map||!layer||layer.isLoading())return;
       const rect=element!.getBoundingClientRect();
-      const visible=[...element!.querySelectorAll<HTMLImageElement>('.leaflet-tile')].filter(img=>{const r=img.getBoundingClientRect();return r.width>0&&r.height>0&&r.right>rect.left+1&&r.left<rect.right-1&&r.bottom>rect.top+1&&r.top<rect.bottom-1;});
-      if(!visible.length||visible.some(img=>!img.complete||img.naturalWidth===0))return;
+      const visible=[...element!.querySelectorAll<HTMLImageElement|HTMLCanvasElement>('.leaflet-tile')].filter(img=>{const r=img.getBoundingClientRect();return r.width>0&&r.height>0&&r.right>rect.left+1&&r.left<rect.right-1&&r.bottom>rect.top+1&&r.top<rect.bottom-1;});
+      if(!visible.length||visible.some(img=>img instanceof HTMLCanvasElement?img.dataset.ready!=='true':!img.complete||img.naturalWidth===0))return;
       clearWait();waiting=false;setStatus('ready');setMessage('');latest.current.onError('');fadeSnapshot();project();
     }
     function begin(){
@@ -90,7 +96,7 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
     function navigate(value:MapCamera){
       if(!map)return;suppressReport=true;map.stop();suppressReport=false;moving=false;freeze();begin();
       let camera=satelliteCamera(value,source.provider);
-      if(source.provider==='nasa')camera=nasaViewportCamera(camera,element!.clientWidth,element!.clientHeight);
+      if(source.provider==='nasa'||source.provider==='local')camera=nasaViewportCamera(camera,element!.clientWidth,element!.clientHeight);
       camera.zoom=Math.max(map.getMinZoom(),camera.zoom);
       const center=map.getCenter(),longitude=nearestWorldLongitude(camera.longitude,center.lng),same=map.getZoom()===camera.zoom&&Math.abs(center.lat-camera.latitude)<1e-9&&Math.abs(center.lng-longitude)<1e-9;
       navigationTarget={...camera,longitude};
@@ -128,11 +134,27 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
         let camera=satelliteCamera(restart&&restart.provider===source.provider&&restart.key===source.key?restart.camera:latest.current.command.camera,source.provider);
         if(spec.geographic)camera=nasaViewportCamera(camera,element.clientWidth,element.clientHeight);
         map.setView([camera.latitude,camera.longitude],Math.max(minimum,camera.zoom),{animate:false});
-        layer=L.tileLayer(spec.url,{tileSize:256,minZoom:spec.minZoom,maxZoom:spec.maxZoom,maxNativeZoom:spec.maxNativeZoom,keepBuffer:2,updateWhenIdle:true,updateWhenZooming:false,crossOrigin:'anonymous',referrerPolicy:'strict-origin-when-cross-origin',attribution:spec.attribution,bounds:spec.geographic?[[-90,-180],[90,180]]:undefined});
+        if(latest.current.pointPicker){
+          const icon=L.divIcon({className:'location-picked-pin',iconSize:[40,44],iconAnchor:[20,43],html:'<svg viewBox="0 0 40 44" aria-hidden="true"><path d="M20 42S4 28 4 18a16 16 0 0 1 32 0c0 10-16 24-16 24Z"/><circle cx="20" cy="18" r="5"/></svg>'});
+          syncPoint=()=>{
+            if(!map||pinDragging)return;const point=latest.current.pointPicker?.point;
+            if(!point){pin?.remove();pin=undefined;return;}
+            const position:[number,number]=[point.latitude,nearestWorldLongitude(point.longitude,map.getCenter().lng)];
+            if(pin){pin.setLatLng(position);return;}
+            pin=L.marker(position,{icon,draggable:true,keyboard:true,autoPan:true,bubblingMouseEvents:false,title:bt('拖动调整拍摄位置','Drag to adjust the photo location')}).addTo(map);
+            pin.getElement()?.setAttribute('aria-label',bt('所选拍摄位置，可拖动调整','Selected photo location, draggable'));
+            pin.on('dragstart',()=>{pinDragging=true;});
+            pin.on('dragend',()=>{pinDragging=false;const value=pin?.getLatLng();if(value){const next=pickedLocationPoint(value.lat,value.lng);if(next)latest.current.pointPicker?.onChange(next);}});
+          };
+          syncPoint();
+        }
+        if(source.provider==='local'){
+          const local=offlineMapLayer(L,latest.current.packs||[],name=>latest.current.onPackIssue?.(name));layer=local.layer;disposeLayer=local.dispose;
+        }else layer=L.tileLayer(spec.url,{tileSize:256,minZoom:spec.minZoom,maxZoom:spec.maxZoom,maxNativeZoom:spec.maxNativeZoom,keepBuffer:2,updateWhenIdle:true,updateWhenZooming:false,crossOrigin:'anonymous',referrerPolicy:'strict-origin-when-cross-origin',attribution:spec.attribution,bounds:spec.geographic?[[-90,-180],[90,180]]:undefined});
         layer.on('loading',()=>{if(!waiting)begin();});layer.on('load tileload tileerror',queueProject);
-        map.on('movestart zoomstart',moveStart);map.on('move zoom',queueProject);map.on('moveend',moveEnd);map.on('click',()=>{setFan(null);latest.current.onDismiss();});
+        map.on('movestart zoomstart',moveStart);map.on('move zoom',queueProject);map.on('moveend',moveEnd);map.on('click',event=>{setFan(null);latest.current.onDismiss();if(latest.current.pointPicker){const point=pickedLocationPoint(event.latlng.lat,event.latlng.lng);if(point)latest.current.pointPicker.onChange(point);}});
         begin();layer.addTo(map);
-        controls.current={navigate,project:queueProject};
+        controls.current={navigate,project:queueProject,syncPoint};
         const plus=element.querySelector('.leaflet-control-zoom-in'),minus=element.querySelector('.leaflet-control-zoom-out');
         plus?.setAttribute('aria-label',bt('放大地图','Zoom in'));minus?.setAttribute('aria-label',bt('缩小地图','Zoom out'));
         observer=new ResizeObserver(()=>{
@@ -154,11 +176,12 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
         else failure();
       }
     })();
-    return()=>{freeze();disposed=true;controller.abort();epochs.cancel();clearWait();clearTimeout(fade);cancelAnimationFrame(frame);observer?.disconnect();motion.removeEventListener('change',motionChanged);controls.current=null;layer?.off();map?.off();map?.remove();};
-  },[source.provider,source.key,retry,attempt,motionRevision]);
+    return()=>{freeze();disposed=true;pin?.off();disposeLayer?.();controller.abort();epochs.cancel();clearWait();clearTimeout(fade);cancelAnimationFrame(frame);observer?.disconnect();motion.removeEventListener('change',motionChanged);controls.current=null;layer?.off();map?.off();map?.remove();};
+  },[source.provider,source.key,retry,attempt,motionRevision,!!props.pointPicker]);
 
   useEffect(()=>{controls.current?.project();},[clusters]);
   useEffect(()=>{controls.current?.navigate(command.camera);},[command.id]);
+  useEffect(()=>{controls.current?.syncPoint();},[props.pointPicker?.point?.latitude,props.pointPicker?.point?.longitude]);
   const byId=new Map(clusters.map(p=>[p.photo_id,p])),fanPoint=fan?byId.get(fan):undefined,fanPosition=fan?positions.find(p=>p.id===fan):undefined;
   return <div className="satellite-map leaflet-satellite-map" data-provider={source.provider} data-source={source.provider} data-status={status} data-state={status} data-transition={transition} data-zoom={zoom} data-min-zoom={minimumZoom} data-latitude={view.latitude} data-longitude={view.longitude} onPointerLeave={()=>setFan(null)} onKeyDown={event=>{if(event.key==='Escape'){setFan(null);latest.current.onDismiss();}}}>
     <div ref={host} className="leaflet-map-host"/>
@@ -169,6 +192,7 @@ export default function LeafletSatelliteMap(props:LeafletSatelliteMapProps){
     </div>
     {status==='loading'&&<p className="leaflet-map-progress" role="status">{bt('正在加载当前视野…','Loading the current view…')}</p>}
     {(status==='error'||status==='configure')&&<div className="leaflet-map-notice" data-liquid-glass role="status"><p>{message}</p><div className="button-row">{status==='error'&&<button className="leaflet-map-retry" onClick={()=>setAttempt(n=>n+1)}>{bt('重试加载','Retry loading')}</button>}{source.provider!=='nasa'&&onConfigure&&<button className="leaflet-map-configure" onClick={onConfigure}>{bt('配置地图服务','Configure map service')}</button>}{source.provider!=='nasa'&&onFallback&&<button className="leaflet-map-fallback" onClick={onFallback}>{bt('返回离线概览','Return to offline overview')}</button>}</div></div>}
+    {source.provider==='local'&&<span className="leaflet-map-resolution">{zoom>4?bt('本地卫星地图 · 区域高清 / 全球概览','Local satellite · Regional detail / global overview'):bt('NASA 离线全球概览','NASA offline global overview')}</span>}
     {source.provider==='nasa'&&<span className="leaflet-map-resolution">{zoom>4?bt('已达到原生清晰度 · 离线全球概览','Native detail limit · Offline global overview'):bt('NASA 离线全球概览','NASA offline global overview')}</span>}
   </div>;
 }

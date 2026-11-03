@@ -2,7 +2,7 @@ import type {GeoBounds} from './photo-location.ts';
 import type {MapCamera} from './satellite-map.ts';
 import {normalizeLongitude} from './photo-map.ts';
 
-export type SatelliteSource={provider:'nasa'|'arcgis'|'maptiler';key:string};
+export type SatelliteSource={provider:'nasa'|'local'|'arcgis'|'maptiler';key:string};
 export type SatelliteTiles={url:string;attribution:string;minZoom:number;maxZoom:number;maxNativeZoom:number;geographic:boolean};
 export const ARCGIS_IMAGERY='https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer';
 export const MAPTILER_IMAGERY='https://api.maptiler.com/tiles/satellite-v4/tiles.json';
@@ -18,6 +18,7 @@ function nativeZoom(value:unknown,fallback:number){return typeof value==='number
 
 /** Only our own local data, or the owner's explicitly configured official service. */
 export async function satelliteTiles(source:SatelliteSource,signal:AbortSignal,request:typeof fetch=fetch):Promise<SatelliteTiles>{
+  if(source.provider==='local')return {url:'',attribution:'NASA Earth Observatory',minZoom:0,maxZoom:18,maxNativeZoom:18,geographic:true};
   if(source.provider==='nasa')return {url:'/maps/earth/{z}/{x}-{y}.jpg',attribution:'<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/" target="_blank" rel="noopener noreferrer">NASA Earth Observatory</a>',minZoom:0,maxZoom:8,maxNativeZoom:4,geographic:true};
   if(!validSatelliteKey(source.key))throw new SatelliteSourceError('key');
   try{
@@ -49,7 +50,7 @@ export async function satelliteTiles(source:SatelliteSource,signal:AbortSignal,r
 }
 
 export function satelliteCamera(value:MapCamera,provider:SatelliteSource['provider']):MapCamera{
-  const lat=provider==='nasa'?89.999:85.05112878,max=provider==='nasa'?8:20;
+  const lat=provider==='nasa'||provider==='local'?89.999:85.05112878,max=provider==='nasa'?8:provider==='local'?18:20;
   return {latitude:Math.max(-lat,Math.min(lat,Number.isFinite(value.latitude)?value.latitude:0)),longitude:normalizeLongitude(Number.isFinite(value.longitude)?value.longitude:0),zoom:Math.max(0,Math.min(max,Number.isFinite(value.zoom)?value.zoom:provider==='nasa'?0:2))};
 }
 /** EPSG:4326 is 512 x 256 display pixels at zoom 0 (two geographic tiles). */

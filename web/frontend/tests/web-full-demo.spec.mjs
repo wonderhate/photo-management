@@ -82,7 +82,7 @@ for(const [lang,width,theme,format]of [['zh',1440,'dark','png'],['en',390,'light
   const text=words(lang),check=await protectLocalFiles(page,lang,theme),downloads=[];page.on('download',download=>downloads.push(download));
   const file=await publishedSample(page),sourceHash=sha(file.buffer);
   await page.setViewportSize({width,height:1050});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/?local=1&demo=1');
-  await expect(page.getByRole('heading',{name:text('1. 光影暗房','1. Lumina Darkroom'),exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:text('1. 光影暗房','1. Lumina Darkroom'),exact:true})).toBeVisible();
   const image=page.locator('.edit-image img'),original=await imageDigest(image),exposure=page.getByRole('slider',{name:text('曝光 EV','Exposure EV'),exact:true});
   await expect(image).toHaveJSProperty('naturalWidth',512);await expect(image).toHaveJSProperty('naturalHeight',320);
   await exposure.focus();for(let i=0;i<5;i++)await exposure.press('ArrowRight');await expect(exposure).toHaveValue('0.5');

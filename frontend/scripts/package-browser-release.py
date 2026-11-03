@@ -27,7 +27,9 @@ def bundled_map_paths():
     paths = {'maps/land-110m.json', 'maps/satellite.html', 'maps/satellite.js',
              'maps/satellite.css', 'maps/earth/metadata.json',
              'maps/earth/SHA256SUMS.txt', 'licenses/nasa-blue-marble.json',
-             'licenses/leaflet-BSD-2-Clause.txt', 'licenses/leaflet-source.json'}
+             'licenses/leaflet-BSD-2-Clause.txt', 'licenses/leaflet-source.json',
+             'licenses/pmtiles-BSD-3-Clause.txt', 'licenses/pmtiles-source.json',
+             'licenses/fflate-MIT.txt'}
     for name in metadata['files']:
         if not re.fullmatch(r'(?:globe\.jpg|\d+/\d+-\d+\.jpg)', name):
             raise ValueError('Invalid bundled map path: ' + name)

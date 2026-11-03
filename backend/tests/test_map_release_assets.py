@@ -42,7 +42,7 @@ def packaged_map(request):
 
 def test_complete_map_assets_and_credit_are_accepted(packaged_map):
     folder, validate, module = packaged_map
-    assert len(module.bundled_map_paths()) == 692
+    assert len(module.bundled_map_paths()) == 695
     result = validate(folder)
     records = result if isinstance(result, list) else result[0]
     names = {record[1] if isinstance(record, tuple) else record.relative_to(folder).as_posix()
@@ -55,7 +55,8 @@ def test_complete_map_assets_and_credit_are_accepted(packaged_map):
 def test_map_contents_must_match_registered_sources(packaged_map):
     folder, validate, _module = packaged_map
     for relative in ['maps/earth/4/31-15.jpg', 'maps/earth/metadata.json',
-                     'maps/satellite.js', 'licenses/nasa-blue-marble.json']:
+                     'maps/satellite.js', 'licenses/nasa-blue-marble.json', 'licenses/pmtiles-BSD-3-Clause.txt',
+                     'licenses/pmtiles-source.json', 'licenses/fflate-MIT.txt']:
         path = folder / relative
         original = path.read_bytes()
         path.write_bytes(b'synthetic private replacement')
@@ -67,7 +68,8 @@ def test_map_contents_must_match_registered_sources(packaged_map):
 def test_map_is_complete_including_attribution(packaged_map):
     folder, validate, _module = packaged_map
     for relative in ['maps/earth/0/0-0.jpg', 'maps/earth/4/31-15.jpg',
-                     'maps/earth/SHA256SUMS.txt', 'licenses/nasa-blue-marble.json']:
+                     'maps/earth/SHA256SUMS.txt', 'licenses/nasa-blue-marble.json', 'licenses/pmtiles-BSD-3-Clause.txt',
+                     'licenses/pmtiles-source.json', 'licenses/fflate-MIT.txt']:
         path = folder / relative
         original = path.read_bytes()
         path.unlink()

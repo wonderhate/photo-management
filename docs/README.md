@@ -1,5 +1,7 @@
 # 文档索引
 
+- [2.7.4 候选包与验证进度（待发布）](windows-2.7.4-verification.md)
+
 - [Windows 2.7.3 与首次使用优化](windows-2.7.3-verification.md)
 
 - [离线地球与照片地图](offline-photo-map.md)

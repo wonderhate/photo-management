@@ -1,0 +1,6 @@
+# Build-time only; never bundled with the application.
+rasterio==1.5.2
+pmtiles==3.8.1
+Pillow==13.0.0
+numpy==2.5.4
+requests==2.34.2

@@ -1,6 +1,7 @@
 export type Lang='zh'|'en';
 const KEY='lang';
 const EN:Record<string,string>={
+  '拼图库':'Collage library',
   'Agent请求':'Agent request','Agent预览生成':'Agent preview generation','等待应用内确认':'Awaiting in-app approval','等待本机编辑器':'Awaiting local editor','已暂停':'Paused',
   '本地深度估计':'Local depth estimation','本地主体抠图':'Local subject extraction',
   '此项请求结果或计费状态未知，请先核对服务记录；不会自动重发。':'This request has an unknown result or billing status. Check the provider record first; it will not be resent automatically.',

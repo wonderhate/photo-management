@@ -1,4 +1,5 @@
-import {useEffect,useId,useRef,useState} from 'react';
+import {lazy,Suspense,useEffect,useId,useRef,useState} from 'react';
+import {MapPin} from 'lucide-react';
 import {api,message} from '../api';
 import {bt} from '../browser/text';
 import type {Photo} from '../types';
@@ -6,7 +7,9 @@ import {manualLocation,effectiveLocation,validateLocation} from '../core/photo-l
 import type {EffectiveLocation,StoredLocation,LocationChange} from '../core/photo-location';
 import {locationFieldIssue} from '../core/location-guidance';
 import type {LocationFields} from '../core/location-guidance';
+import {locationPointFromFields} from '../core/location-point';
 import './location.css';
+const LocationMapPicker=lazy(()=>import('./LocationMapPicker'));
 
 type Result={photo_id:string;source_hash:string;record:StoredLocation|null;effective:EffectiveLocation;original:{latitude:number|null;longitude:number|null}};
 type Fields=LocationFields;
@@ -20,6 +23,7 @@ function checked(value:Result,id:string):Result{
 export default function PhotoLocation({photo,notify,onSaved}:{photo:Photo;notify:(text:string)=>void;onSaved?:()=>void}){
   const [data,setData]=useState<Result|null>(null),[form,setForm]=useState<Fields>(empty),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [editing,setEditing]=useState(false),[showValidation,setShowValidation]=useState(false),helpId=useId(),errorId=useId();
+  const [pickerId,setPickerId]=useState<string|null>(null);
   const issue=showValidation?locationFieldIssue(form):null;
   const issueText=issue?{
     latitude:bt('纬度请输入 −90 到 90 之间的数字。','Enter a latitude between −90 and 90.'),
@@ -48,7 +52,8 @@ export default function PhotoLocation({photo,notify,onSaved}:{photo:Photo;notify
     <h4>{bt('拍摄地点','Photo location')}</h4>
     {data&&<><p>{[data.effective.country,data.effective.city,data.effective.label].filter(Boolean).join(' · ')||bt('未填写地点名称','No place name set')}</p><p className="muted">{source==='manual'?bt('来源：人工设置','Source: manual'):source==='exif'?bt('来源：原始 GPS','Source: original GPS'):bt('未记录坐标','No coordinates recorded')}{data.effective.latitude!==null&&` · ${data.effective.latitude.toFixed(5)}, ${data.effective.longitude!.toFixed(5)}`}{data.effective.accuracy_m!==null&&` · ±${data.effective.accuracy_m} m`}</p></>}
     <details open={editing} onToggle={e=>setEditing(e.currentTarget.open)}><summary>{bt('修改地点 / 撤销','Edit location / undo')}</summary>
-      <p>{bt('国家、城市和地点名称用于整理照片，不会自动转换成地图坐标。要在地图上看到照片，请填写纬度和经度。','Country, city and place names organize your photos; they do not become map coordinates automatically. Enter latitude and longitude to place a photo on the map.')}</p>
+      <p>{bt('可直接在地图上标出拍摄位置，也可以填写经纬度。国家、城市和地点名称用于整理照片，不会自动转换成坐标。','Choose the photo location directly on the map, or enter coordinates. Country, city and place names organize photos; they do not become coordinates automatically.')}</p>
+      <button type="button" className="location-map-open" disabled={!data||busy} onClick={()=>setPickerId(photo.id)}><MapPin size={17} aria-hidden="true"/>{bt('在地图上选点','Choose on map')}</button>
       <p id={helpId} className="muted">{bt('使用十进制度数（WGS84）：北纬、东经为正，南纬、西经为负；例如纬度 30.25、经度 120.15。只填写名称时，可将两个坐标一起留空。','Use decimal degrees (WGS84): north/east are positive and south/west are negative, for example latitude 30.25, longitude 120.15. To save a name only, leave both coordinates empty.')}</p>
       <p className="muted">{bt('只修改当前文件的图库记录，不改原始 EXIF，也不会联网查询位置。清除人工覆写会恢复原始 GPS（如有）。','Only this file’s library record changes. Original EXIF is untouched and no online location lookup is performed. Clearing the manual override restores original GPS, if available.')}</p>
       <form noValidate onSubmit={e=>{e.preventDefault();if(e.currentTarget.reportValidity())void save('set');}}>
@@ -63,5 +68,6 @@ export default function PhotoLocation({photo,notify,onSaved}:{photo:Photo;notify
       </form>
       {data?.original.latitude!=null&&<p className="muted">{bt('原始 GPS：','Original GPS: ')}{data.original.latitude}, {data.original.longitude}</p>}
     </details>{error&&<p role="alert" className="error-box">{error}</p>}
+    {pickerId===photo.id&&data&&<Suspense fallback={<p role="status">{bt('正在打开地图…','Opening map…')}</p>}><LocationMapPicker key={photo.id} photoName={photo.file_name} initialPoint={locationPointFromFields(form.latitude,form.longitude)} onClose={()=>setPickerId(null)} onChoose={point=>{if(current.current!==pickerId)return;setForm(previous=>({...previous,latitude:String(point.latitude),longitude:String(point.longitude),accuracy_m:locationPointFromFields(previous.latitude,previous.longitude)?.latitude===point.latitude&&Number(previous.longitude)===point.longitude?previous.accuracy_m:''}));setShowValidation(false);setError('');setPickerId(null);}}/></Suspense>}
   </section>;
 }

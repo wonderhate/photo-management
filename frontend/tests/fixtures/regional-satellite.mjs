@@ -48,7 +48,7 @@ export async function exerciseRegionalSatellite(page,probe,info,lang,{failures=f
   const ready=async provider=>{await expect(map).toHaveAttribute('data-provider',provider);await expect(map).toHaveAttribute('data-status','ready');await expect(onlineTiles().first()).toBeVisible();};
   async function configure(provider,value){
     if(!await key().isVisible())await button('进阶设置','Advanced settings').click();
-    await expect(settings.locator('select')).toBeVisible();await settings.locator('select').selectOption(provider);await key().fill(value);await button('保存服务配置','Save service settings').click();
+    await page.getByRole('checkbox',{name:t('本次允许联网高清（未启用离线包时）','Allow online detail this session (when no offline packages are enabled)'),exact:true}).check();await expect(settings.locator('select')).toBeVisible();await settings.locator('select').selectOption(provider);await key().fill(value);await button('保存服务配置','Save service settings').click();
   }
   await page.emulateMedia({reducedMotion:'reduce'});await expect(page.locator('.photo-globe')).toHaveAttribute('data-texture','ready');expect(probe.requests).toHaveLength(0);
   await button('展开卫星地图','Explore the satellite map').click();await ready('nasa');
@@ -56,7 +56,7 @@ export async function exerciseRegionalSatellite(page,probe,info,lang,{failures=f
   for(let step=0;step<8&&Number(await map.getAttribute('data-zoom'))<=4;step++){const before=Number(await map.getAttribute('data-zoom'));await zoomIn();await expect.poll(async()=>Number(await map.getAttribute('data-zoom'))).toBeGreaterThan(before);await ready('nasa');}
   const detailThresholdZoom=Number(await map.getAttribute('data-zoom'));expect(detailThresholdZoom).toBeGreaterThan(4);
   await expect(page.locator('.map-detail-setup')).toBeVisible();expect(probe.requests).toHaveLength(0);
-  await button('配置高清服务','Configure detailed imagery').click();await key().fill('bad');await button('保存服务配置','Save service settings').click();await expect(page.getByRole('alert')).toBeVisible();expect(probe.requests).toHaveLength(0);
+  await button('进阶设置','Advanced settings').click();await key().fill('bad');await button('保存服务配置','Save service settings').click();await expect(page.getByRole('alert')).toBeVisible();expect(probe.requests).toHaveLength(0);
   await page.emulateMedia({reducedMotion:'no-preference'});
   await ready('nasa');
   await map.evaluate(node=>{window.__tileStates=[];window.__tileObserver=new MutationObserver(()=>window.__tileStates.push(node.dataset.transition));window.__tileObserver.observe(node,{attributes:true,attributeFilter:['data-transition']});});

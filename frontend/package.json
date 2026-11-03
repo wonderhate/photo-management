@@ -1,7 +1,7 @@
 {
   "name": "photo-library-ui",
   "private": true,
-  "version": "2.7.3",
+  "version": "2.7.4",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "leaflet": "1.9.4",
     "libraw-wasm": "1.6.0",
     "lucide-react": "^0.468.0",
+    "pmtiles": "4.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-is": "^19.3.0",

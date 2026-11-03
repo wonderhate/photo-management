@@ -1,9 +1,9 @@
 {
-  "version": "2.7.3",
-  "displayVersion": "2.7.3",
-  "baseUrl": "https://ai.photomanagement.online/downloads/2.7.3/",
-  "fallbackBaseUrl": "https://github.com/wonderhate/photo-management/releases/download/v2.7.3/",
-  "releaseUrl": "https://github.com/wonderhate/photo-management/releases/tag/v2.7.3",
+  "version": "2.7.4",
+  "displayVersion": "2.7.4",
+  "baseUrl": "https://ai.photomanagement.online/downloads/2.7.4/",
+  "fallbackBaseUrl": "https://github.com/wonderhate/photo-management/releases/download/v2.7.4/",
+  "releaseUrl": "https://github.com/wonderhate/photo-management/releases/tag/v2.7.4",
   "developer": {
     "name": "Wonder",
     "intro": "欢迎大家参与改进",
@@ -12,15 +12,15 @@
   "files": [
     {
       "kind": "installer",
-      "name": "PhotoCollection-Setup-2.7.3-x64.exe",
-      "bytes": 290428142,
-      "sha256": "2a98b01aa7069481e8d92cec445dd92cfef5d995975ac6bafbe89bade5160891"
+      "name": "PhotoCollection-Setup-2.7.4-x64.exe",
+      "bytes": 290460984,
+      "sha256": "af869b45e9eded0cfb25e2a7a94432754c4f5d467fc5b61663a96d735288ec96"
     },
     {
       "kind": "zip",
-      "name": "PhotoCollection-Windows-2.7.3.zip",
-      "bytes": 327802254,
-      "sha256": "ce050a8a6668a312d6174c13bec9767390aee579d43cf67428145015fad9d254"
+      "name": "PhotoCollection-Windows-2.7.4.zip",
+      "bytes": 333449208,
+      "sha256": "9dba6f876e445d01d1c00dc9eeee9590f6b7766ca1f39fc8edbaf34e45741bd2"
     }
   ],
   "linux": {
