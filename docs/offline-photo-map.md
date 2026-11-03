@@ -95,3 +95,8 @@ Google SDK 在无同源权限的 credentialless iframe 中运行，主界面继�
 - [NASA 影像使用说明](https://www.nasa.gov/nasa-brand-center/images-and-media/)；无 NASA 标识或背书。
 - 本机完整来源记录：`frontend/public/licenses/nasa-blue-marble.json`。
 - 交互结构参考 [向往坐标](https://cn.chuweimin.com/spot-gallery)，未复制其地图瓦片、照片或凭据。
+
+
+## 已审计的中国地区包
+
+中国区域 1167 个可用源格网、70 个分区已完成全量审计。按需下载和安装，详见 [分区、校验与覆盖缺口](offline-map-downloads.md)。永暑礁等源数据缺口保留全球概览，不宣称所有地区都有 10 米影像。

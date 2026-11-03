@@ -13,14 +13,14 @@
     {
       "kind": "installer",
       "name": "PhotoCollection-Setup-2.7.4-x64.exe",
-      "bytes": 290460984,
-      "sha256": "af869b45e9eded0cfb25e2a7a94432754c4f5d467fc5b61663a96d735288ec96"
+      "bytes": 290468270,
+      "sha256": "829b2d7a0ad2d1446df4814f7f135ac3eb3f40af7ea33cf47713aa3775dd09f5"
     },
     {
       "kind": "zip",
       "name": "PhotoCollection-Windows-2.7.4.zip",
-      "bytes": 333449208,
-      "sha256": "9dba6f876e445d01d1c00dc9eeee9590f6b7766ca1f39fc8edbaf34e45741bd2"
+      "bytes": 327840500,
+      "sha256": "c46a8a6fd72b97e97aed2cad1b8ba39398f47617b50b4dce7db6be4102b7d1a7"
     }
   ],
   "linux": {

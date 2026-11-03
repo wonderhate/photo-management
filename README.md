@@ -2,12 +2,12 @@
 
 <img src="frontend/public/icon-192.png" width="72" alt="光影集图标">
 
-当前开发候选为 **2.7.4（待发布）**：新增图库直接选片、独立拼图库、暗房固定画面、随机封面和区域离线地图包；共用功能同步 Windows。全国地图与剩余验证完成后更新正式网站，见 [候选包与验证进度](docs/windows-2.7.4-verification.md)。
+**2.7.4** 新增图库直接选片、独立拼图库、暗房固定画面、随机封面和区域离线地图包；共用功能同步 Windows。中国区域 1167 个可用源格网和 70 个分区已通过全量审计，见 [地图下载与覆盖说明](docs/offline-map-downloads.md)及 [版本验证记录](docs/windows-2.7.4-verification.md)。
 
-本地优先的摄影照片管理软件。当前版本 **2.7.3**（公开试用），提供 Windows 桌面应用和本机网页版；默认进入摄影空间。新增六套拼图预设与约 15 MB 的全球离线卫星底图，离线概览无需 Key；配置自己的高清地图服务后，放大时自动加载更清晰的影像。
+本地优先的摄影照片管理软件。当前版本 **2.7.4**（公开试用），提供 Windows 桌面应用和本机网页版；默认进入摄影空间。内置六套拼图预设与约 15 MB 的全球离线卫星底图，离线概览无需 Key；安装地区 PMTiles 包后，放大自动读取本机高清影像，未覆盖地区显示全球概览。
 
 [![Checks](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml/badge.svg)](https://github.com/wonderhate/photo-management/actions/workflows/checks.yml)
-[Windows 2.7.3 公开试用](https://github.com/wonderhate/photo-management/releases/tag/v2.7.3) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
+[Windows 2.7.4 与地区地图包](https://github.com/wonderhate/photo-management/releases/tag/v2.7.4) · [开发交接](docs/development-handoff-2026-10-13.md) · [文档索引](docs/README.md) · [版本记录](CHANGELOG.md)
 
 ## 正式网站与浏览器本地图库
 

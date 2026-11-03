@@ -1,6 +1,7 @@
 # 文档索引
 
-- [2.7.4 候选包与验证进度（待发布）](windows-2.7.4-verification.md)
+- [2.7.4 版本验证记录](windows-2.7.4-verification.md)
+- [中国地区地图包下载与覆盖说明](offline-map-downloads.md)
 
 - [Windows 2.7.3 与首次使用优化](windows-2.7.3-verification.md)
 
